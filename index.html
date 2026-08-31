@@ -433,7 +433,7 @@
       <a href="#join">Join</a>
     </nav>
     <div class="whoami">
-      Signed in as <strong id="whoamiName"></strong><span id="ownerTag" class="owner-tag" style="display:none;">Owner</span> &middot;
+      Signed in as <strong id="whoamiName"></strong><span id="ownerTag" class="owner-tag" style="display:none;">Admin</span> &middot;
       <button class="text-btn" id="accountLink">Account</button>
       <span id="adminLinkWrap" style="display:none;"> &middot; <button class="text-btn" id="adminLink">Manage admins</button></span>
       &middot;
@@ -901,7 +901,7 @@
       adminIds = configData.adminIds || [];
       isOwner = ownerId === user.uid;
       isAdmin = isOwner || adminIds.includes(user.uid);
-      ownerTag.style.display = isOwner ? 'inline' : 'none';
+      ownerTag.style.display = isAdmin ? 'inline' : 'none';
       adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
       document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       checkOwnerValidity();
