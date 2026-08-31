@@ -132,13 +132,7 @@
 
   .log-entry{ display:flex; gap:22px; padding:20px 0; border-bottom:1px solid var(--line); }
   .log-entry:last-of-type{ border-bottom:none; }
-  .log-month{ flex:0 0 108px; padding-top:3px; }
-  .log-month-btn{
-    background:none; border:none; padding:0; text-align:left;
-    color:var(--sand-dim); font-size:0.9rem; font-family:'Work Sans',sans-serif;
-    cursor:pointer; text-decoration:underline dotted; text-underline-offset:4px;
-  }
-  .log-month-btn:hover{ color:var(--accent); }
+  .log-month{ flex:0 0 108px; padding-top:3px; color:var(--sand-dim); font-size:0.9rem; }
   .log-cover{ flex:0 0 auto; }
   .log-cover img{ width:52px; height:78px; object-fit:cover; border-radius:2px; display:block; }
   .log-body{ flex:1; min-width:0; }
@@ -253,7 +247,17 @@
   <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong);">
     <button class="text-btn" id="accountClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
     <h1 style="font-size:1.4rem;">Account settings</h1>
-    <p>Change your password below.</p>
+
+    <p style="margin-top:20px; font-weight:600; color:var(--sand);">Display name</p>
+    <div class="overlay-field">
+      <label for="accName">Name shown to your club</label>
+      <input id="accName" type="text" placeholder="Your name">
+    </div>
+    <div class="overlay-error" id="accNameError"></div>
+    <div class="overlay-error" id="accNameSuccess" style="color:#9BD6A4;"></div>
+    <button class="overlay-submit" id="accNameSubmit">Update name</button>
+
+    <p style="margin-top:28px; font-weight:600; color:var(--sand);">Password</p>
     <div class="overlay-field">
       <label for="accCurrentPass">Current password</label>
       <input id="accCurrentPass" type="password" placeholder="Current password">
@@ -272,36 +276,14 @@
   </div>
 </div>
 
-<div class="overlay" id="calendarOverlay" style="display:none; background:rgba(11,32,39,0.88);">
-  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong);">
-    <button class="text-btn" id="calendarClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
-    <h1 style="font-size:1.4rem;">Set a discussion date</h1>
-    <p id="calendarBookTitle"></p>
-    <div class="overlay-field">
-      <label for="calendarDateInput">Date</label>
-      <input id="calendarDateInput" type="date">
-    </div>
-    <div class="overlay-field">
-      <label for="calendarTimeInput">Time</label>
-      <input id="calendarTimeInput" type="time">
-    </div>
-    <div class="overlay-error" id="calendarError"></div>
-    <button class="overlay-submit" id="calendarSubmit">Add to calendar</button>
-  </div>
-</div>
-
 <div id="appRoot" style="display:none;">
 
 <div class="topbar">
   <div class="topbar-inner">
     <div class="brand">
       <svg class="brand-mark" width="26" height="22" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="9" cy="9" r="3" stroke="#FF7A45" stroke-width="2"/>
-        <path d="M12 8 L19 1 L29 5" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <path d="M12 11 C 20 15, 30 15, 38 11" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" fill="none"/>
-        <path d="M13 12 L22 10" stroke="#FF7A45" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-        <path d="M38 12 C 43 9, 47 14, 50 11" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" fill="none"/>
-        <path d="M27 3 C 29 1, 31 1, 33 3" stroke="#FF7A45" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+        <path d="M17 20 C 21 17, 23 12, 26 8 C 29 4, 32 2, 36 2 C 38 2, 39.5 3.5, 39.5 5.5 C 39.5 7.5, 38 9, 36 9 L 30 12 L 22 24 C 15 26, 9 25, 3 22 C 9 20, 13 20, 17 20 Z" fill="#FF7A45"/>
+        <circle cx="41" cy="14" r="5" fill="#FF7A45"/>
         <path d="M6 17 C 12 13, 18 13, 22 17 C 26 21, 32 21, 38 17 C 42 14, 46 14, 50 17" stroke="#F1E6C8" stroke-opacity="0.55" stroke-width="1.6" stroke-linecap="round" fill="none"/>
         <path d="M8 26 C 14 23, 18 23, 22 26 L 22 38 C 18 35, 14 35, 8 38 Z" stroke="#F1E6C8" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
         <path d="M36 26 C 30 23, 26 23, 22 26 L 22 38 C 26 35, 30 35, 36 38 Z" stroke="#F1E6C8" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
@@ -351,15 +333,18 @@
   <section id="schedule">
     <div class="section-head">
       <h2>The schedule</h2>
-      <p>What we've read and what's coming up. Click a date to add the discussion to your calendar, or mark a title as current once your group settles on it.</p>
+      <p>What we've read and what's coming up. Mark a title as current once your group settles on it.</p>
     </div>
     <div id="scheduleList"></div>
     <div class="form-panel">
       <h3>Add to the schedule</h3>
       <div class="field-row">
-        <div class="field" style="flex:0 0 160px;">
+        <div class="field" style="flex:0 0 200px;">
           <label for="schMonth">Month</label>
-          <input id="schMonth" type="text" placeholder="e.g. October 2026">
+          <div style="display:flex; gap:8px;">
+            <select id="schMonthSelect" style="background:var(--panel); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.95rem; padding:10px 8px; border-radius:3px; flex:1;"></select>
+            <select id="schYearSelect" style="background:var(--panel); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.95rem; padding:10px 8px; border-radius:3px; flex:0 0 90px;"></select>
+          </div>
         </div>
         <div class="field">
           <label for="schTitle">Book title</label>
@@ -374,14 +359,6 @@
         </div>
       </div>
       <div class="field-row">
-        <div class="field" style="flex:0 0 130px;">
-          <label for="schDate">Date (optional)</label>
-          <input id="schDate" type="date">
-        </div>
-        <div class="field" style="flex:0 0 110px;">
-          <label for="schTime">Time (optional)</label>
-          <input id="schTime" type="time">
-        </div>
         <div class="field">
           <label for="schDesc">Short description</label>
           <textarea id="schDesc" placeholder="A sentence or two about the book"></textarea>
@@ -515,47 +492,44 @@
       '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
     }[c]));
   }
-  function slugName(name){
-    const base = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-    return (base || 'member' + Date.now()) + '@riptidereaders.local';
-  }
   function friendlyAuthError(e){
     switch(e.code){
-      case 'auth/email-already-in-use': return 'That name is already taken — sign in instead, or pick another name.';
+      case 'auth/email-already-in-use': return 'An account with that email already exists — sign in instead.';
+      case 'auth/invalid-email': return "That doesn't look like a valid email address.";
       case 'auth/wrong-password':
       case 'auth/user-not-found':
-      case 'auth/invalid-credential': return 'Wrong name or password.';
+      case 'auth/invalid-credential': return 'Wrong email or password.';
       case 'auth/weak-password': return 'Use a password with at least 6 characters.';
       default: return e.message || 'Something went wrong — try again.';
     }
   }
 
   // ================= LOGIN / SIGN UP GATE =================
-  function renderSignIn(prefillName){
-    gateSubtext.textContent = 'Sign in to your account.';
+  function renderSignIn(prefillEmail){
+    gateSubtext.textContent = 'Sign in with your email.';
     gateFormArea.innerHTML = `
       <div class="overlay-field">
-        <label for="siName">Your name</label>
-        <input id="siName" type="text" placeholder="Name" value="${escapeHtml(prefillName || '')}">
+        <label for="siEmail">Email</label>
+        <input id="siEmail" type="email" placeholder="you@email.com" value="${escapeHtml(prefillEmail || '')}" autocomplete="email">
       </div>
       <div class="overlay-field">
         <label for="siPass">Password</label>
-        <input id="siPass" type="password" placeholder="Password">
+        <input id="siPass" type="password" placeholder="Password" autocomplete="current-password">
       </div>
       <div class="overlay-error" id="gateError"></div>
       <button class="overlay-submit" id="siSubmit">Sign in</button>
       <div class="overlay-switch">New here? <button id="toSignUp" type="button">Create an account</button></div>
     `;
-    document.getElementById('toSignUp').addEventListener('click', () => renderSignUp(document.getElementById('siName').value));
+    document.getElementById('toSignUp').addEventListener('click', () => renderSignUp(document.getElementById('siEmail').value));
     const submit = async () => {
-      const name = document.getElementById('siName').value.trim();
+      const email = document.getElementById('siEmail').value.trim();
       const pass = document.getElementById('siPass').value;
       const btn = document.getElementById('siSubmit');
       const errEl = document.getElementById('gateError');
-      if(!name || !pass){ errEl.textContent = 'Enter your name and password.'; return; }
+      if(!email || !pass){ errEl.textContent = 'Enter your email and password.'; return; }
       btn.disabled = true;
       try{
-        await auth.signInWithEmailAndPassword(slugName(name), pass);
+        await auth.signInWithEmailAndPassword(email, pass);
       }catch(e){
         errEl.textContent = friendlyAuthError(e);
         btn.disabled = false;
@@ -565,32 +539,38 @@
     document.getElementById('siPass').addEventListener('keydown', (e) => { if(e.key==='Enter') submit(); });
   }
 
-  function renderSignUp(prefillName){
-    gateSubtext.textContent = "Pick a name and password. This is just for your club, so keep it simple. Whoever signs up first becomes the site owner.";
+  function renderSignUp(prefillEmail){
+    gateSubtext.textContent = "Sign up with your email. Whoever signs up first becomes the site owner.";
     gateFormArea.innerHTML = `
       <div class="overlay-field">
         <label for="suName">Your name</label>
-        <input id="suName" type="text" placeholder="Name" value="${escapeHtml(prefillName || '')}">
+        <input id="suName" type="text" placeholder="Name" autocomplete="name">
+      </div>
+      <div class="overlay-field">
+        <label for="suEmail">Email</label>
+        <input id="suEmail" type="email" placeholder="you@email.com" value="${escapeHtml(prefillEmail || '')}" autocomplete="email">
       </div>
       <div class="overlay-field">
         <label for="suPass">Password</label>
-        <input id="suPass" type="password" placeholder="Choose a password (6+ characters)">
+        <input id="suPass" type="password" placeholder="Choose a password (6+ characters)" autocomplete="new-password">
       </div>
       <div class="overlay-error" id="gateError"></div>
       <button class="overlay-submit" id="suSubmit">Create account &amp; enter</button>
       <div class="overlay-switch">Already have an account? <button id="toSignIn" type="button">Sign in</button></div>
     `;
-    document.getElementById('toSignIn').addEventListener('click', () => renderSignIn(document.getElementById('suName').value));
+    document.getElementById('toSignIn').addEventListener('click', () => renderSignIn(document.getElementById('suEmail').value));
     document.getElementById('suSubmit').addEventListener('click', async () => {
       const name = document.getElementById('suName').value.trim();
+      const email = document.getElementById('suEmail').value.trim();
       const pass = document.getElementById('suPass').value;
       const btn = document.getElementById('suSubmit');
       const errEl = document.getElementById('gateError');
       if(!name){ errEl.textContent = 'Enter your name.'; return; }
+      if(!email){ errEl.textContent = 'Enter your email.'; return; }
       if(!pass || pass.length < 6){ errEl.textContent = 'Use a password with at least 6 characters.'; return; }
       btn.disabled = true;
       try{
-        const cred = await auth.createUserWithEmailAndPassword(slugName(name), pass);
+        const cred = await auth.createUserWithEmailAndPassword(email, pass);
         await cred.user.updateProfile({ displayName: name });
         const configRef = db.collection('meta').doc('config');
         const configDoc = await configRef.get();
@@ -626,6 +606,9 @@
 
   const accountOverlay = document.getElementById('accountOverlay');
   document.getElementById('accountLink').addEventListener('click', () => {
+    document.getElementById('accName').value = auth.currentUser ? (auth.currentUser.displayName || '') : '';
+    document.getElementById('accNameError').textContent = '';
+    document.getElementById('accNameSuccess').textContent = '';
     document.getElementById('accCurrentPass').value = '';
     document.getElementById('accNewPass').value = '';
     document.getElementById('accNewPass2').value = '';
@@ -634,6 +617,20 @@
     accountOverlay.style.display = 'flex';
   });
   document.getElementById('accountClose').addEventListener('click', () => { accountOverlay.style.display = 'none'; });
+  document.getElementById('accNameSubmit').addEventListener('click', async () => {
+    const newName = document.getElementById('accName').value.trim();
+    const errEl = document.getElementById('accNameError');
+    const okEl = document.getElementById('accNameSuccess');
+    errEl.textContent = ''; okEl.textContent = '';
+    if(!newName){ errEl.textContent = 'Enter a name.'; return; }
+    try{
+      await auth.currentUser.updateProfile({ displayName: newName });
+      whoamiName.textContent = newName;
+      okEl.textContent = 'Name updated.';
+    }catch(e){
+      errEl.textContent = friendlyAuthError(e);
+    }
+  });
   document.getElementById('accSubmit').addEventListener('click', async () => {
     const current = document.getElementById('accCurrentPass').value;
     const next = document.getElementById('accNewPass').value;
@@ -721,55 +718,6 @@
   wireLookup('schLookup','schTitle','schAuthor','schCoverPreview','schDesc', (url) => { schCover = url; });
   wireLookup('recLookup','recTitle','recAuthor','recCoverPreview', null, (url) => { recCover = url; });
 
-  // ================= CALENDAR =================
-  function pad(n){ return String(n).padStart(2,'0'); }
-  function toGoogleDate(d){
-    return d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + 'T' + pad(d.getHours()) + pad(d.getMinutes()) + '00';
-  }
-  function launchCalendarLink(entry){
-    const start = new Date(entry.meetingDate);
-    const end = new Date(start.getTime() + 60*60*1000);
-    const params = new URLSearchParams({
-      action: 'TEMPLATE',
-      text: 'Riptide Readers: ' + entry.title,
-      dates: toGoogleDate(start) + '/' + toGoogleDate(end),
-      details: (entry.description || '') + ' — Riptide Readers discussion.'
-    });
-    window.open('https://calendar.google.com/calendar/render?' + params.toString(), '_blank');
-  }
-
-  const calendarOverlay = document.getElementById('calendarOverlay');
-  let calendarTargetEntry = null;
-
-  function openCalendarFor(entry){
-    if(entry.meetingDate){
-      launchCalendarLink(entry);
-      return;
-    }
-    calendarTargetEntry = entry;
-    document.getElementById('calendarBookTitle').textContent = entry.title;
-    document.getElementById('calendarDateInput').value = '';
-    document.getElementById('calendarTimeInput').value = '';
-    document.getElementById('calendarError').textContent = '';
-    calendarOverlay.style.display = 'flex';
-  }
-  document.getElementById('calendarClose').addEventListener('click', () => { calendarOverlay.style.display = 'none'; });
-  document.getElementById('calendarSubmit').addEventListener('click', async () => {
-    const val = document.getElementById('calendarDateInput').value;
-    const timeVal = document.getElementById('calendarTimeInput').value || '19:00';
-    const combined = val ? (val + 'T' + timeVal) : '';
-    const errEl = document.getElementById('calendarError');
-    if(!val){ errEl.textContent = 'Pick a date first.'; return; }
-    const parsed = new Date(combined);
-    if(isNaN(parsed.getTime())){ errEl.textContent = "That date didn't parse — try again."; return; }
-    calendarTargetEntry.meetingDate = parsed.toISOString();
-    try{
-      await db.collection('schedule').doc(calendarTargetEntry.id).update({ meetingDate: calendarTargetEntry.meetingDate });
-    }catch(e){ errEl.textContent = "Couldn't save the date — try again."; return; }
-    calendarOverlay.style.display = 'none';
-    launchCalendarLink(calendarTargetEntry);
-  });
-
   // ---------- render: now reading ----------
   function renderNowReading(){
     const current = schedule.find(s => s.current);
@@ -795,7 +743,7 @@
     }
     scheduleListEl.innerHTML = schedule.map(entry => `
       <div class="log-entry" data-id="${entry.id}">
-        <div class="log-month"><button class="log-month-btn" data-id="${entry.id}" title="Add to calendar">${escapeHtml(entry.month)}</button></div>
+        <div class="log-month">${escapeHtml(entry.month)}</div>
         ${entry.coverUrl ? `<div class="log-cover"><img src="${entry.coverUrl}" alt=""></div>` : ''}
         <div class="log-body">
           <h3>${escapeHtml(entry.title)}</h3>
@@ -819,6 +767,7 @@
     const sorted = [...recommendations].sort((a,b) => (b.votes.length - a.votes.length));
     recListEl.innerHTML = sorted.map(rec => {
       const voted = uid && rec.votes.includes(uid);
+      const voterNames = Object.values(rec.votesDetail || {});
       return `
       <div class="rec" data-id="${rec.id}">
         <div class="rec-vote">
@@ -833,6 +782,7 @@
           <div class="byline">${escapeHtml(rec.author)}</div>
           ${rec.note ? `<p class="note">${escapeHtml(rec.note)}</p>` : ''}
           <div class="meta">Suggested by ${escapeHtml(rec.submittedBy || 'someone')}<button class="link-btn remove-rec" data-id="${rec.id}">Remove</button></div>
+          ${voterNames.length ? `<div class="meta">Voted by ${escapeHtml(voterNames.join(', '))}</div>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -857,27 +807,37 @@
   }
 
   // ---------- actions ----------
+  function populateMonthYearSelects(){
+    const monthSel = document.getElementById('schMonthSelect');
+    const yearSel = document.getElementById('schYearSelect');
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    monthSel.innerHTML = monthNames.map(m => `<option value="${m}">${m}</option>`).join('');
+    const now = new Date();
+    monthSel.value = monthNames[now.getMonth()];
+    const startYear = now.getFullYear();
+    let yearOptions = '';
+    for(let y = startYear; y <= startYear + 3; y++){
+      yearOptions += `<option value="${y}">${y}</option>`;
+    }
+    yearSel.innerHTML = yearOptions;
+    yearSel.value = String(startYear);
+  }
+
   async function addScheduleEntry(){
-    const month = document.getElementById('schMonth').value.trim();
+    const month = document.getElementById('schMonthSelect').value + ' ' + document.getElementById('schYearSelect').value;
     const title = document.getElementById('schTitle').value.trim();
     const author = document.getElementById('schAuthor').value.trim();
     const description = document.getElementById('schDesc').value.trim();
-    const dateVal = document.getElementById('schDate').value;
-    const timeVal = document.getElementById('schTime').value || '19:00';
     if(!title){ showToast('Add a book title first.'); return; }
-    const meetingDate = dateVal ? new Date(dateVal + 'T' + timeVal).toISOString() : null;
     try{
       await db.collection('schedule').add({
-        month: month || 'TBD', title, author, description, current:false,
-        coverUrl: schCover, meetingDate, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        month, title, author, description, current:false,
+        coverUrl: schCover, meetingDate: null, createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }catch(e){ showToast("Couldn't save — try again."); return; }
-    document.getElementById('schMonth').value = '';
     document.getElementById('schTitle').value = '';
     document.getElementById('schAuthor').value = '';
     document.getElementById('schDesc').value = '';
-    document.getElementById('schDate').value = '';
-    document.getElementById('schTime').value = '';
     document.getElementById('schCoverPreview').style.display = 'none';
     schCover = null;
   }
@@ -907,7 +867,7 @@
     const name = auth.currentUser ? (auth.currentUser.displayName || 'someone') : 'someone';
     try{
       await db.collection('recommendations').add({
-        title, author, note, submittedBy: name, votes: [], coverUrl: recCover,
+        title, author, note, submittedBy: name, votes: [], votesDetail: {}, coverUrl: recCover,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }catch(e){ showToast("Couldn't save — try again."); return; }
@@ -921,6 +881,7 @@
   async function toggleVote(id){
     const uid = auth.currentUser ? auth.currentUser.uid : null;
     if(!uid) return;
+    const name = auth.currentUser.displayName || 'someone';
     const rec = recommendations.find(r => r.id === id);
     if(!rec) return;
     const has = rec.votes.includes(uid);
@@ -928,7 +889,10 @@
       await db.collection('recommendations').doc(id).update({
         votes: has
           ? firebase.firestore.FieldValue.arrayRemove(uid)
-          : firebase.firestore.FieldValue.arrayUnion(uid)
+          : firebase.firestore.FieldValue.arrayUnion(uid),
+        [`votesDetail.${uid}`]: has
+          ? firebase.firestore.FieldValue.delete()
+          : name
       });
     }catch(e){ showToast("Couldn't save your vote — try again."); }
   }
@@ -958,6 +922,7 @@
 
   // ---------- init app (post-login, once) ----------
   function initApp(){
+    populateMonthYearSelects();
     document.getElementById('schSubmit').addEventListener('click', addScheduleEntry);
     document.getElementById('recSubmit').addEventListener('click', addRecommendation);
     document.getElementById('memSubmit').addEventListener('click', addMember);
@@ -965,13 +930,8 @@
     scheduleListEl.addEventListener('click', (e) => {
       const cur = e.target.closest('.set-current');
       const rem = e.target.closest('.remove-schedule');
-      const monthBtn = e.target.closest('.log-month-btn');
       if(cur) setCurrent(cur.dataset.id);
       if(rem) removeScheduleEntry(rem.dataset.id);
-      if(monthBtn){
-        const entry = schedule.find(s => s.id === monthBtn.dataset.id);
-        if(entry) openCalendarFor(entry);
-      }
     });
 
     recListEl.addEventListener('click', (e) => {
