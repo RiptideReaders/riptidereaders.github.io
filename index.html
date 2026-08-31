@@ -316,11 +316,17 @@
     </nav>
     <div class="whoami">
       Signed in as <strong id="whoamiName"></strong><span id="ownerTag" class="owner-tag" style="display:none;">Owner</span> &middot;
-      <button class="text-btn" id="accountLink">Account</button> &middot;
-      <button class="text-btn" id="adminLink" style="display:none;">Manage admins</button> &middot;
+      <button class="text-btn" id="accountLink">Account</button>
+      <span id="adminLinkWrap" style="display:none;"> &middot; <button class="text-btn" id="adminLink">Manage admins</button></span>
+      &middot;
       <button class="text-btn" id="logoutLink">Log out</button>
     </div>
   </div>
+</div>
+
+<div id="claimOwnerBanner" style="display:none; background:var(--accent); color:var(--ink); padding:12px 28px; text-align:center; font-size:0.9rem; font-weight:600;">
+  This club doesn't have a recognized owner right now &mdash;
+  <button id="claimOwnerBtn" style="background:var(--ink); color:var(--sand); border:none; padding:6px 14px; border-radius:3px; font-family:'Work Sans',sans-serif; font-weight:600; cursor:pointer; margin-left:8px;">Claim ownership</button>
 </div>
 
 <div class="wrap">
@@ -466,6 +472,8 @@
   const whoamiName = document.getElementById('whoamiName');
   const ownerTag = document.getElementById('ownerTag');
   const adminLink = document.getElementById('adminLink');
+  const adminLinkWrap = document.getElementById('adminLinkWrap');
+  const claimOwnerBanner = document.getElementById('claimOwnerBanner');
 
   const nowReadingEl = document.getElementById('nowReading');
   const scheduleListEl = document.getElementById('scheduleList');
@@ -588,6 +596,12 @@
     });
   }
 
+  function checkOwnerValidity(){
+    if(members.length === 0) return; // wait until members have loaded
+    const ownerExists = ownerId && members.some(m => m.id === ownerId);
+    claimOwnerBanner.style.display = ownerExists ? 'none' : 'block';
+  }
+
   auth.onAuthStateChanged(async (user) => {
     if(user){
       gateOverlay.style.display = 'none';
@@ -601,7 +615,8 @@
         isOwner = ownerId === user.uid;
         isAdmin = isOwner || adminIds.includes(user.uid);
         ownerTag.style.display = isOwner ? 'inline' : 'none';
-        adminLink.style.display = isOwner ? 'inline' : 'none';
+        adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
+        checkOwnerValidity();
       }catch(e){ /* non-fatal */ }
       if(!appInited){ appInited = true; initApp(); }
       else { renderSchedule(); }
@@ -1018,6 +1033,7 @@
     db.collection('members').orderBy('createdAt', 'asc').onSnapshot(snap => {
       members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderMembers();
+      checkOwnerValidity();
     }, () => showToast("Couldn't load members."));
 
     db.collection('meta').doc('config').onSnapshot(snap => {
@@ -1028,8 +1044,19 @@
       isOwner = ownerId === auth.currentUser.uid;
       isAdmin = isOwner || adminIds.includes(auth.currentUser.uid);
       ownerTag.style.display = isOwner ? 'inline' : 'none';
-      adminLink.style.display = isOwner ? 'inline' : 'none';
+      adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
+      checkOwnerValidity();
       renderSchedule();
+    });
+
+    document.getElementById('claimOwnerBtn').addEventListener('click', async () => {
+      if(!auth.currentUser) return;
+      try{
+        await db.collection('meta').doc('config').set({ ownerId: auth.currentUser.uid }, { merge: true });
+        showToast('You are now the site owner.');
+      }catch(e){
+        showToast("Couldn't claim ownership — try again.");
+      }
     });
   }
 })();
