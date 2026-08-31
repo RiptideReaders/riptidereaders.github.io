@@ -447,7 +447,7 @@
       <a href="#schedule">Schedule</a>
       <a href="#suggest">Suggest &amp; vote</a>
       <a href="#members">Members</a>
-      <a href="#join">Join</a>
+      <a href="#join" id="joinNavLink" style="display:none;">Join</a>
     </nav>
     <div class="whoami">
       Signed in as <strong id="whoamiName"></strong><span id="ownerTag" class="owner-tag" style="display:none;">Admin</span> &middot;
@@ -578,7 +578,7 @@
     <div id="memberList"></div>
   </section>
 
-  <section id="join">
+  <section id="join" style="display:none;">
     <div class="section-head">
       <h2>Join us</h2>
       <p>Share this page's link. Anyone you send it to creates their own account to get in.</p>
@@ -929,6 +929,8 @@
       ownerTag.style.display = isAdmin ? 'inline' : 'none';
       adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
       document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('join').style.display = isAdmin ? 'block' : 'none';
       checkOwnerValidity();
     }catch(e){ /* non-fatal */ }
     if(!appInited){ appInited = true; initApp(); }
@@ -1093,13 +1095,23 @@
   async function lookupBookGoogle(titleVal, authorVal){
     let q = 'intitle:' + encodeURIComponent(titleVal.trim());
     if(authorVal && authorVal.trim()) q += '+inauthor:' + encodeURIComponent(authorVal.trim());
-    const res = await fetch('https://www.googleapis.com/books/v1/volumes?q=' + q + '&maxResults=1');
+    const res = await fetch('https://www.googleapis.com/books/v1/volumes?q=' + q + '&maxResults=5');
     if(!res.ok) throw new Error('google books search failed');
     const data = await res.json();
-    const item = data.items && data.items[0];
-    if(!item) return null;
+    const items = data.items || [];
+    if(items.length === 0) return null;
+    // The top-ranked match isn't always the edition with a description attached
+    // (could be an audiobook or a leaner catalog entry) — so prefer the first
+    // result in the list that actually has one, falling back to the top match.
+    const withDesc = items.find(it => it.volumeInfo && it.volumeInfo.description);
+    const item = withDesc || items[0];
     const info = item.volumeInfo || {};
     let cover = info.imageLinks && (info.imageLinks.thumbnail || info.imageLinks.smallThumbnail);
+    if(!cover){
+      // If the description-bearing edition has no cover, borrow one from another result that does.
+      const withCover = items.find(it => it.volumeInfo && it.volumeInfo.imageLinks && (it.volumeInfo.imageLinks.thumbnail || it.volumeInfo.imageLinks.smallThumbnail));
+      if(withCover) cover = withCover.volumeInfo.imageLinks.thumbnail || withCover.volumeInfo.imageLinks.smallThumbnail;
+    }
     if(cover) cover = cover.replace('http://', 'https://');
     let description = info.description || '';
     if(description){
@@ -1748,6 +1760,8 @@
       ownerTag.style.display = isAdmin ? 'inline' : 'none';
       adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
       document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('join').style.display = isAdmin ? 'block' : 'none';
       checkOwnerValidity();
       renderSchedule();
       renderMembers();
