@@ -8,6 +8,8 @@
 <link rel="icon" type="image/png" href="icon-512.png">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0B2027">
+<meta name="apple-mobile-web-app-title" content="Riptide Readers">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -54,6 +56,7 @@
     background:var(--ink);
     display:flex; align-items:flex-start; justify-content:center;
     padding:24px; padding-top:48px; overflow-y:auto;
+    overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
   }
   .overlay-card{ max-width:380px; width:100%; position:relative; }
   .overlay-card .wave svg{ display:block; width:120px; height:16px; margin-bottom:22px; }
@@ -134,6 +137,19 @@
   }
   .rating-badge .badge-text{ font-size:0.9rem; color:var(--sand); flex:1; min-width:180px; }
   .rating-badge .badge-text strong{ color:var(--accent); }
+  .status-widget{
+    margin-top:12px; padding:14px 20px; background:var(--panel); border-radius:4px;
+  }
+  .status-widget .status-prompt{ font-size:0.85rem; color:var(--sand-dim); margin-bottom:10px; }
+  .status-widget .status-buttons{ display:flex; gap:8px; flex-wrap:wrap; }
+  .status-btn{
+    background:transparent; border:1px solid var(--line-strong); color:var(--sand);
+    font-family:'Work Sans',sans-serif; font-size:0.82rem; padding:7px 12px;
+    border-radius:20px; cursor:pointer;
+  }
+  .status-btn.active{ background:var(--accent); border-color:var(--accent); color:var(--ink); font-weight:600; }
+  .status-summary{ margin-top:12px; font-size:0.82rem; color:var(--sand-dim); line-height:1.7; }
+  .status-summary strong{ color:var(--sand); }
 
   section{ padding:56px 0; border-top:1px solid var(--line); }
   section .section-head{ margin-bottom:28px; }
@@ -402,12 +418,13 @@
 
 <div class="overlay" id="bookDetailOverlay" style="display:none; background:rgba(11,32,39,0.92); padding:24px;">
   <div class="overlay-card" style="max-width:520px; background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); display:flex; gap:20px; align-items:flex-start;">
-    <button class="text-btn" id="bookDetailClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
+    <button class="text-btn" id="bookDetailClose" style="position:absolute; top:8px; right:8px; font-size:1.5rem; text-decoration:none; padding:10px 14px; z-index:5;">&times;</button>
     <img id="bookDetailCover" src="" alt="" style="width:110px; height:165px; object-fit:cover; border-radius:3px; flex:0 0 auto; display:none;">
     <div style="min-width:0;">
       <h2 id="bookDetailTitle" style="font-size:1.3rem;"></h2>
       <div id="bookDetailAuthor" style="color:var(--sand-dim); margin-top:4px; font-size:0.95rem;"></div>
       <p id="bookDetailDesc" style="margin-top:14px; color:var(--sand); line-height:1.6; white-space:pre-line;"></p>
+      <p id="bookDetailSearchLink" style="display:none; margin-top:10px;"><a id="bookDetailSearchA" href="#" target="_blank" style="color:var(--accent);">Search for this book online →</a></p>
     </div>
   </div>
 </div>
@@ -468,6 +485,7 @@
     </div>
     <div class="now-reading" id="nowReading"></div>
     <div id="ratingBadge"></div>
+    <div id="readStatusWidget"></div>
   </section>
 
   <section id="schedule">
@@ -634,12 +652,15 @@
   function openBookDetail(kind, id){
     let entry = null;
     let desc = '';
+    let hasRealDesc = false;
     if(kind === 'schedule'){
       entry = schedule.find(s => s.id === id);
+      hasRealDesc = !!(entry && entry.description);
       desc = entry ? (entry.description || 'No description added yet.') : '';
     }else if(kind === 'rec'){
       entry = recommendations.find(r => r.id === id);
       if(entry){
+        hasRealDesc = !!entry.description;
         const parts = [];
         if(entry.description) parts.push(entry.description);
         if(entry.note) parts.push('Why ' + (entry.submittedBy || 'someone') + ' suggested it: ' + entry.note);
@@ -657,6 +678,10 @@
     document.getElementById('bookDetailTitle').textContent = entry.title || '';
     document.getElementById('bookDetailAuthor').textContent = entry.author || '';
     document.getElementById('bookDetailDesc').textContent = desc;
+    const searchLinkEl = document.getElementById('bookDetailSearchA');
+    searchLinkEl.href = bookSearchUrl(entry.title, entry.author);
+    searchLinkEl.textContent = hasRealDesc ? 'Read the full description online →' : 'Search for this book online →';
+    document.getElementById('bookDetailSearchLink').style.display = 'block';
     bookDetailOverlay.style.display = 'flex';
   }
   document.getElementById('bookDetailClose').addEventListener('click', () => { bookDetailOverlay.style.display = 'none'; });
@@ -1040,20 +1065,28 @@
   });
 
   // ================= BOOK LOOKUP =================
+  function stripHtml(text){
+    if(!text) return text;
+    // Replace tags with a space (not empty) so adjacent words don't glue together,
+    // then collapse any resulting double spaces.
+    return text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
   function cleanDescription(text){
     if(!text) return text;
     let t = text.trim();
-    // Strip a leading all-caps badge line, e.g. "#1 NEW YORK TIMES BESTSELLER • NOW A MAJOR MOTION PICTURE"
-    t = t.replace(/^[#\d][#\dA-Z\s•\-,]{8,}(?=[A-Z][a-z])/, '').trim();
-    // Repeatedly strip leading quoted press blurbs like “...”—Source or "..."—Source
-    const quoteBlurb = /^[“"][^”"]{2,300}[”"]\s*[—\-–]\s*[^.]{1,60}?(?=[A-Z][a-z])/;
+    // Strip a leading all-caps badge/marketing line, e.g. "#1 NEW YORK TIMES BESTSELLER • NOW A MAJOR MOTION PICTURE"
+    const badgeRe = /^[#\d][#\dA-Z0-9\s•\-,.]{6,}?(?=[A-Z][a-z]{2,})/;
+    // Strip a leading quoted press blurb like “...”—Source or "..."—Source
+    const quoteBlurb = /^[“"][^”"]{2,400}[”"]\s*[—\-–]\s*[^.]{1,80}?(?=[A-Z][a-z]{2,})/;
     let prev;
     let guard = 0;
     do {
       prev = t;
+      t = t.replace(badgeRe, '').trim();
       t = t.replace(quoteBlurb, '').trim();
       guard++;
-    } while(t !== prev && t.length > 0 && guard < 8);
+    } while(t !== prev && t.length > 0 && guard < 10);
     return t || text; // never return empty — fall back to the original if we stripped it all
   }
 
@@ -1070,7 +1103,7 @@
     if(cover) cover = cover.replace('http://', 'https://');
     let description = info.description || '';
     if(description){
-      description = description.replace(/<[^>]+>/g, ''); // strip any HTML tags
+      description = stripHtml(description);
       description = cleanDescription(description);
       if(description.length > 650) description = description.slice(0, 647) + '…';
     }
@@ -1121,7 +1154,7 @@
     let cover = item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : null;
     let description = item.description || item.shortDescription || '';
     if(description){
-      description = description.replace(/<[^>]+>/g, '');
+      description = stripHtml(description);
       description = cleanDescription(description);
       if(description.length > 650) description = description.slice(0, 647) + '…';
     }
@@ -1175,6 +1208,11 @@
     return foundAny ? result : null;
   }
 
+  function bookSearchUrl(title, author){
+    const q = encodeURIComponent((title || '') + ' ' + (author || ''));
+    return `https://www.google.com/search?tbm=bks&q=${q}`;
+  }
+
   function wireLookup(btnId, titleId, authorId, previewId, descId, coverSetter){
     const btn = document.getElementById(btnId);
     btn.addEventListener('click', async () => {
@@ -1209,7 +1247,9 @@
       const coverMsg = result.coverUrl ? 'Cover updated.' : 'No cover image was available.';
       let descMsg = '';
       if(descId && descVisible){
-        descMsg = descFilled ? ' Description filled in.' : ' No description was available from either source — feel free to type your own.';
+        descMsg = descFilled
+          ? ' Description filled in.'
+          : ` No description was available from either source — feel free to type your own, or <a href="${bookSearchUrl(result.title, result.author)}" target="_blank" style="color:var(--accent);">search for it online</a>.`;
       }else if(descId && descFilled){
         descMsg = ' Details added.';
       }
@@ -1242,6 +1282,34 @@
       </div>`;
 
     renderRatingBadge();
+    renderReadStatus(current);
+  }
+
+  function renderReadStatus(current){
+    const widgetEl = document.getElementById('readStatusWidget');
+    if(!current){ widgetEl.innerHTML = ''; return; }
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    const statuses = current.readStatus || {};
+    const myStatus = uid ? statuses[uid] : null;
+    const labels = { 'not-started': "Haven't started", 'reading': 'Reading it', 'finished': 'Finished' };
+    const groups = { 'not-started': [], 'reading': [], 'finished': [] };
+    Object.keys(statuses).forEach(u => {
+      const s = statuses[u];
+      if(!groups[s]) return;
+      const m = members.find(mm => mm.id === u);
+      groups[s].push(m ? m.name : 'someone');
+    });
+    const summaryParts = Object.keys(labels)
+      .filter(key => groups[key].length > 0)
+      .map(key => `<strong>${labels[key]}</strong>: ${escapeHtml(groups[key].join(', '))}`);
+    widgetEl.innerHTML = `
+      <div class="status-widget">
+        <div class="status-prompt">Where are you at with this one?</div>
+        <div class="status-buttons">
+          ${Object.keys(labels).map(key => `<button class="status-btn ${myStatus === key ? 'active' : ''}" data-status="${key}">${labels[key]}</button>`).join('')}
+        </div>
+        ${summaryParts.length ? `<div class="status-summary">${summaryParts.join(' &middot; ')}</div>` : ''}
+      </div>`;
   }
 
   function renderRatingBadge(){
@@ -1340,9 +1408,9 @@
       return;
     }
     memberListEl.innerHTML = members.map(m => {
-      const badge = m.id === ownerId
-        ? '<span class="owner-tag">Owner</span>'
-        : (adminIds.includes(m.id) ? '<span class="owner-tag">Admin</span>' : '');
+      const badge = (m.id === ownerId || adminIds.includes(m.id))
+        ? '<span class="owner-tag">Admin</span>'
+        : '';
       const fullName = [m.firstName, m.lastName].filter(Boolean).join(' ') || m.name;
       const displayLine = showFullMemberInfo ? fullName : m.name;
       const showsGoesBy = showFullMemberInfo && fullName !== m.name;
@@ -1571,6 +1639,21 @@
       window.location.href = `mailto:?bcc=${bcc}&subject=${encodeURIComponent('Riptide Readers')}`;
     });
 
+    document.getElementById('readStatusWidget').addEventListener('click', async (e) => {
+      const btn = e.target.closest('.status-btn');
+      if(!btn || !auth.currentUser) return;
+      const current = schedule.find(s => s.current);
+      if(!current) return;
+      const uid = auth.currentUser.uid;
+      const status = btn.dataset.status;
+      const already = (current.readStatus || {})[uid] === status;
+      try{
+        await db.collection('schedule').doc(current.id).update({
+          [`readStatus.${uid}`]: already ? firebase.firestore.FieldValue.delete() : status
+        });
+      }catch(e){ showToast("Couldn't save — try again."); }
+    });
+
     nowReadingEl.addEventListener('click', async (e) => {
       const btn = e.target.closest('.share-current');
       if(!btn) return;
@@ -1662,7 +1745,7 @@
       adminIds = data.adminIds || [];
       isOwner = ownerId === auth.currentUser.uid;
       isAdmin = isOwner || adminIds.includes(auth.currentUser.uid);
-      ownerTag.style.display = isOwner ? 'inline' : 'none';
+      ownerTag.style.display = isAdmin ? 'inline' : 'none';
       adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
       document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       checkOwnerValidity();
