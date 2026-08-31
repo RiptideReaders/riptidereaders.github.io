@@ -90,7 +90,10 @@
     display:flex; align-items:center; justify-content:space-between;
     gap:16px; flex-wrap:wrap;
   }
-  .brand{ font-family:'Bitter', serif; font-weight:700; font-size:1.05rem; letter-spacing:0.01em; }
+  .brand{ font-family:'Bitter', serif; font-weight:700; font-size:1.05rem; letter-spacing:0.01em; display:flex; align-items:center; gap:8px; }
+  .brand-mark{ flex:0 0 auto; display:block; }
+  .hero-mark{ margin-bottom:18px; }
+  .hero-mark svg{ display:block; }
   .topnav{display:flex; align-items:center; gap:20px; font-size:0.92rem;}
   .topnav a{color:var(--sand-dim); text-decoration:none;}
   .topnav a:hover{color:var(--accent);}
@@ -246,11 +249,58 @@
   </div>
 </div>
 
+<div class="overlay" id="accountOverlay" style="display:none; background:rgba(11,32,39,0.88);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong);">
+    <button class="text-btn" id="accountClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
+    <h1 style="font-size:1.4rem;">Account settings</h1>
+    <p>Change your password below.</p>
+    <div class="overlay-field">
+      <label for="accCurrentPass">Current password</label>
+      <input id="accCurrentPass" type="password" placeholder="Current password">
+    </div>
+    <div class="overlay-field">
+      <label for="accNewPass">New password</label>
+      <input id="accNewPass" type="password" placeholder="New password (6+ characters)">
+    </div>
+    <div class="overlay-field">
+      <label for="accNewPass2">Confirm new password</label>
+      <input id="accNewPass2" type="password" placeholder="Confirm new password">
+    </div>
+    <div class="overlay-error" id="accError"></div>
+    <div class="overlay-error" id="accSuccess" style="color:#9BD6A4;"></div>
+    <button class="overlay-submit" id="accSubmit">Update password</button>
+  </div>
+</div>
+
+<div class="overlay" id="calendarOverlay" style="display:none; background:rgba(11,32,39,0.88);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong);">
+    <button class="text-btn" id="calendarClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
+    <h1 style="font-size:1.4rem;">Set a discussion date</h1>
+    <p id="calendarBookTitle"></p>
+    <div class="overlay-field">
+      <label for="calendarDateInput">Date &amp; time</label>
+      <input id="calendarDateInput" type="datetime-local">
+    </div>
+    <div class="overlay-error" id="calendarError"></div>
+    <button class="overlay-submit" id="calendarSubmit">Add to calendar</button>
+  </div>
+</div>
+
 <div id="appRoot" style="display:none;">
 
 <div class="topbar">
   <div class="topbar-inner">
-    <div class="brand">Riptide Readers</div>
+    <div class="brand">
+      <svg class="brand-mark" width="26" height="22" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="10" cy="7" r="3" stroke="#FF7A45" stroke-width="2"/>
+        <path d="M13 9 C 19 3, 27 3, 32 8" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M13 12 C 19 17, 27 18, 34 13" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M6 17 C 12 13, 18 13, 22 17 C 26 21, 32 21, 38 17 C 42 14, 46 14, 50 17" stroke="#F1E6C8" stroke-opacity="0.55" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+        <path d="M8 26 C 14 23, 18 23, 22 26 L 22 38 C 18 35, 14 35, 8 38 Z" stroke="#F1E6C8" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+        <path d="M36 26 C 30 23, 26 23, 22 26 L 22 38 C 26 35, 30 35, 36 38 Z" stroke="#F1E6C8" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+      </svg>
+      Riptide Readers
+    </div>
     <nav class="topnav">
       <a href="#schedule">Schedule</a>
       <a href="#suggest">Suggest &amp; vote</a>
@@ -259,6 +309,7 @@
     </nav>
     <div class="whoami">
       Signed in as <strong id="whoamiName"></strong><span id="ownerTag" class="owner-tag" style="display:none;">Owner</span> &middot;
+      <button class="text-btn" id="accountLink">Account</button> &middot;
       <button class="text-btn" id="logoutLink">Log out</button>
     </div>
   </div>
@@ -267,6 +318,16 @@
 <div class="wrap">
 
   <section class="hero" style="border:none; padding-bottom:0;">
+    <div class="hero-mark">
+      <svg width="84" height="70" viewBox="0 0 84 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="11" r="4.5" stroke="#FF7A45" stroke-width="2.5"/>
+        <path d="M21 14 C 30 5, 44 5, 52 13" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M21 19 C 30 27, 44 29, 55 21" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M10 27 C 19 21, 29 21, 36 27 C 43 33, 53 33, 62 27 C 68 23, 76 23, 82 27" stroke="#F1E6C8" stroke-opacity="0.55" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M14 42 C 23 37, 30 37, 36 42 L 36 63 C 30 58, 23 58, 14 63 Z" stroke="#F1E6C8" stroke-width="2" fill="none" stroke-linejoin="round"/>
+        <path d="M58 42 C 49 37, 42 37, 36 42 L 36 63 C 42 58, 49 58, 58 63 Z" stroke="#F1E6C8" stroke-width="2" fill="none" stroke-linejoin="round"/>
+      </svg>
+    </div>
     <h1>Riptide Readers</h1>
     <p class="tagline">Every month, something new pulls us under. This is where we keep the schedule, throw out ideas, and vote on what's next.</p>
     <div class="wave">
@@ -549,6 +610,37 @@
 
   document.getElementById('logoutLink').addEventListener('click', () => auth.signOut());
 
+  const accountOverlay = document.getElementById('accountOverlay');
+  document.getElementById('accountLink').addEventListener('click', () => {
+    document.getElementById('accCurrentPass').value = '';
+    document.getElementById('accNewPass').value = '';
+    document.getElementById('accNewPass2').value = '';
+    document.getElementById('accError').textContent = '';
+    document.getElementById('accSuccess').textContent = '';
+    accountOverlay.style.display = 'flex';
+  });
+  document.getElementById('accountClose').addEventListener('click', () => { accountOverlay.style.display = 'none'; });
+  document.getElementById('accSubmit').addEventListener('click', async () => {
+    const current = document.getElementById('accCurrentPass').value;
+    const next = document.getElementById('accNewPass').value;
+    const next2 = document.getElementById('accNewPass2').value;
+    const errEl = document.getElementById('accError');
+    const okEl = document.getElementById('accSuccess');
+    errEl.textContent = ''; okEl.textContent = '';
+    if(!current){ errEl.textContent = 'Enter your current password.'; return; }
+    if(!next || next.length < 6){ errEl.textContent = 'New password must be at least 6 characters.'; return; }
+    if(next !== next2){ errEl.textContent = "New passwords don't match."; return; }
+    try{
+      const user = auth.currentUser;
+      const cred = firebase.auth.EmailAuthProvider.credential(user.email, current);
+      await user.reauthenticateWithCredential(cred);
+      await user.updatePassword(next);
+      okEl.textContent = 'Password updated.';
+    }catch(e){
+      errEl.textContent = friendlyAuthError(e);
+    }
+  });
+
   // ================= BOOK LOOKUP =================
   async function lookupBook(titleVal, authorVal){
     if(!titleVal || !titleVal.trim()) return null;
@@ -620,15 +712,7 @@
   function toGoogleDate(d){
     return d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + 'T' + pad(d.getHours()) + pad(d.getMinutes()) + '00';
   }
-  async function openCalendarFor(entry){
-    if(!entry.meetingDate){
-      const text = window.prompt('When is this discussion? (e.g. "2026-10-15 7:00 PM")');
-      if(!text) return;
-      const parsed = new Date(text);
-      if(isNaN(parsed.getTime())){ showToast("Couldn't read that date — try a format like 2026-10-15 7:00 PM."); return; }
-      entry.meetingDate = parsed.toISOString();
-      try{ await db.collection('schedule').doc(entry.id).update({ meetingDate: entry.meetingDate }); }catch(e){ showToast("Couldn't save the date."); }
-    }
+  function launchCalendarLink(entry){
     const start = new Date(entry.meetingDate);
     const end = new Date(start.getTime() + 60*60*1000);
     const params = new URLSearchParams({
@@ -639,6 +723,35 @@
     });
     window.open('https://calendar.google.com/calendar/render?' + params.toString(), '_blank');
   }
+
+  const calendarOverlay = document.getElementById('calendarOverlay');
+  let calendarTargetEntry = null;
+
+  function openCalendarFor(entry){
+    if(entry.meetingDate){
+      launchCalendarLink(entry);
+      return;
+    }
+    calendarTargetEntry = entry;
+    document.getElementById('calendarBookTitle').textContent = entry.title;
+    document.getElementById('calendarDateInput').value = '';
+    document.getElementById('calendarError').textContent = '';
+    calendarOverlay.style.display = 'flex';
+  }
+  document.getElementById('calendarClose').addEventListener('click', () => { calendarOverlay.style.display = 'none'; });
+  document.getElementById('calendarSubmit').addEventListener('click', async () => {
+    const val = document.getElementById('calendarDateInput').value;
+    const errEl = document.getElementById('calendarError');
+    if(!val){ errEl.textContent = 'Pick a date and time first.'; return; }
+    const parsed = new Date(val);
+    if(isNaN(parsed.getTime())){ errEl.textContent = "That date didn't parse — try again."; return; }
+    calendarTargetEntry.meetingDate = parsed.toISOString();
+    try{
+      await db.collection('schedule').doc(calendarTargetEntry.id).update({ meetingDate: calendarTargetEntry.meetingDate });
+    }catch(e){ errEl.textContent = "Couldn't save the date — try again."; return; }
+    calendarOverlay.style.display = 'none';
+    launchCalendarLink(calendarTargetEntry);
+  });
 
   // ---------- render: now reading ----------
   function renderNowReading(){
