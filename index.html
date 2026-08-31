@@ -278,8 +278,12 @@
     <h1 style="font-size:1.4rem;">Set a discussion date</h1>
     <p id="calendarBookTitle"></p>
     <div class="overlay-field">
-      <label for="calendarDateInput">Date &amp; time</label>
-      <input id="calendarDateInput" type="datetime-local">
+      <label for="calendarDateInput">Date</label>
+      <input id="calendarDateInput" type="date">
+    </div>
+    <div class="overlay-field">
+      <label for="calendarTimeInput">Time</label>
+      <input id="calendarTimeInput" type="time">
     </div>
     <div class="overlay-error" id="calendarError"></div>
     <button class="overlay-submit" id="calendarSubmit">Add to calendar</button>
@@ -292,9 +296,12 @@
   <div class="topbar-inner">
     <div class="brand">
       <svg class="brand-mark" width="26" height="22" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="10" cy="7" r="3" stroke="#FF7A45" stroke-width="2"/>
-        <path d="M13 9 C 19 3, 27 3, 32 8" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" fill="none"/>
-        <path d="M13 12 C 19 17, 27 18, 34 13" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <circle cx="9" cy="9" r="3" stroke="#FF7A45" stroke-width="2"/>
+        <path d="M12 8 L19 1 L29 5" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M12 11 C 20 15, 30 15, 38 11" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M13 12 L22 10" stroke="#FF7A45" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+        <path d="M38 12 C 43 9, 47 14, 50 11" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M27 3 C 29 1, 31 1, 33 3" stroke="#FF7A45" stroke-width="1.4" stroke-linecap="round" fill="none"/>
         <path d="M6 17 C 12 13, 18 13, 22 17 C 26 21, 32 21, 38 17 C 42 14, 46 14, 50 17" stroke="#F1E6C8" stroke-opacity="0.55" stroke-width="1.6" stroke-linecap="round" fill="none"/>
         <path d="M8 26 C 14 23, 18 23, 22 26 L 22 38 C 18 35, 14 35, 8 38 Z" stroke="#F1E6C8" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
         <path d="M36 26 C 30 23, 26 23, 22 26 L 22 38 C 26 35, 30 35, 36 38 Z" stroke="#F1E6C8" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
@@ -320,9 +327,12 @@
   <section class="hero" style="border:none; padding-bottom:0;">
     <div class="hero-mark">
       <svg width="84" height="70" viewBox="0 0 84 70" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="11" r="4.5" stroke="#FF7A45" stroke-width="2.5"/>
-        <path d="M21 14 C 30 5, 44 5, 52 13" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-        <path d="M21 19 C 30 27, 44 29, 55 21" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <circle cx="14.5" cy="14.5" r="4.8" stroke="#FF7A45" stroke-width="2.5"/>
+        <path d="M19 13 L30.5 1.5 L47 8" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M19 18 C 32 24, 48 24, 61 18" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M21 19 L35 16" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M61 19 C 69 14, 76 22, 80 17.5" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M43.5 5 C 46.5 1.5, 50 1.5, 53 5" stroke="#FF7A45" stroke-width="1.8" stroke-linecap="round" fill="none"/>
         <path d="M10 27 C 19 21, 29 21, 36 27 C 43 33, 53 33, 62 27 C 68 23, 76 23, 82 27" stroke="#F1E6C8" stroke-opacity="0.55" stroke-width="2" stroke-linecap="round" fill="none"/>
         <path d="M14 42 C 23 37, 30 37, 36 42 L 36 63 C 30 58, 23 58, 14 63 Z" stroke="#F1E6C8" stroke-width="2" fill="none" stroke-linejoin="round"/>
         <path d="M58 42 C 49 37, 42 37, 36 42 L 36 63 C 42 58, 49 58, 58 63 Z" stroke="#F1E6C8" stroke-width="2" fill="none" stroke-linejoin="round"/>
@@ -364,9 +374,13 @@
         </div>
       </div>
       <div class="field-row">
-        <div class="field" style="flex:0 0 220px;">
-          <label for="schDate">Discussion date &amp; time (optional)</label>
-          <input id="schDate" type="datetime-local">
+        <div class="field" style="flex:0 0 130px;">
+          <label for="schDate">Date (optional)</label>
+          <input id="schDate" type="date">
+        </div>
+        <div class="field" style="flex:0 0 110px;">
+          <label for="schTime">Time (optional)</label>
+          <input id="schTime" type="time">
         </div>
         <div class="field">
           <label for="schDesc">Short description</label>
@@ -735,15 +749,18 @@
     calendarTargetEntry = entry;
     document.getElementById('calendarBookTitle').textContent = entry.title;
     document.getElementById('calendarDateInput').value = '';
+    document.getElementById('calendarTimeInput').value = '';
     document.getElementById('calendarError').textContent = '';
     calendarOverlay.style.display = 'flex';
   }
   document.getElementById('calendarClose').addEventListener('click', () => { calendarOverlay.style.display = 'none'; });
   document.getElementById('calendarSubmit').addEventListener('click', async () => {
     const val = document.getElementById('calendarDateInput').value;
+    const timeVal = document.getElementById('calendarTimeInput').value || '19:00';
+    const combined = val ? (val + 'T' + timeVal) : '';
     const errEl = document.getElementById('calendarError');
-    if(!val){ errEl.textContent = 'Pick a date and time first.'; return; }
-    const parsed = new Date(val);
+    if(!val){ errEl.textContent = 'Pick a date first.'; return; }
+    const parsed = new Date(combined);
     if(isNaN(parsed.getTime())){ errEl.textContent = "That date didn't parse — try again."; return; }
     calendarTargetEntry.meetingDate = parsed.toISOString();
     try{
@@ -846,8 +863,9 @@
     const author = document.getElementById('schAuthor').value.trim();
     const description = document.getElementById('schDesc').value.trim();
     const dateVal = document.getElementById('schDate').value;
+    const timeVal = document.getElementById('schTime').value || '19:00';
     if(!title){ showToast('Add a book title first.'); return; }
-    const meetingDate = dateVal ? new Date(dateVal).toISOString() : null;
+    const meetingDate = dateVal ? new Date(dateVal + 'T' + timeVal).toISOString() : null;
     try{
       await db.collection('schedule').add({
         month: month || 'TBD', title, author, description, current:false,
@@ -859,6 +877,7 @@
     document.getElementById('schAuthor').value = '';
     document.getElementById('schDesc').value = '';
     document.getElementById('schDate').value = '';
+    document.getElementById('schTime').value = '';
     document.getElementById('schCoverPreview').style.display = 'none';
     schCover = null;
   }
