@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Riptide Readers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --ink:#0B2027;
+    --panel:#12303A;
+    --panel-2:#173B46;
+    --sand:#F1E6C8;
+    --sand-dim:#B9AC8A;
+    --accent:#FF7A45;
+    --accent-deep:#E15A28;
+    --line: rgba(241,230,200,0.16);
+    --line-strong: rgba(241,230,200,0.28);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--sand);
+    font-family:'Work Sans', sans-serif;
+    font-size:16px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{
+    font-family:'Bitter', serif;
+    font-weight:600;
+    margin:0;
+    color:var(--sand);
+  }
+  a{color:var(--accent);}
+  .wrap{
+    max-width:760px;
+    margin:0 auto;
+    padding:0 28px;
+  }
+
+  .overlay{
+    position:fixed; inset:0; z-index:100;
+    background:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px; overflow-y:auto;
+  }
+  .overlay-card{ max-width:380px; width:100%; position:relative; }
+  .overlay-card .wave svg{ display:block; width:120px; height:16px; margin-bottom:22px; }
+  .overlay-card h1{ font-size:1.9rem; }
+  .overlay-card p{ color:var(--sand-dim); margin-top:10px; font-size:0.96rem; }
+  .overlay-field{ margin-top:22px; display:flex; flex-direction:column; gap:6px; }
+  .overlay-field label{ font-size:0.82rem; color:var(--sand-dim); }
+  .overlay-field input{
+    background:var(--panel); border:1px solid var(--line-strong);
+    color:var(--sand); font-family:'Work Sans',sans-serif; font-size:1rem;
+    padding:11px 13px; border-radius:3px; outline:none; width:100%;
+  }
+  .overlay-field input:focus{ border-color:var(--accent); }
+  .overlay-error{ color:var(--accent); font-size:0.85rem; margin-top:10px; min-height:1.2em; }
+  .overlay-submit{
+    margin-top:16px; width:100%;
+    background:var(--accent); color:var(--ink); border:none;
+    font-family:'Work Sans',sans-serif; font-weight:600; font-size:0.96rem;
+    padding:12px 20px; border-radius:3px; cursor:pointer;
+  }
+  .overlay-submit:hover{ background:var(--accent-deep); }
+  .overlay-submit:disabled{ opacity:0.6; cursor:default; }
+  .overlay-switch{ margin-top:18px; font-size:0.85rem; color:var(--sand-dim); }
+  .overlay-switch button{
+    background:none; border:none; color:var(--accent); cursor:pointer;
+    font-family:'Work Sans',sans-serif; font-size:0.85rem; padding:0;
+    text-decoration:underline; text-underline-offset:3px;
+  }
+
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    background:rgba(11,32,39,0.92);
+    backdrop-filter: blur(6px);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar-inner{
+    max-width:760px; margin:0 auto; padding:14px 28px;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:16px; flex-wrap:wrap;
+  }
+  .brand{ font-family:'Bitter', serif; font-weight:700; font-size:1.05rem; letter-spacing:0.01em; }
+  .topnav{display:flex; align-items:center; gap:20px; font-size:0.92rem;}
+  .topnav a{color:var(--sand-dim); text-decoration:none;}
+  .topnav a:hover{color:var(--accent);}
+  .text-btn{ color:var(--sand-dim); font-size:0.85rem; cursor:pointer; text-decoration:underline; text-underline-offset:3px; background:none; border:none; font-family:'Work Sans',sans-serif; padding:0; }
+  .text-btn:hover{ color:var(--accent); }
+  .whoami{ font-size:0.85rem; color:var(--sand-dim); }
+  .whoami strong{ color:var(--sand); font-weight:600; }
+  .owner-tag{ color:var(--accent); font-size:0.78rem; margin-left:6px; }
+
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--panel-2); border:1px solid var(--line-strong); color:var(--sand);
+    padding:12px 18px; border-radius:4px; font-size:0.88rem; z-index:200;
+    display:none; max-width:90%; text-align:center;
+  }
+  .toast.show{ display:block; }
+
+  .hero{ padding:72px 0 36px; }
+  .hero h1{ font-size:3rem; line-height:1.05; }
+  .hero p.tagline{ color:var(--sand-dim); font-size:1.1rem; max-width:34em; margin-top:14px; }
+  .wave{ margin:30px 0 8px; }
+  .wave svg{ display:block; width:180px; height:20px; }
+
+  .now-reading{ margin-top:38px; border-left:3px solid var(--accent); padding:6px 0 6px 22px; display:flex; gap:20px; }
+  .now-reading .nr-cover img{ width:64px; height:96px; object-fit:cover; border-radius:2px; flex:0 0 auto; }
+  .now-reading .eyebrow{ color:var(--accent); font-size:0.85rem; font-weight:600; }
+  .now-reading h2{ font-size:1.7rem; margin-top:6px; }
+  .now-reading .byline{ color:var(--sand-dim); margin-top:2px; font-size:0.95rem; }
+  .now-reading .desc{ margin-top:10px; max-width:52em; color:var(--sand); }
+  .now-reading .empty{ color:var(--sand-dim); font-style:italic; }
+
+  section{ padding:56px 0; border-top:1px solid var(--line); }
+  section .section-head{ margin-bottom:28px; }
+  section .section-head h2{ font-size:1.6rem; }
+  section .section-head p{ color:var(--sand-dim); margin-top:8px; max-width:42em; }
+
+  .log-entry{ display:flex; gap:22px; padding:20px 0; border-bottom:1px solid var(--line); }
+  .log-entry:last-of-type{ border-bottom:none; }
+  .log-month{ flex:0 0 108px; padding-top:3px; }
+  .log-month-btn{
+    background:none; border:none; padding:0; text-align:left;
+    color:var(--sand-dim); font-size:0.9rem; font-family:'Work Sans',sans-serif;
+    cursor:pointer; text-decoration:underline dotted; text-underline-offset:4px;
+  }
+  .log-month-btn:hover{ color:var(--accent); }
+  .log-cover{ flex:0 0 auto; }
+  .log-cover img{ width:52px; height:78px; object-fit:cover; border-radius:2px; display:block; }
+  .log-body{ flex:1; min-width:0; }
+  .log-body h3{ font-size:1.2rem; }
+  .log-body .byline{ color:var(--sand-dim); font-size:0.92rem; margin-top:2px; }
+  .log-body .desc{ margin-top:8px; color:var(--sand); }
+  .log-actions{ margin-top:10px; display:flex; gap:16px; }
+  .link-btn{
+    background:none; border:none; color:var(--sand-dim); cursor:pointer;
+    font-family:'Work Sans',sans-serif; font-size:0.85rem; padding:0;
+    text-decoration:underline; text-underline-offset:3px;
+  }
+  .link-btn:hover{ color:var(--accent); }
+  .link-btn.current{ color:var(--accent); font-weight:600; }
+  .empty-state{ color:var(--sand-dim); font-style:italic; padding:8px 0 4px; }
+
+  .form-panel{ margin-top:32px; padding-top:24px; border-top:1px dashed var(--line-strong); }
+  .form-panel h3{ font-size:1.05rem; font-weight:600; color:var(--sand-dim); margin-bottom:16px; }
+  .field-row{ display:flex; gap:16px; flex-wrap:wrap; margin-bottom:14px; align-items:flex-end; }
+  .field{ flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size:0.82rem; color:var(--sand-dim); }
+  .field input, .field textarea{
+    background:var(--panel); border:1px solid var(--line-strong);
+    color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.95rem;
+    padding:10px 12px; border-radius:3px; outline:none; width:100%;
+  }
+  .field input:focus, .field textarea:focus{ border-color:var(--accent); }
+  .field textarea{ resize:vertical; min-height:64px; }
+  .title-lookup-row{ display:flex; gap:8px; align-items:center; }
+  .title-lookup-row input{ flex:1; }
+  .lookup-btn{
+    flex:0 0 auto; background:transparent; border:1px solid var(--line-strong);
+    color:var(--sand-dim); font-family:'Work Sans',sans-serif; font-size:0.82rem;
+    padding:10px 12px; border-radius:3px; cursor:pointer; white-space:nowrap;
+  }
+  .lookup-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .lookup-btn:disabled{ opacity:0.5; cursor:default; }
+  .cover-preview{ margin-top:10px; display:flex; align-items:center; gap:10px; font-size:0.82rem; color:var(--sand-dim); }
+  .cover-preview img{ width:40px; height:60px; object-fit:cover; border-radius:2px; }
+  .submit-btn{
+    background:var(--accent); color:var(--ink); border:none;
+    font-family:'Work Sans',sans-serif; font-weight:600; font-size:0.92rem;
+    padding:10px 20px; border-radius:3px; cursor:pointer;
+  }
+  .submit-btn:hover{ background:var(--accent-deep); }
+
+  .rec{ display:flex; align-items:flex-start; gap:18px; padding:18px 0; border-bottom:1px solid var(--line); }
+  .rec:last-of-type{ border-bottom:none; }
+  .rec-vote{ flex:0 0 56px; text-align:center; }
+  .vote-btn{
+    width:56px; padding:8px 0; border-radius:3px; cursor:pointer;
+    border:1px solid var(--line-strong); background:transparent; color:var(--sand);
+    font-family:'Work Sans',sans-serif;
+  }
+  .vote-btn .count{ display:block; font-size:1.15rem; font-weight:600; font-family:'Bitter',serif; }
+  .vote-btn .label{ display:block; font-size:0.68rem; color:var(--sand-dim); margin-top:2px; }
+  .vote-btn.voted{ background:var(--accent); border-color:var(--accent); color:var(--ink); }
+  .vote-btn.voted .label{ color:var(--ink); opacity:0.75; }
+  .rec-cover{ flex:0 0 auto; }
+  .rec-cover img{ width:44px; height:66px; object-fit:cover; border-radius:2px; display:block; }
+  .rec-body{ flex:1; min-width:0; }
+  .rec-body h3{ font-size:1.1rem; }
+  .rec-body .byline{ color:var(--sand-dim); font-size:0.9rem; margin-top:2px; }
+  .rec-body .note{ margin-top:8px; color:var(--sand); }
+  .rec-body .meta{ margin-top:8px; font-size:0.8rem; color:var(--sand-dim); }
+  .rec-body .meta button{ margin-left:12px; }
+
+  .member-row{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding:16px 0; border-bottom:1px solid var(--line); }
+  .member-row:last-of-type{ border-bottom:none; }
+  .member-row h3{ font-size:1.05rem; }
+  .member-row .contact{ color:var(--sand-dim); font-size:0.9rem; margin-top:4px; }
+  .member-row .contact span{ margin-right:16px; }
+
+  .join-box{
+    padding:20px 24px; background:var(--panel); border-radius:4px;
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:space-between;
+  }
+  .join-box p{ margin:0; color:var(--sand-dim); max-width:36em; }
+  .copy-btn{
+    background:transparent; border:1px solid var(--line-strong); color:var(--sand);
+    font-family:'Work Sans',sans-serif; font-size:0.88rem; padding:9px 16px;
+    border-radius:3px; cursor:pointer; white-space:nowrap;
+  }
+  .copy-btn:hover{ border-color:var(--accent); color:var(--accent); }
+
+  footer{ padding:36px 0 60px; color:var(--sand-dim); font-size:0.85rem; }
+
+  @media (max-width:560px){
+    .hero h1{ font-size:2.2rem; }
+    .log-entry{ flex-direction:column; gap:6px; }
+    .log-month{ flex:none; }
+    .topnav{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="overlay" id="gateOverlay">
+  <div class="overlay-card">
+    <div class="wave">
+      <svg viewBox="0 0 120 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 11 C 12 2, 22 2, 32 11 C 42 20, 52 20, 62 11 C 72 2, 82 2, 92 11 C 102 20, 112 20, 118 12" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>Riptide Readers</h1>
+    <p id="gateSubtext">Loading&hellip;</p>
+    <div id="gateFormArea"></div>
+  </div>
+</div>
+
+<div id="appRoot" style="display:none;">
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">Riptide Readers</div>
+    <nav class="topnav">
+      <a href="#schedule">Schedule</a>
+      <a href="#suggest">Suggest &amp; vote</a>
+      <a href="#members">Members</a>
+      <a href="#join">Join</a>
+    </nav>
+    <div class="whoami">
+      Signed in as <strong id="whoamiName"></strong><span id="ownerTag" class="owner-tag" style="display:none;">Owner</span> &middot;
+      <button class="text-btn" id="logoutLink">Log out</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section class="hero" style="border:none; padding-bottom:0;">
+    <h1>Riptide Readers</h1>
+    <p class="tagline">Every month, something new pulls us under. This is where we keep the schedule, throw out ideas, and vote on what's next.</p>
+    <div class="wave">
+      <svg viewBox="0 0 180 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 14 C 17 2, 32 2, 47 14 C 62 26, 77 26, 92 14 C 107 2, 122 2, 137 14 C 152 26, 167 26, 178 16" stroke="#FF7A45" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="now-reading" id="nowReading"></div>
+  </section>
+
+  <section id="schedule">
+    <div class="section-head">
+      <h2>The schedule</h2>
+      <p>What we've read and what's coming up. Click a date to add the discussion to your calendar, or mark a title as current once your group settles on it.</p>
+    </div>
+    <div id="scheduleList"></div>
+    <div class="form-panel">
+      <h3>Add to the schedule</h3>
+      <div class="field-row">
+        <div class="field" style="flex:0 0 160px;">
+          <label for="schMonth">Month</label>
+          <input id="schMonth" type="text" placeholder="e.g. October 2026">
+        </div>
+        <div class="field">
+          <label for="schTitle">Book title</label>
+          <div class="title-lookup-row">
+            <input id="schTitle" type="text" placeholder="Title">
+            <button class="lookup-btn" id="schLookup" type="button">Find book</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="schAuthor">Author</label>
+          <input id="schAuthor" type="text" placeholder="Author">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field" style="flex:0 0 220px;">
+          <label for="schDate">Discussion date &amp; time (optional)</label>
+          <input id="schDate" type="datetime-local">
+        </div>
+        <div class="field">
+          <label for="schDesc">Short description</label>
+          <textarea id="schDesc" placeholder="A sentence or two about the book"></textarea>
+        </div>
+      </div>
+      <div class="cover-preview" id="schCoverPreview" style="display:none;"></div>
+      <button class="submit-btn" id="schSubmit" style="margin-top:14px;">Add to schedule</button>
+    </div>
+  </section>
+
+  <section id="suggest">
+    <div class="section-head">
+      <h2>Suggest &amp; vote</h2>
+      <p>Anyone can throw a title into the pool. Everyone gets one vote per book.</p>
+    </div>
+    <div id="recList"></div>
+    <div class="form-panel">
+      <h3>Suggest a book</h3>
+      <div class="field-row">
+        <div class="field">
+          <label for="recTitle">Book title</label>
+          <div class="title-lookup-row">
+            <input id="recTitle" type="text" placeholder="Title">
+            <button class="lookup-btn" id="recLookup" type="button">Find book</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="recAuthor">Author</label>
+          <input id="recAuthor" type="text" placeholder="Author">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="recNote">Why this one?</label>
+          <textarea id="recNote" placeholder="Optional — what makes it worth reading"></textarea>
+        </div>
+      </div>
+      <div class="cover-preview" id="recCoverPreview" style="display:none;"></div>
+      <button class="submit-btn" id="recSubmit" style="margin-top:14px;">Suggest this book</button>
+    </div>
+  </section>
+
+  <section id="members">
+    <div class="section-head">
+      <h2>Members</h2>
+      <p>Everyone in the club, so you've got a way to reach each other. Visible to anyone signed in.</p>
+    </div>
+    <div id="memberList"></div>
+    <div class="form-panel">
+      <h3>Add a member</h3>
+      <div class="field-row">
+        <div class="field">
+          <label for="memName">Name</label>
+          <input id="memName" type="text" placeholder="Name">
+        </div>
+        <div class="field">
+          <label for="memEmail">Email</label>
+          <input id="memEmail" type="email" placeholder="Email">
+        </div>
+        <div class="field">
+          <label for="memPhone">Cell</label>
+          <input id="memPhone" type="tel" placeholder="Cell number">
+        </div>
+      </div>
+      <button class="submit-btn" id="memSubmit">Add member</button>
+    </div>
+  </section>
+
+  <section id="join">
+    <div class="section-head">
+      <h2>Join us</h2>
+      <p>Share this page's link. Anyone you send it to creates their own account to get in.</p>
+    </div>
+    <div class="join-box">
+      <p id="pageUrl">Loading link…</p>
+      <button class="copy-btn" id="copyLink">Copy link</button>
+    </div>
+  </section>
+
+  <footer>Riptide Readers &middot; keep it, share it, read on.</footer>
+
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ================= FIREBASE SETUP =================
+  const firebaseConfig = {
+    apiKey: "AIzaSyBHVvvN1rXwPl_gxgOiMs3T1OoYnyqnaoY",
+    authDomain: "riptide-readers.firebaseapp.com",
+    projectId: "riptide-readers",
+    storageBucket: "riptide-readers.firebasestorage.app",
+    messagingSenderId: "906980752216",
+    appId: "1:906980752216:web:2e757478545a91a065432d"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+</script>
+<script>
+(function(){
+  const gateOverlay = document.getElementById('gateOverlay');
+  const gateSubtext = document.getElementById('gateSubtext');
+  const gateFormArea = document.getElementById('gateFormArea');
+  const appRoot = document.getElementById('appRoot');
+  const toastEl = document.getElementById('toast');
+  const whoamiName = document.getElementById('whoamiName');
+  const ownerTag = document.getElementById('ownerTag');
+
+  const nowReadingEl = document.getElementById('nowReading');
+  const scheduleListEl = document.getElementById('scheduleList');
+  const recListEl = document.getElementById('recList');
+  const memberListEl = document.getElementById('memberList');
+
+  let schedule = [];
+  let recommendations = [];
+  let members = [];
+  let schCover = null;
+  let recCover = null;
+  let ownerId = null;
+  let appInited = false;
+
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 3200);
+  }
+  function escapeHtml(str){
+    return (str || '').replace(/[&<>"']/g, c => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    }[c]));
+  }
+  function slugName(name){
+    const base = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    return (base || 'member' + Date.now()) + '@riptidereaders.local';
+  }
+  function friendlyAuthError(e){
+    switch(e.code){
+      case 'auth/email-already-in-use': return 'That name is already taken — sign in instead, or pick another name.';
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+      case 'auth/invalid-credential': return 'Wrong name or password.';
+      case 'auth/weak-password': return 'Use a password with at least 6 characters.';
+      default: return e.message || 'Something went wrong — try again.';
+    }
+  }
+
+  // ================= LOGIN / SIGN UP GATE =================
+  function renderSignIn(prefillName){
+    gateSubtext.textContent = 'Sign in to your account.';
+    gateFormArea.innerHTML = `
+      <div class="overlay-field">
+        <label for="siName">Your name</label>
+        <input id="siName" type="text" placeholder="Name" value="${escapeHtml(prefillName || '')}">
+      </div>
+      <div class="overlay-field">
+        <label for="siPass">Password</label>
+        <input id="siPass" type="password" placeholder="Password">
+      </div>
+      <div class="overlay-error" id="gateError"></div>
+      <button class="overlay-submit" id="siSubmit">Sign in</button>
+      <div class="overlay-switch">New here? <button id="toSignUp" type="button">Create an account</button></div>
+    `;
+    document.getElementById('toSignUp').addEventListener('click', () => renderSignUp(document.getElementById('siName').value));
+    const submit = async () => {
+      const name = document.getElementById('siName').value.trim();
+      const pass = document.getElementById('siPass').value;
+      const btn = document.getElementById('siSubmit');
+      const errEl = document.getElementById('gateError');
+      if(!name || !pass){ errEl.textContent = 'Enter your name and password.'; return; }
+      btn.disabled = true;
+      try{
+        await auth.signInWithEmailAndPassword(slugName(name), pass);
+      }catch(e){
+        errEl.textContent = friendlyAuthError(e);
+        btn.disabled = false;
+      }
+    };
+    document.getElementById('siSubmit').addEventListener('click', submit);
+    document.getElementById('siPass').addEventListener('keydown', (e) => { if(e.key==='Enter') submit(); });
+  }
+
+  function renderSignUp(prefillName){
+    gateSubtext.textContent = "Pick a name and password. This is just for your club, so keep it simple. Whoever signs up first becomes the site owner.";
+    gateFormArea.innerHTML = `
+      <div class="overlay-field">
+        <label for="suName">Your name</label>
+        <input id="suName" type="text" placeholder="Name" value="${escapeHtml(prefillName || '')}">
+      </div>
+      <div class="overlay-field">
+        <label for="suPass">Password</label>
+        <input id="suPass" type="password" placeholder="Choose a password (6+ characters)">
+      </div>
+      <div class="overlay-error" id="gateError"></div>
+      <button class="overlay-submit" id="suSubmit">Create account &amp; enter</button>
+      <div class="overlay-switch">Already have an account? <button id="toSignIn" type="button">Sign in</button></div>
+    `;
+    document.getElementById('toSignIn').addEventListener('click', () => renderSignIn(document.getElementById('suName').value));
+    document.getElementById('suSubmit').addEventListener('click', async () => {
+      const name = document.getElementById('suName').value.trim();
+      const pass = document.getElementById('suPass').value;
+      const btn = document.getElementById('suSubmit');
+      const errEl = document.getElementById('gateError');
+      if(!name){ errEl.textContent = 'Enter your name.'; return; }
+      if(!pass || pass.length < 6){ errEl.textContent = 'Use a password with at least 6 characters.'; return; }
+      btn.disabled = true;
+      try{
+        const cred = await auth.createUserWithEmailAndPassword(slugName(name), pass);
+        await cred.user.updateProfile({ displayName: name });
+        const configRef = db.collection('meta').doc('config');
+        const configDoc = await configRef.get();
+        if(!configDoc.exists){
+          await configRef.set({ ownerId: cred.user.uid });
+        }
+      }catch(e){
+        errEl.textContent = friendlyAuthError(e);
+        btn.disabled = false;
+      }
+    });
+  }
+
+  auth.onAuthStateChanged(async (user) => {
+    if(user){
+      gateOverlay.style.display = 'none';
+      appRoot.style.display = 'block';
+      whoamiName.textContent = user.displayName || 'you';
+      try{
+        const configDoc = await db.collection('meta').doc('config').get();
+        ownerId = configDoc.exists ? configDoc.data().ownerId : null;
+        ownerTag.style.display = (ownerId === user.uid) ? 'inline' : 'none';
+      }catch(e){ /* non-fatal */ }
+      if(!appInited){ appInited = true; initApp(); }
+    }else{
+      gateOverlay.style.display = 'flex';
+      appRoot.style.display = 'none';
+      renderSignIn('');
+    }
+  });
+
+  document.getElementById('logoutLink').addEventListener('click', () => auth.signOut());
+
+  // ================= BOOK LOOKUP =================
+  async function lookupBook(titleVal, authorVal){
+    if(!titleVal || !titleVal.trim()) return null;
+    try{
+      let q = 'title=' + encodeURIComponent(titleVal.trim());
+      if(authorVal && authorVal.trim()) q += '&author=' + encodeURIComponent(authorVal.trim());
+      const res = await fetch('https://openlibrary.org/search.json?' + q + '&limit=1');
+      if(!res.ok) throw new Error('search failed');
+      const data = await res.json();
+      const doc = data.docs && data.docs[0];
+      if(!doc) return null;
+      const result = {
+        title: doc.title || titleVal,
+        author: (doc.author_name && doc.author_name[0]) || authorVal || '',
+        coverUrl: doc.cover_i ? ('https://covers.openlibrary.org/b/id/' + doc.cover_i + '-M.jpg') : null,
+        description: ''
+      };
+      if(doc.key){
+        try{
+          const workRes = await fetch('https://openlibrary.org' + doc.key + '.json');
+          if(workRes.ok){
+            const workData = await workRes.json();
+            let desc = workData.description;
+            if(desc && typeof desc === 'object') desc = desc.value;
+            if(typeof desc === 'string') result.description = desc.split('\n')[0].slice(0, 300);
+          }
+        }catch(e){}
+      }
+      return result;
+    }catch(e){
+      console.error('Book lookup failed:', e);
+      return null;
+    }
+  }
+
+  function wireLookup(btnId, titleId, authorId, previewId, descId, coverSetter){
+    const btn = document.getElementById(btnId);
+    btn.addEventListener('click', async () => {
+      const titleVal = document.getElementById(titleId).value;
+      if(!titleVal.trim()){ showToast('Type a title first.'); return; }
+      btn.disabled = true; btn.textContent = 'Looking…';
+      const authorEl = document.getElementById(authorId);
+      const result = await lookupBook(titleVal, authorEl.value);
+      btn.disabled = false; btn.textContent = 'Find book';
+      const preview = document.getElementById(previewId);
+      if(!result){
+        preview.style.display = 'flex';
+        preview.innerHTML = `<span>Couldn't find a match — you can still fill this in by hand.</span>`;
+        coverSetter(null);
+        return;
+      }
+      if(!authorEl.value.trim() && result.author) authorEl.value = result.author;
+      if(descId){
+        const descEl = document.getElementById(descId);
+        if(descEl && !descEl.value.trim() && result.description) descEl.value = result.description;
+      }
+      coverSetter(result.coverUrl);
+      preview.style.display = 'flex';
+      preview.innerHTML = result.coverUrl
+        ? `<img src="${result.coverUrl}" alt=""><span>Cover found — added to this entry.</span>`
+        : `<span>Found the book, but no cover image was available.</span>`;
+    });
+  }
+  wireLookup('schLookup','schTitle','schAuthor','schCoverPreview','schDesc', (url) => { schCover = url; });
+  wireLookup('recLookup','recTitle','recAuthor','recCoverPreview', null, (url) => { recCover = url; });
+
+  // ================= CALENDAR =================
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function toGoogleDate(d){
+    return d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + 'T' + pad(d.getHours()) + pad(d.getMinutes()) + '00';
+  }
+  async function openCalendarFor(entry){
+    if(!entry.meetingDate){
+      const text = window.prompt('When is this discussion? (e.g. "2026-10-15 7:00 PM")');
+      if(!text) return;
+      const parsed = new Date(text);
+      if(isNaN(parsed.getTime())){ showToast("Couldn't read that date — try a format like 2026-10-15 7:00 PM."); return; }
+      entry.meetingDate = parsed.toISOString();
+      try{ await db.collection('schedule').doc(entry.id).update({ meetingDate: entry.meetingDate }); }catch(e){ showToast("Couldn't save the date."); }
+    }
+    const start = new Date(entry.meetingDate);
+    const end = new Date(start.getTime() + 60*60*1000);
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: 'Riptide Readers: ' + entry.title,
+      dates: toGoogleDate(start) + '/' + toGoogleDate(end),
+      details: (entry.description || '') + ' — Riptide Readers discussion.'
+    });
+    window.open('https://calendar.google.com/calendar/render?' + params.toString(), '_blank');
+  }
+
+  // ---------- render: now reading ----------
+  function renderNowReading(){
+    const current = schedule.find(s => s.current);
+    if(!current){
+      nowReadingEl.innerHTML = `<div><div class="eyebrow">Now reading</div><p class="empty" style="margin-top:8px;">Nothing's been picked yet. Add a book below and mark it current.</p></div>`;
+      return;
+    }
+    nowReadingEl.innerHTML = `
+      ${current.coverUrl ? `<div class="nr-cover"><img src="${current.coverUrl}" alt=""></div>` : ''}
+      <div>
+        <div class="eyebrow">Now reading &mdash; ${escapeHtml(current.month)}</div>
+        <h2>${escapeHtml(current.title)}</h2>
+        <div class="byline">${escapeHtml(current.author)}</div>
+        ${current.description ? `<p class="desc">${escapeHtml(current.description)}</p>` : ''}
+      </div>`;
+  }
+
+  function renderSchedule(){
+    if(schedule.length === 0){
+      scheduleListEl.innerHTML = `<p class="empty-state">The log is empty. Add your first pick below.</p>`;
+      renderNowReading();
+      return;
+    }
+    scheduleListEl.innerHTML = schedule.map(entry => `
+      <div class="log-entry" data-id="${entry.id}">
+        <div class="log-month"><button class="log-month-btn" data-id="${entry.id}" title="Add to calendar">${escapeHtml(entry.month)}</button></div>
+        ${entry.coverUrl ? `<div class="log-cover"><img src="${entry.coverUrl}" alt=""></div>` : ''}
+        <div class="log-body">
+          <h3>${escapeHtml(entry.title)}</h3>
+          <div class="byline">${escapeHtml(entry.author)}</div>
+          ${entry.description ? `<p class="desc">${escapeHtml(entry.description)}</p>` : ''}
+          <div class="log-actions">
+            <button class="link-btn set-current ${entry.current ? 'current' : ''}" data-id="${entry.id}">${entry.current ? "This is what we're reading" : 'Mark as current'}</button>
+            <button class="link-btn remove-schedule" data-id="${entry.id}">Remove</button>
+          </div>
+        </div>
+      </div>`).join('');
+    renderNowReading();
+  }
+
+  function renderRecommendations(){
+    if(recommendations.length === 0){
+      recListEl.innerHTML = `<p class="empty-state">No suggestions yet. Be the first to throw one in.</p>`;
+      return;
+    }
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    const sorted = [...recommendations].sort((a,b) => (b.votes.length - a.votes.length));
+    recListEl.innerHTML = sorted.map(rec => {
+      const voted = uid && rec.votes.includes(uid);
+      return `
+      <div class="rec" data-id="${rec.id}">
+        <div class="rec-vote">
+          <button class="vote-btn ${voted ? 'voted' : ''}" data-id="${rec.id}">
+            <span class="count">${rec.votes.length}</span>
+            <span class="label">${voted ? 'Voted' : 'Vote'}</span>
+          </button>
+        </div>
+        ${rec.coverUrl ? `<div class="rec-cover"><img src="${rec.coverUrl}" alt=""></div>` : ''}
+        <div class="rec-body">
+          <h3>${escapeHtml(rec.title)}</h3>
+          <div class="byline">${escapeHtml(rec.author)}</div>
+          ${rec.note ? `<p class="note">${escapeHtml(rec.note)}</p>` : ''}
+          <div class="meta">Suggested by ${escapeHtml(rec.submittedBy || 'someone')}<button class="link-btn remove-rec" data-id="${rec.id}">Remove</button></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderMembers(){
+    if(members.length === 0){
+      memberListEl.innerHTML = `<p class="empty-state">No members added yet.</p>`;
+      return;
+    }
+    memberListEl.innerHTML = members.map(m => `
+      <div class="member-row" data-id="${m.id}">
+        <div>
+          <h3>${escapeHtml(m.name)}</h3>
+          <div class="contact">
+            ${m.email ? `<span>${escapeHtml(m.email)}</span>` : ''}
+            ${m.phone ? `<span>${escapeHtml(m.phone)}</span>` : ''}
+          </div>
+        </div>
+        <button class="link-btn remove-member" data-id="${m.id}">Remove</button>
+      </div>`).join('');
+  }
+
+  // ---------- actions ----------
+  async function addScheduleEntry(){
+    const month = document.getElementById('schMonth').value.trim();
+    const title = document.getElementById('schTitle').value.trim();
+    const author = document.getElementById('schAuthor').value.trim();
+    const description = document.getElementById('schDesc').value.trim();
+    const dateVal = document.getElementById('schDate').value;
+    if(!title){ showToast('Add a book title first.'); return; }
+    const meetingDate = dateVal ? new Date(dateVal).toISOString() : null;
+    try{
+      await db.collection('schedule').add({
+        month: month || 'TBD', title, author, description, current:false,
+        coverUrl: schCover, meetingDate, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }catch(e){ showToast("Couldn't save — try again."); return; }
+    document.getElementById('schMonth').value = '';
+    document.getElementById('schTitle').value = '';
+    document.getElementById('schAuthor').value = '';
+    document.getElementById('schDesc').value = '';
+    document.getElementById('schDate').value = '';
+    document.getElementById('schCoverPreview').style.display = 'none';
+    schCover = null;
+  }
+
+  async function setCurrent(id){
+    try{
+      const batch = db.batch();
+      schedule.forEach(s => {
+        const ref = db.collection('schedule').doc(s.id);
+        if(s.id === id) batch.update(ref, { current: !s.current });
+        else if(s.current) batch.update(ref, { current: false });
+      });
+      await batch.commit();
+    }catch(e){ showToast("Couldn't update — try again."); }
+  }
+
+  async function removeScheduleEntry(id){
+    try{ await db.collection('schedule').doc(id).delete(); }
+    catch(e){ showToast("Couldn't remove — try again."); }
+  }
+
+  async function addRecommendation(){
+    const title = document.getElementById('recTitle').value.trim();
+    const author = document.getElementById('recAuthor').value.trim();
+    const note = document.getElementById('recNote').value.trim();
+    if(!title){ showToast('Add a book title first.'); return; }
+    const name = auth.currentUser ? (auth.currentUser.displayName || 'someone') : 'someone';
+    try{
+      await db.collection('recommendations').add({
+        title, author, note, submittedBy: name, votes: [], coverUrl: recCover,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }catch(e){ showToast("Couldn't save — try again."); return; }
+    document.getElementById('recTitle').value = '';
+    document.getElementById('recAuthor').value = '';
+    document.getElementById('recNote').value = '';
+    document.getElementById('recCoverPreview').style.display = 'none';
+    recCover = null;
+  }
+
+  async function toggleVote(id){
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    if(!uid) return;
+    const rec = recommendations.find(r => r.id === id);
+    if(!rec) return;
+    const has = rec.votes.includes(uid);
+    try{
+      await db.collection('recommendations').doc(id).update({
+        votes: has
+          ? firebase.firestore.FieldValue.arrayRemove(uid)
+          : firebase.firestore.FieldValue.arrayUnion(uid)
+      });
+    }catch(e){ showToast("Couldn't save your vote — try again."); }
+  }
+
+  async function removeRecommendation(id){
+    try{ await db.collection('recommendations').doc(id).delete(); }
+    catch(e){ showToast("Couldn't remove — try again."); }
+  }
+
+  async function addMember(){
+    const name = document.getElementById('memName').value.trim();
+    const email = document.getElementById('memEmail').value.trim();
+    const phone = document.getElementById('memPhone').value.trim();
+    if(!name){ showToast('Add a name first.'); return; }
+    try{
+      await db.collection('members').add({ name, email, phone, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    }catch(e){ showToast("Couldn't save — try again."); return; }
+    document.getElementById('memName').value = '';
+    document.getElementById('memEmail').value = '';
+    document.getElementById('memPhone').value = '';
+  }
+
+  async function removeMember(id){
+    try{ await db.collection('members').doc(id).delete(); }
+    catch(e){ showToast("Couldn't remove — try again."); }
+  }
+
+  // ---------- init app (post-login, once) ----------
+  function initApp(){
+    document.getElementById('schSubmit').addEventListener('click', addScheduleEntry);
+    document.getElementById('recSubmit').addEventListener('click', addRecommendation);
+    document.getElementById('memSubmit').addEventListener('click', addMember);
+
+    scheduleListEl.addEventListener('click', (e) => {
+      const cur = e.target.closest('.set-current');
+      const rem = e.target.closest('.remove-schedule');
+      const monthBtn = e.target.closest('.log-month-btn');
+      if(cur) setCurrent(cur.dataset.id);
+      if(rem) removeScheduleEntry(rem.dataset.id);
+      if(monthBtn){
+        const entry = schedule.find(s => s.id === monthBtn.dataset.id);
+        if(entry) openCalendarFor(entry);
+      }
+    });
+
+    recListEl.addEventListener('click', (e) => {
+      const vote = e.target.closest('.vote-btn');
+      const rem = e.target.closest('.remove-rec');
+      if(vote) toggleVote(vote.dataset.id);
+      if(rem) removeRecommendation(rem.dataset.id);
+    });
+
+    memberListEl.addEventListener('click', (e) => {
+      const rem = e.target.closest('.remove-member');
+      if(rem) removeMember(rem.dataset.id);
+    });
+
+    document.getElementById('copyLink').addEventListener('click', () => {
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        const btn = document.getElementById('copyLink');
+        const original = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = original; }, 1500);
+      }).catch(() => {});
+    });
+
+    document.getElementById('pageUrl').textContent = window.location.href;
+
+    nowReadingEl.innerHTML = `<p class="empty">Loading…</p>`;
+    scheduleListEl.innerHTML = `<p class="empty-state">Loading…</p>`;
+    recListEl.innerHTML = `<p class="empty-state">Loading…</p>`;
+    memberListEl.innerHTML = `<p class="empty-state">Loading…</p>`;
+
+    db.collection('schedule').orderBy('createdAt', 'asc').onSnapshot(snap => {
+      schedule = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderSchedule();
+    }, () => showToast("Couldn't load the schedule."));
+
+    db.collection('recommendations').orderBy('createdAt', 'asc').onSnapshot(snap => {
+      recommendations = snap.docs.map(d => ({ id: d.id, votes: [], ...d.data() }));
+      renderRecommendations();
+    }, () => showToast("Couldn't load suggestions."));
+
+    db.collection('members').orderBy('createdAt', 'asc').onSnapshot(snap => {
+      members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderMembers();
+    }, () => showToast("Couldn't load members."));
+  }
+})();
+</script>
+
+</body>
+</html>
