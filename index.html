@@ -120,7 +120,7 @@
   .wave svg{ display:block; width:180px; height:20px; }
 
   .now-reading{ margin-top:38px; border-left:3px solid var(--accent); padding:6px 0 6px 22px; display:flex; gap:20px; }
-  .now-reading .nr-cover img{ width:64px; height:96px; object-fit:cover; border-radius:2px; flex:0 0 auto; }
+  .now-reading .nr-cover img{ width:64px; height:96px; object-fit:cover; border-radius:2px; flex:0 0 auto; cursor:zoom-in; }
   .now-reading .eyebrow{ color:var(--accent); font-size:0.85rem; font-weight:600; }
   .now-reading h2{ font-size:1.7rem; margin-top:6px; }
   .now-reading .byline{ color:var(--sand-dim); margin-top:2px; font-size:0.95rem; }
@@ -136,7 +136,7 @@
   .log-entry:last-of-type{ border-bottom:none; }
   .log-month{ flex:0 0 108px; padding-top:3px; color:var(--sand-dim); font-size:0.9rem; }
   .log-cover{ flex:0 0 auto; }
-  .log-cover img{ width:52px; height:78px; object-fit:cover; border-radius:2px; display:block; }
+  .log-cover img{ width:52px; height:78px; object-fit:cover; border-radius:2px; display:block; cursor:zoom-in; }
   .log-body{ flex:1; min-width:0; }
   .log-body h3{ font-size:1.2rem; }
   .log-body .byline{ color:var(--sand-dim); font-size:0.92rem; margin-top:2px; }
@@ -194,7 +194,7 @@
   .vote-btn.voted{ background:var(--accent); border-color:var(--accent); color:var(--ink); }
   .vote-btn.voted .label{ color:var(--ink); opacity:0.75; }
   .rec-cover{ flex:0 0 auto; }
-  .rec-cover img{ width:44px; height:66px; object-fit:cover; border-radius:2px; display:block; }
+  .rec-cover img{ width:44px; height:66px; object-fit:cover; border-radius:2px; display:block; cursor:zoom-in; }
   .rec-body{ flex:1; min-width:0; }
   .rec-body h3{ font-size:1.1rem; }
   .rec-body .byline{ color:var(--sand-dim); font-size:0.9rem; margin-top:2px; }
@@ -291,6 +291,57 @@
     <h1 style="font-size:1.4rem;">Manage admins</h1>
     <p>Admins can add books to the schedule, mark one as current, and remove entries. Everyone else can view the schedule and still suggest &amp; vote.</p>
     <div id="adminMemberList" style="margin-top:20px;"></div>
+  </div>
+</div>
+
+<div class="overlay" id="editScheduleOverlay" style="display:none; background:rgba(11,32,39,0.88);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); max-width:460px;">
+    <button class="text-btn" id="editScheduleClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
+    <h1 style="font-size:1.4rem;">Edit this pick</h1>
+    <div class="field-row" style="margin-top:20px;">
+      <div class="field" style="flex:0 0 200px;">
+        <label for="edMonth">Month</label>
+        <div style="display:flex; gap:8px;">
+          <select id="edMonthSelect" style="background:var(--ink); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.95rem; padding:10px 8px; border-radius:3px; flex:1;"></select>
+          <select id="edYearSelect" style="background:var(--ink); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.95rem; padding:10px 8px; border-radius:3px; flex:0 0 90px;"></select>
+        </div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="edTitle">Book title</label>
+        <div class="title-lookup-row">
+          <input id="edTitle" type="text" placeholder="Title">
+          <button class="lookup-btn" id="edLookup" type="button">Find book</button>
+        </div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="edAuthor">Author</label>
+        <input id="edAuthor" type="text" placeholder="Author">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="edDesc">Short description</label>
+        <textarea id="edDesc" placeholder="A sentence or two about the book"></textarea>
+      </div>
+    </div>
+    <div class="cover-preview" id="edCoverPreview" style="display:none;"></div>
+    <button class="overlay-submit" id="edSubmit" style="margin-top:14px;">Save changes</button>
+  </div>
+</div>
+
+<div class="overlay" id="bookDetailOverlay" style="display:none; background:rgba(11,32,39,0.92); padding:24px;">
+  <div class="overlay-card" style="max-width:520px; background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); display:flex; gap:20px; align-items:flex-start;">
+    <button class="text-btn" id="bookDetailClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
+    <img id="bookDetailCover" src="" alt="" style="width:110px; height:165px; object-fit:cover; border-radius:3px; flex:0 0 auto; display:none;">
+    <div style="min-width:0;">
+      <h2 id="bookDetailTitle" style="font-size:1.3rem;"></h2>
+      <div id="bookDetailAuthor" style="color:var(--sand-dim); margin-top:4px; font-size:0.95rem;"></div>
+      <p id="bookDetailDesc" style="margin-top:14px; color:var(--sand); line-height:1.6;"></p>
+    </div>
   </div>
 </div>
 
@@ -485,6 +536,8 @@
   let members = [];
   let schCover = null;
   let recCover = null;
+  let edCover = null;
+  let edEntryId = null;
   let ownerId = null;
   let adminIds = [];
   let isOwner = false;
@@ -495,6 +548,40 @@
     toastEl.textContent = msg;
     toastEl.classList.add('show');
     setTimeout(() => toastEl.classList.remove('show'), 3200);
+  }
+
+  const bookDetailOverlay = document.getElementById('bookDetailOverlay');
+  function openBookDetail(kind, id){
+    let entry = null;
+    if(kind === 'schedule') entry = schedule.find(s => s.id === id);
+    else if(kind === 'rec') entry = recommendations.find(r => r.id === id);
+    if(!entry) return;
+    const coverEl = document.getElementById('bookDetailCover');
+    if(entry.coverUrl){
+      coverEl.src = entry.coverUrl;
+      coverEl.style.display = 'block';
+    }else{
+      coverEl.style.display = 'none';
+    }
+    document.getElementById('bookDetailTitle').textContent = entry.title || '';
+    document.getElementById('bookDetailAuthor').textContent = entry.author || '';
+    document.getElementById('bookDetailDesc').textContent = entry.description || 'No description added yet.';
+    bookDetailOverlay.style.display = 'flex';
+  }
+  document.getElementById('bookDetailClose').addEventListener('click', () => { bookDetailOverlay.style.display = 'none'; });
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.book-open');
+    if(trigger){
+      openBookDetail(trigger.dataset.kind, trigger.dataset.id);
+      return;
+    }
+    if(e.target === bookDetailOverlay){
+      bookDetailOverlay.style.display = 'none';
+    }
+  });
+  function truncate(str, n){
+    if(!str) return '';
+    return str.length > n ? str.slice(0, n).trim() + '…' : str;
   }
   function escapeHtml(str){
     return (str || '').replace(/[&<>"']/g, c => ({
@@ -597,6 +684,7 @@
   }
 
   function checkOwnerValidity(){
+    if(isOwner){ claimOwnerBanner.style.display = 'none'; return; }
     if(members.length === 0) return; // wait until members have loaded
     const ownerExists = ownerId && members.some(m => m.id === ownerId);
     claimOwnerBanner.style.display = ownerExists ? 'none' : 'block';
@@ -721,34 +809,81 @@
   });
 
   // ================= BOOK LOOKUP =================
+  async function lookupBookGoogle(titleVal, authorVal){
+    let q = 'intitle:' + encodeURIComponent(titleVal.trim());
+    if(authorVal && authorVal.trim()) q += '+inauthor:' + encodeURIComponent(authorVal.trim());
+    const res = await fetch('https://www.googleapis.com/books/v1/volumes?q=' + q + '&maxResults=1');
+    if(!res.ok) throw new Error('google books search failed');
+    const data = await res.json();
+    const item = data.items && data.items[0];
+    if(!item) return null;
+    const info = item.volumeInfo || {};
+    let cover = info.imageLinks && (info.imageLinks.thumbnail || info.imageLinks.smallThumbnail);
+    if(cover) cover = cover.replace('http://', 'https://');
+    let description = info.description || '';
+    if(description){
+      description = description.replace(/<[^>]+>/g, ''); // strip any HTML tags
+      if(description.length > 500) description = description.slice(0, 497) + '…';
+    }
+    return {
+      title: info.title || titleVal,
+      author: (info.authors && info.authors[0]) || authorVal || '',
+      coverUrl: cover || null,
+      description
+    };
+  }
+
+  async function lookupBookOpenLibrary(titleVal, authorVal){
+    let q = 'title=' + encodeURIComponent(titleVal.trim());
+    if(authorVal && authorVal.trim()) q += '&author=' + encodeURIComponent(authorVal.trim());
+    const res = await fetch('https://openlibrary.org/search.json?' + q + '&limit=1');
+    if(!res.ok) throw new Error('open library search failed');
+    const data = await res.json();
+    const doc = data.docs && data.docs[0];
+    if(!doc) return null;
+    const result = {
+      title: doc.title || titleVal,
+      author: (doc.author_name && doc.author_name[0]) || authorVal || '',
+      coverUrl: doc.cover_i ? ('https://covers.openlibrary.org/b/id/' + doc.cover_i + '-M.jpg') : null,
+      description: ''
+    };
+    if(doc.key){
+      try{
+        const workRes = await fetch('https://openlibrary.org' + doc.key + '.json');
+        if(workRes.ok){
+          const workData = await workRes.json();
+          let desc = workData.description;
+          if(desc && typeof desc === 'object') desc = desc.value;
+          if(typeof desc === 'string') result.description = desc.split('\n')[0].slice(0, 500);
+        }
+      }catch(e){}
+    }
+    return result;
+  }
+
   async function lookupBook(titleVal, authorVal){
     if(!titleVal || !titleVal.trim()) return null;
     try{
-      let q = 'title=' + encodeURIComponent(titleVal.trim());
-      if(authorVal && authorVal.trim()) q += '&author=' + encodeURIComponent(authorVal.trim());
-      const res = await fetch('https://openlibrary.org/search.json?' + q + '&limit=1');
-      if(!res.ok) throw new Error('search failed');
-      const data = await res.json();
-      const doc = data.docs && data.docs[0];
-      if(!doc) return null;
-      const result = {
-        title: doc.title || titleVal,
-        author: (doc.author_name && doc.author_name[0]) || authorVal || '',
-        coverUrl: doc.cover_i ? ('https://covers.openlibrary.org/b/id/' + doc.cover_i + '-M.jpg') : null,
-        description: ''
-      };
-      if(doc.key){
-        try{
-          const workRes = await fetch('https://openlibrary.org' + doc.key + '.json');
-          if(workRes.ok){
-            const workData = await workRes.json();
-            let desc = workData.description;
-            if(desc && typeof desc === 'object') desc = desc.value;
-            if(typeof desc === 'string') result.description = desc.split('\n')[0].slice(0, 300);
-          }
-        }catch(e){}
+      const googleResult = await lookupBookGoogle(titleVal, authorVal);
+      if(googleResult){
+        // Google Books usually has richer descriptions; fall back to Open Library
+        // only to fill in a missing cover or description, not to replace Google's.
+        if(!googleResult.coverUrl || !googleResult.description){
+          try{
+            const olResult = await lookupBookOpenLibrary(titleVal, authorVal);
+            if(olResult){
+              if(!googleResult.coverUrl) googleResult.coverUrl = olResult.coverUrl;
+              if(!googleResult.description) googleResult.description = olResult.description;
+            }
+          }catch(e){}
+        }
+        return googleResult;
       }
-      return result;
+    }catch(e){
+      console.error('Google Books lookup failed:', e);
+    }
+    try{
+      return await lookupBookOpenLibrary(titleVal, authorVal);
     }catch(e){
       console.error('Book lookup failed:', e);
       return null;
@@ -758,7 +893,8 @@
   function wireLookup(btnId, titleId, authorId, previewId, descId, coverSetter){
     const btn = document.getElementById(btnId);
     btn.addEventListener('click', async () => {
-      const titleVal = document.getElementById(titleId).value;
+      const titleEl = document.getElementById(titleId);
+      const titleVal = titleEl.value;
       if(!titleVal.trim()){ showToast('Type a title first.'); return; }
       btn.disabled = true; btn.textContent = 'Looking…';
       const authorEl = document.getElementById(authorId);
@@ -771,6 +907,7 @@
         coverSetter(null);
         return;
       }
+      if(result.title) titleEl.value = result.title;
       if(!authorEl.value.trim() && result.author) authorEl.value = result.author;
       if(descId){
         const descEl = document.getElementById(descId);
@@ -779,11 +916,12 @@
       coverSetter(result.coverUrl);
       preview.style.display = 'flex';
       preview.innerHTML = result.coverUrl
-        ? `<img src="${result.coverUrl}" alt=""><span>Cover found — added to this entry.</span>`
+        ? `<img src="${result.coverUrl}" alt=""><span>Found it — title and cover updated.</span>`
         : `<span>Found the book, but no cover image was available.</span>`;
     });
   }
   wireLookup('schLookup','schTitle','schAuthor','schCoverPreview','schDesc', (url) => { schCover = url; });
+  wireLookup('edLookup','edTitle','edAuthor','edCoverPreview','edDesc', (url) => { edCover = url; });
   wireLookup('recLookup','recTitle','recAuthor','recCoverPreview', null, (url) => { recCover = url; });
 
   // ---------- render: now reading ----------
@@ -793,13 +931,16 @@
       nowReadingEl.innerHTML = `<div><div class="eyebrow">Now reading</div><p class="empty" style="margin-top:8px;">Nothing's been picked yet. Add a book below and mark it current.</p></div>`;
       return;
     }
+    const snippet = truncate(current.description, 160);
+    const moreLink = current.description && current.description.length > 160
+      ? ` <button class="link-btn book-open" data-kind="schedule" data-id="${current.id}" style="font-size:0.85rem;">Read more</button>` : '';
     nowReadingEl.innerHTML = `
-      ${current.coverUrl ? `<div class="nr-cover"><img src="${current.coverUrl}" alt=""></div>` : ''}
+      ${current.coverUrl ? `<div class="nr-cover"><img class="book-open" data-kind="schedule" data-id="${current.id}" src="${current.coverUrl}" alt=""></div>` : ''}
       <div>
         <div class="eyebrow">Now reading &mdash; ${escapeHtml(current.month)}</div>
-        <h2>${escapeHtml(current.title)}</h2>
+        <h2 class="book-open" data-kind="schedule" data-id="${current.id}" style="cursor:pointer;">${escapeHtml(current.title)}</h2>
         <div class="byline">${escapeHtml(current.author)}</div>
-        ${current.description ? `<p class="desc">${escapeHtml(current.description)}</p>` : ''}
+        ${current.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
       </div>`;
   }
 
@@ -812,21 +953,27 @@
       renderNowReading();
       return;
     }
-    scheduleListEl.innerHTML = schedule.map(entry => `
+    scheduleListEl.innerHTML = schedule.map(entry => {
+      const snippet = truncate(entry.description, 120);
+      const moreLink = entry.description && entry.description.length > 120
+        ? ` <button class="link-btn book-open" data-kind="schedule" data-id="${entry.id}" style="font-size:0.85rem;">Read more</button>` : '';
+      return `
       <div class="log-entry" data-id="${entry.id}">
         <div class="log-month">${escapeHtml(entry.month)}</div>
-        ${entry.coverUrl ? `<div class="log-cover"><img src="${entry.coverUrl}" alt=""></div>` : ''}
+        ${entry.coverUrl ? `<div class="log-cover"><img class="book-open" data-kind="schedule" data-id="${entry.id}" src="${entry.coverUrl}" alt=""></div>` : ''}
         <div class="log-body">
-          <h3>${escapeHtml(entry.title)}</h3>
+          <h3 class="book-open" data-kind="schedule" data-id="${entry.id}" style="cursor:pointer;">${escapeHtml(entry.title)}</h3>
           <div class="byline">${escapeHtml(entry.author)}</div>
-          ${entry.description ? `<p class="desc">${escapeHtml(entry.description)}</p>` : ''}
+          ${entry.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
           ${isAdmin ? `
           <div class="log-actions">
             <button class="link-btn set-current ${entry.current ? 'current' : ''}" data-id="${entry.id}">${entry.current ? "This is what we're reading" : 'Mark as current'}</button>
+            <button class="link-btn edit-schedule" data-id="${entry.id}">Edit</button>
             <button class="link-btn remove-schedule" data-id="${entry.id}">Remove</button>
           </div>` : ''}
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     renderNowReading();
   }
 
@@ -848,9 +995,9 @@
             <span class="label">${voted ? 'Voted' : 'Vote'}</span>
           </button>
         </div>
-        ${rec.coverUrl ? `<div class="rec-cover"><img src="${rec.coverUrl}" alt=""></div>` : ''}
+        ${rec.coverUrl ? `<div class="rec-cover"><img class="book-open" data-kind="rec" data-id="${rec.id}" src="${rec.coverUrl}" alt=""></div>` : ''}
         <div class="rec-body">
-          <h3>${escapeHtml(rec.title)}</h3>
+          <h3 class="book-open" data-kind="rec" data-id="${rec.id}" style="cursor:pointer;">${escapeHtml(rec.title)}</h3>
           <div class="byline">${escapeHtml(rec.author)}</div>
           ${rec.note ? `<p class="note">${escapeHtml(rec.note)}</p>` : ''}
           <div class="meta">Suggested by ${escapeHtml(rec.submittedBy || 'someone')}<button class="link-btn remove-rec" data-id="${rec.id}">Remove</button></div>
@@ -865,34 +1012,40 @@
       memberListEl.innerHTML = `<p class="empty-state">No members added yet.</p>`;
       return;
     }
-    memberListEl.innerHTML = members.map(m => `
+    memberListEl.innerHTML = members.map(m => {
+      const badge = m.id === ownerId
+        ? '<span class="owner-tag">Owner</span>'
+        : (adminIds.includes(m.id) ? '<span class="owner-tag">Admin</span>' : '');
+      return `
       <div class="member-row" data-id="${m.id}">
         <div>
-          <h3>${escapeHtml(m.name)}</h3>
+          <h3>${escapeHtml(m.name)}${badge}</h3>
           <div class="contact">
             ${m.email ? `<span>${escapeHtml(m.email)}</span>` : ''}
             ${m.phone ? `<span>${escapeHtml(m.phone)}</span>` : ''}
           </div>
         </div>
         <button class="link-btn remove-member" data-id="${m.id}">Remove</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   // ---------- actions ----------
-  function populateMonthYearSelects(){
-    const monthSel = document.getElementById('schMonthSelect');
-    const yearSel = document.getElementById('schYearSelect');
-    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    monthSel.innerHTML = monthNames.map(m => `<option value="${m}">${m}</option>`).join('');
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  function populateMonthYearSelects(monthSelId, yearSelId, presetMonth, presetYear){
+    const monthSel = document.getElementById(monthSelId);
+    const yearSel = document.getElementById(yearSelId);
+    monthSel.innerHTML = MONTH_NAMES.map(m => `<option value="${m}">${m}</option>`).join('');
     const now = new Date();
-    monthSel.value = monthNames[now.getMonth()];
-    const startYear = now.getFullYear();
+    monthSel.value = MONTH_NAMES.includes(presetMonth) ? presetMonth : MONTH_NAMES[now.getMonth()];
+    const startYear = now.getFullYear() - 1;
     let yearOptions = '';
-    for(let y = startYear; y <= startYear + 3; y++){
+    for(let y = startYear; y <= startYear + 4; y++){
       yearOptions += `<option value="${y}">${y}</option>`;
     }
     yearSel.innerHTML = yearOptions;
-    yearSel.value = String(startYear);
+    yearSel.value = (presetYear && String(presetYear)) || String(now.getFullYear());
   }
 
   async function addScheduleEntry(){
@@ -930,6 +1083,43 @@
     try{ await db.collection('schedule').doc(id).delete(); }
     catch(e){ showToast("Couldn't remove — try again."); }
   }
+
+  const editScheduleOverlay = document.getElementById('editScheduleOverlay');
+  function openEditSchedule(id){
+    const entry = schedule.find(s => s.id === id);
+    if(!entry) return;
+    edEntryId = id;
+    edCover = entry.coverUrl || null;
+    const parts = (entry.month || '').split(' ');
+    const presetMonth = parts[0];
+    const presetYear = parts[1];
+    populateMonthYearSelects('edMonthSelect', 'edYearSelect', presetMonth, presetYear);
+    document.getElementById('edTitle').value = entry.title || '';
+    document.getElementById('edAuthor').value = entry.author || '';
+    document.getElementById('edDesc').value = entry.description || '';
+    const preview = document.getElementById('edCoverPreview');
+    if(entry.coverUrl){
+      preview.style.display = 'flex';
+      preview.innerHTML = `<img src="${entry.coverUrl}" alt=""><span>Current cover.</span>`;
+    }else{
+      preview.style.display = 'none';
+    }
+    editScheduleOverlay.style.display = 'flex';
+  }
+  document.getElementById('editScheduleClose').addEventListener('click', () => { editScheduleOverlay.style.display = 'none'; });
+  document.getElementById('edSubmit').addEventListener('click', async () => {
+    if(!edEntryId) return;
+    const month = document.getElementById('edMonthSelect').value + ' ' + document.getElementById('edYearSelect').value;
+    const title = document.getElementById('edTitle').value.trim();
+    const author = document.getElementById('edAuthor').value.trim();
+    const description = document.getElementById('edDesc').value.trim();
+    if(!title){ showToast('Add a book title first.'); return; }
+    try{
+      await db.collection('schedule').doc(edEntryId).update({ month, title, author, description, coverUrl: edCover });
+      editScheduleOverlay.style.display = 'none';
+      showToast('Updated.');
+    }catch(e){ showToast("Couldn't save — try again."); }
+  });
 
   async function addRecommendation(){
     const title = document.getElementById('recTitle').value.trim();
@@ -981,15 +1171,17 @@
 
   // ---------- init app (post-login, once) ----------
   function initApp(){
-    populateMonthYearSelects();
+    populateMonthYearSelects('schMonthSelect', 'schYearSelect');
     document.getElementById('schSubmit').addEventListener('click', addScheduleEntry);
     document.getElementById('recSubmit').addEventListener('click', addRecommendation);
 
     scheduleListEl.addEventListener('click', (e) => {
       const cur = e.target.closest('.set-current');
       const rem = e.target.closest('.remove-schedule');
+      const edit = e.target.closest('.edit-schedule');
       if(cur) setCurrent(cur.dataset.id);
       if(rem) removeScheduleEntry(rem.dataset.id);
+      if(edit) openEditSchedule(edit.dataset.id);
     });
 
     recListEl.addEventListener('click', (e) => {
@@ -1030,10 +1222,36 @@
       renderRecommendations();
     }, () => showToast("Couldn't load suggestions."));
 
-    db.collection('members').orderBy('createdAt', 'asc').onSnapshot(snap => {
+    let didSelfHeal = false;
+    db.collection('members').orderBy('createdAt', 'asc').onSnapshot(async snap => {
       members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderMembers();
       checkOwnerValidity();
+
+      // One-time self-heal: make sure the current user has a members record
+      // keyed by their real uid (older accounts may have a mismatched id),
+      // so owner/admin badges and ownership checks can find them.
+      if(!didSelfHeal && auth.currentUser){
+        didSelfHeal = true;
+        const uid = auth.currentUser.uid;
+        const hasCorrectRecord = members.some(m => m.id === uid);
+        if(!hasCorrectRecord){
+          try{
+            const email = auth.currentUser.email || '';
+            const staleDocs = members.filter(m => m.email && email && m.email === email && m.id !== uid);
+            const existing = staleDocs[0];
+            await db.collection('members').doc(uid).set({
+              name: auth.currentUser.displayName || (existing && existing.name) || '',
+              email,
+              phone: (existing && existing.phone) || '',
+              createdAt: (existing && existing.createdAt) || firebase.firestore.FieldValue.serverTimestamp()
+            });
+            for(const stale of staleDocs){
+              await db.collection('members').doc(stale.id).delete();
+            }
+          }catch(e){ /* non-fatal */ }
+        }
+      }
     }, () => showToast("Couldn't load members."));
 
     db.collection('meta').doc('config').onSnapshot(snap => {
@@ -1047,6 +1265,7 @@
       adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
       checkOwnerValidity();
       renderSchedule();
+      renderMembers();
     });
 
     document.getElementById('claimOwnerBtn').addEventListener('click', async () => {
