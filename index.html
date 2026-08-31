@@ -6,6 +6,8 @@
 <title>Riptide Readers</title>
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-512.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B2027">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -126,6 +128,12 @@
   .now-reading .byline{ color:var(--sand-dim); margin-top:2px; font-size:0.95rem; }
   .now-reading .desc{ margin-top:10px; max-width:52em; color:var(--sand); }
   .now-reading .empty{ color:var(--sand-dim); font-style:italic; }
+  .rating-badge{
+    margin-top:16px; padding:14px 20px; background:var(--panel); border-radius:4px;
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  }
+  .rating-badge .badge-text{ font-size:0.9rem; color:var(--sand); flex:1; min-width:180px; }
+  .rating-badge .badge-text strong{ color:var(--accent); }
 
   section{ padding:56px 0; border-top:1px solid var(--line); }
   section .section-head{ margin-bottom:28px; }
@@ -142,6 +150,12 @@
   .log-body .byline{ color:var(--sand-dim); font-size:0.92rem; margin-top:2px; }
   .log-body .desc{ margin-top:8px; color:var(--sand); }
   .log-actions{ margin-top:10px; display:flex; gap:16px; }
+  .star-rating{ margin-top:10px; display:flex; align-items:center; gap:10px; }
+  .star-rating .stars{ display:flex; gap:2px; }
+  .star-rating .star-btn{ background:none; border:none; padding:0; cursor:pointer; font-size:1.15rem; line-height:1; color:var(--line-strong); }
+  .star-rating .star-btn.filled{ color:var(--accent); }
+  .star-rating .star-summary{ font-size:0.82rem; color:var(--sand-dim); }
+  .star-rating .star-label{ font-size:0.82rem; color:var(--sand-dim); }
   .link-btn{
     background:none; border:none; color:var(--sand-dim); cursor:pointer;
     font-family:'Work Sans',sans-serif; font-size:0.85rem; padding:0;
@@ -252,19 +266,72 @@
   </div>
 </div>
 
+<div class="overlay" id="profileOverlay" style="display:none;">
+  <div class="overlay-card">
+    <div class="wave">
+      <svg viewBox="0 0 120 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 11 C 12 2, 22 2, 32 11 C 42 20, 52 20, 62 11 C 72 2, 82 2, 92 11 C 102 20, 112 20, 118 12" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>One more step</h1>
+    <p>Tell your club a bit about yourself.</p>
+    <div class="field-row" style="margin-top:20px;">
+      <div class="field">
+        <label for="pcFirstName">First name</label>
+        <input id="pcFirstName" type="text" placeholder="First name" autocomplete="given-name">
+      </div>
+      <div class="field">
+        <label for="pcLastName">Last name</label>
+        <input id="pcLastName" type="text" placeholder="Last name" autocomplete="family-name">
+      </div>
+    </div>
+    <div class="overlay-field">
+      <label for="pcPhone">Cell number</label>
+      <input id="pcPhone" type="tel" placeholder="Cell number" autocomplete="tel">
+      <p style="color:var(--sand-dim); font-size:0.82rem; margin-top:4px;">Optional, but recommended — admins can text the group about what's coming up, so add yours to make sure you don't miss updates.</p>
+    </div>
+    <div class="overlay-error" id="pcError"></div>
+    <div id="pcDupSuggestion" style="display:none; margin-top:16px; padding:16px; background:var(--panel); border-radius:4px; border:1px solid var(--line-strong);">
+      <p style="color:var(--sand-dim); font-size:0.88rem;" id="pcDupText"></p>
+      <div class="overlay-field">
+        <label for="pcSuggestedName">Name to use instead</label>
+        <input id="pcSuggestedName" type="text">
+      </div>
+      <button class="overlay-submit" id="pcUseSuggested" type="button">Use this name &amp; continue</button>
+    </div>
+    <button class="overlay-submit" id="pcSubmit">Continue</button>
+  </div>
+</div>
+
 <div class="overlay" id="accountOverlay" style="display:none; background:rgba(11,32,39,0.88);">
   <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong);">
     <button class="text-btn" id="accountClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
     <h1 style="font-size:1.4rem;">Account settings</h1>
 
-    <p style="margin-top:20px; font-weight:600; color:var(--sand);">Display name</p>
+    <p style="margin-top:20px; font-weight:600; color:var(--sand);">Your info</p>
+    <div class="field-row">
+      <div class="field">
+        <label for="accFirstName">First name</label>
+        <input id="accFirstName" type="text" placeholder="First name">
+      </div>
+      <div class="field">
+        <label for="accLastName">Last name</label>
+        <input id="accLastName" type="text" placeholder="Last name">
+      </div>
+    </div>
     <div class="overlay-field">
       <label for="accName">Name shown to your club</label>
-      <input id="accName" type="text" placeholder="Your name">
+      <input id="accName" type="text" placeholder="e.g. Wendy">
+      <p style="color:var(--sand-dim); font-size:0.82rem; margin-top:-2px;">Just a first name or nickname is fine — this is what shows up on votes and suggestions. If there's already someone with this name in the club, we'll suggest adding an initial.</p>
+    </div>
+    <div class="overlay-field">
+      <label for="accPhone">Cell</label>
+      <input id="accPhone" type="tel" placeholder="Cell number">
+      <p style="color:var(--sand-dim); font-size:0.82rem; margin-top:4px;">Optional, but recommended — admins can text the group about what's coming up, so add yours to make sure you don't miss updates.</p>
     </div>
     <div class="overlay-error" id="accNameError"></div>
     <div class="overlay-error" id="accNameSuccess" style="color:#9BD6A4;"></div>
-    <button class="overlay-submit" id="accNameSubmit">Update name</button>
+    <button class="overlay-submit" id="accNameSubmit">Save</button>
 
     <p style="margin-top:28px; font-weight:600; color:var(--sand);">Password</p>
     <div class="overlay-field">
@@ -400,6 +467,7 @@
       </svg>
     </div>
     <div class="now-reading" id="nowReading"></div>
+    <div id="ratingBadge"></div>
   </section>
 
   <section id="schedule">
@@ -469,14 +537,25 @@
         </div>
       </div>
       <div class="cover-preview" id="recCoverPreview" style="display:none;"></div>
+      <div id="recDupNotice" style="display:none; margin-top:14px; padding:14px; background:var(--ink); border-radius:4px; border:1px solid var(--line-strong);">
+        <p style="color:var(--sand-dim); font-size:0.9rem;" id="recDupText"></p>
+        <button class="link-btn" id="recVoteExisting" type="button" style="margin-top:6px;">Vote for it instead</button>
+      </div>
       <button class="submit-btn" id="recSubmit" style="margin-top:14px;">Suggest this book</button>
     </div>
   </section>
 
   <section id="members">
-    <div class="section-head">
-      <h2>Members</h2>
-      <p>Everyone who's signed up, built automatically from your club's logins.</p>
+    <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;">
+      <div>
+        <h2>Members</h2>
+        <p>Everyone who's signed up, built automatically from your club's logins.</p>
+      </div>
+      <div style="display:flex; gap:16px; flex-wrap:wrap;">
+        <button class="link-btn" id="emailEveryoneLink" style="white-space:nowrap; display:none;">Email everyone</button>
+        <button class="link-btn" id="textEveryoneLink" style="white-space:nowrap; display:none;">Text everyone</button>
+        <button class="link-btn" id="memberDetailToggle" style="white-space:nowrap;">Show full details</button>
+      </div>
     </div>
     <div id="memberList"></div>
   </section>
@@ -516,6 +595,7 @@
 <script>
 (function(){
   const gateOverlay = document.getElementById('gateOverlay');
+  const profileOverlay = document.getElementById('profileOverlay');
   const gateSubtext = document.getElementById('gateSubtext');
   const gateFormArea = document.getElementById('gateFormArea');
   const appRoot = document.getElementById('appRoot');
@@ -553,8 +633,14 @@
   const bookDetailOverlay = document.getElementById('bookDetailOverlay');
   function openBookDetail(kind, id){
     let entry = null;
-    if(kind === 'schedule') entry = schedule.find(s => s.id === id);
-    else if(kind === 'rec') entry = recommendations.find(r => r.id === id);
+    let desc = '';
+    if(kind === 'schedule'){
+      entry = schedule.find(s => s.id === id);
+      desc = entry ? (entry.description || 'No description added yet.') : '';
+    }else if(kind === 'rec'){
+      entry = recommendations.find(r => r.id === id);
+      desc = entry ? (entry.note || 'No notes added yet.') : '';
+    }
     if(!entry) return;
     const coverEl = document.getElementById('bookDetailCover');
     if(entry.coverUrl){
@@ -565,7 +651,7 @@
     }
     document.getElementById('bookDetailTitle').textContent = entry.title || '';
     document.getElementById('bookDetailAuthor').textContent = entry.author || '';
-    document.getElementById('bookDetailDesc').textContent = entry.description || 'No description added yet.';
+    document.getElementById('bookDetailDesc').textContent = desc;
     bookDetailOverlay.style.display = 'flex';
   }
   document.getElementById('bookDetailClose').addEventListener('click', () => { bookDetailOverlay.style.display = 'none'; });
@@ -573,6 +659,11 @@
     const trigger = e.target.closest('.book-open');
     if(trigger){
       openBookDetail(trigger.dataset.kind, trigger.dataset.id);
+      return;
+    }
+    const star = e.target.closest('.star-btn');
+    if(star){
+      setRating(star.dataset.id, parseInt(star.dataset.value, 10));
       return;
     }
     if(e.target === bookDetailOverlay){
@@ -583,6 +674,38 @@
     if(!str) return '';
     return str.length > n ? str.slice(0, n).trim() + '…' : str;
   }
+
+  const MONTH_INDEX = {January:0,February:1,March:2,April:3,May:4,June:5,July:6,August:7,September:8,October:9,November:10,December:11};
+  function parseEntryDate(monthStr){
+    if(!monthStr) return null;
+    const parts = monthStr.trim().split(' ');
+    if(parts.length < 2) return null;
+    const monthIdx = MONTH_INDEX[parts[0]];
+    const year = parseInt(parts[1], 10);
+    if(monthIdx === undefined || isNaN(year)) return null;
+    return new Date(year, monthIdx, 1);
+  }
+  function isEligibleForRating(entry){
+    if(entry.current) return false;
+    const d = parseEntryDate(entry.month);
+    if(!d) return false;
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return d < thisMonth; // strictly before the current month — that month has to be fully over
+  }
+  function renderStarRating(entry, uid){
+    const ratings = entry.ratings || {};
+    const values = Object.values(ratings);
+    const avg = values.length ? (values.reduce((a,b) => a+b, 0) / values.length) : 0;
+    const myRating = uid ? (ratings[uid] || 0) : 0;
+    const stars = [1,2,3,4,5].map(n => `<button class="star-btn ${n <= myRating ? 'filled' : ''}" data-id="${entry.id}" data-value="${n}">${n <= myRating ? '★' : '☆'}</button>`).join('');
+    const summary = values.length
+      ? `${avg.toFixed(1)} avg (${values.length} rating${values.length===1?'':'s'})`
+      : 'No ratings yet';
+    const label = myRating ? 'Your rating:' : 'Rate it:';
+    return `<div class="star-rating"><span class="star-label">${label}</span><span class="stars">${stars}</span><span class="star-summary">${summary}</span></div>`;
+  }
+
   function escapeHtml(str){
     return (str || '').replace(/[&<>"']/g, c => ({
       '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
@@ -635,13 +758,22 @@
     document.getElementById('siPass').addEventListener('keydown', (e) => { if(e.key==='Enter') submit(); });
   }
 
+  function suggestDisambiguation(firstName, lastName){
+    const initial = lastName && lastName.trim() ? (lastName.trim().charAt(0).toUpperCase() + '.') : '2';
+    return (firstName.trim() + ' ' + initial).trim();
+  }
+
+  async function nameIsTaken(nameToCheck, excludeUid){
+    try{
+      const snap = await db.collection('members').get();
+      const lower = nameToCheck.trim().toLowerCase();
+      return snap.docs.some(d => d.id !== excludeUid && (d.data().name || '').trim().toLowerCase() === lower);
+    }catch(e){ return false; }
+  }
+
   function renderSignUp(prefillEmail){
     gateSubtext.textContent = "Sign up with your email. Whoever signs up first becomes the site owner.";
     gateFormArea.innerHTML = `
-      <div class="overlay-field">
-        <label for="suName">Your name</label>
-        <input id="suName" type="text" placeholder="Name" autocomplete="name">
-      </div>
       <div class="overlay-field">
         <label for="suEmail">Email</label>
         <input id="suEmail" type="email" placeholder="you@email.com" value="${escapeHtml(prefillEmail || '')}" autocomplete="email">
@@ -656,32 +788,94 @@
     `;
     document.getElementById('toSignIn').addEventListener('click', () => renderSignIn(document.getElementById('suEmail').value));
     document.getElementById('suSubmit').addEventListener('click', async () => {
-      const name = document.getElementById('suName').value.trim();
       const email = document.getElementById('suEmail').value.trim();
       const pass = document.getElementById('suPass').value;
       const btn = document.getElementById('suSubmit');
       const errEl = document.getElementById('gateError');
-      if(!name){ errEl.textContent = 'Enter your name.'; return; }
+      errEl.textContent = '';
       if(!email){ errEl.textContent = 'Enter your email.'; return; }
       if(!pass || pass.length < 6){ errEl.textContent = 'Use a password with at least 6 characters.'; return; }
       btn.disabled = true;
       try{
         const cred = await auth.createUserWithEmailAndPassword(email, pass);
-        await cred.user.updateProfile({ displayName: name });
         const configRef = db.collection('meta').doc('config');
         const configDoc = await configRef.get();
         if(!configDoc.exists){
           await configRef.set({ ownerId: cred.user.uid });
         }
-        await db.collection('members').doc(cred.user.uid).set({
-          name, email, phone: '', createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        // onAuthStateChanged picks up from here and shows the profile-completion step.
       }catch(e){
         errEl.textContent = friendlyAuthError(e);
         btn.disabled = false;
       }
     });
   }
+
+  function renderProfileCompletion(){
+    document.getElementById('pcFirstName').value = '';
+    document.getElementById('pcLastName').value = '';
+    document.getElementById('pcPhone').value = '';
+    document.getElementById('pcError').textContent = '';
+    document.getElementById('pcDupSuggestion').style.display = 'none';
+    profileOverlay.style.display = 'flex';
+  }
+
+  async function saveProfile(displayName, firstName, lastName){
+    const phone = document.getElementById('pcPhone').value.trim();
+    const errEl = document.getElementById('pcError');
+    try{
+      await auth.currentUser.updateProfile({ displayName });
+      await db.collection('members').doc(auth.currentUser.uid).set({
+        name: displayName, firstName, lastName, phone,
+        email: auth.currentUser.email || '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      profileOverlay.style.display = 'none';
+      await enterMainApp(auth.currentUser);
+    }catch(e){
+      errEl.textContent = friendlyAuthError(e);
+      document.getElementById('pcSubmit').disabled = false;
+      document.getElementById('pcUseSuggested').disabled = false;
+    }
+  }
+
+  document.getElementById('pcSubmit').addEventListener('click', async () => {
+    const firstName = document.getElementById('pcFirstName').value.trim();
+    const lastName = document.getElementById('pcLastName').value.trim();
+    const btn = document.getElementById('pcSubmit');
+    const errEl = document.getElementById('pcError');
+    errEl.textContent = '';
+    document.getElementById('pcDupSuggestion').style.display = 'none';
+    if(!firstName){ errEl.textContent = 'Enter your first name.'; return; }
+    if(!lastName){ errEl.textContent = 'Enter your last name.'; return; }
+    btn.disabled = true;
+    const taken = await nameIsTaken(firstName);
+    if(taken){
+      btn.disabled = false;
+      document.getElementById('pcDupText').textContent = `There's already a "${firstName}" in the club — try this instead, or edit it:`;
+      document.getElementById('pcSuggestedName').value = suggestDisambiguation(firstName, lastName);
+      document.getElementById('pcDupSuggestion').style.display = 'block';
+      return;
+    }
+    await saveProfile(firstName, firstName, lastName);
+  });
+
+  document.getElementById('pcUseSuggested').addEventListener('click', async () => {
+    const firstName = document.getElementById('pcFirstName').value.trim();
+    const lastName = document.getElementById('pcLastName').value.trim();
+    const suggested = document.getElementById('pcSuggestedName').value.trim();
+    const btn = document.getElementById('pcUseSuggested');
+    const errEl = document.getElementById('pcError');
+    if(!suggested){ errEl.textContent = 'Enter a name to use.'; return; }
+    btn.disabled = true;
+    const stillTaken = await nameIsTaken(suggested);
+    if(stillTaken){
+      btn.disabled = false;
+      errEl.textContent = 'That name is taken too — try being more specific.';
+      return;
+    }
+    await saveProfile(suggested, firstName, lastName);
+  });
 
   function checkOwnerValidity(){
     if(isOwner){ claimOwnerBanner.style.display = 'none'; return; }
@@ -690,25 +884,44 @@
     claimOwnerBanner.style.display = ownerExists ? 'none' : 'block';
   }
 
+  async function enterMainApp(user){
+    gateOverlay.style.display = 'none';
+    profileOverlay.style.display = 'none';
+    appRoot.style.display = 'block';
+    whoamiName.textContent = user.displayName || 'you';
+    try{
+      const configDoc = await db.collection('meta').doc('config').get();
+      const configData = configDoc.exists ? configDoc.data() : {};
+      ownerId = configData.ownerId || null;
+      adminIds = configData.adminIds || [];
+      isOwner = ownerId === user.uid;
+      isAdmin = isOwner || adminIds.includes(user.uid);
+      ownerTag.style.display = isOwner ? 'inline' : 'none';
+      adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
+      document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('textEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
+      checkOwnerValidity();
+    }catch(e){ /* non-fatal */ }
+    if(!appInited){ appInited = true; initApp(); }
+    else { renderSchedule(); renderMembers(); }
+  }
+
   auth.onAuthStateChanged(async (user) => {
     if(user){
-      gateOverlay.style.display = 'none';
-      appRoot.style.display = 'block';
-      whoamiName.textContent = user.displayName || 'you';
+      let memberData = null;
       try{
-        const configDoc = await db.collection('meta').doc('config').get();
-        const configData = configDoc.exists ? configDoc.data() : {};
-        ownerId = configData.ownerId || null;
-        adminIds = configData.adminIds || [];
-        isOwner = ownerId === user.uid;
-        isAdmin = isOwner || adminIds.includes(user.uid);
-        ownerTag.style.display = isOwner ? 'inline' : 'none';
-        adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
-        checkOwnerValidity();
+        const memberDoc = await db.collection('members').doc(user.uid).get();
+        memberData = memberDoc.exists ? memberDoc.data() : null;
       }catch(e){ /* non-fatal */ }
-      if(!appInited){ appInited = true; initApp(); }
-      else { renderSchedule(); }
+      if(!memberData || !memberData.firstName){
+        gateOverlay.style.display = 'none';
+        appRoot.style.display = 'none';
+        renderProfileCompletion();
+        return;
+      }
+      await enterMainApp(user);
     }else{
+      profileOverlay.style.display = 'none';
       gateOverlay.style.display = 'flex';
       appRoot.style.display = 'none';
       renderSignIn('');
@@ -719,7 +932,11 @@
 
   const accountOverlay = document.getElementById('accountOverlay');
   document.getElementById('accountLink').addEventListener('click', () => {
+    const own = auth.currentUser ? members.find(m => m.id === auth.currentUser.uid) : null;
     document.getElementById('accName').value = auth.currentUser ? (auth.currentUser.displayName || '') : '';
+    document.getElementById('accFirstName').value = (own && own.firstName) || '';
+    document.getElementById('accLastName').value = (own && own.lastName) || '';
+    document.getElementById('accPhone').value = (own && own.phone) || '';
     document.getElementById('accNameError').textContent = '';
     document.getElementById('accNameSuccess').textContent = '';
     document.getElementById('accCurrentPass').value = '';
@@ -775,14 +992,24 @@
   });
   document.getElementById('accNameSubmit').addEventListener('click', async () => {
     const newName = document.getElementById('accName').value.trim();
+    const firstName = document.getElementById('accFirstName').value.trim();
+    const lastName = document.getElementById('accLastName').value.trim();
+    const phone = document.getElementById('accPhone').value.trim();
     const errEl = document.getElementById('accNameError');
     const okEl = document.getElementById('accNameSuccess');
     errEl.textContent = ''; okEl.textContent = '';
     if(!newName){ errEl.textContent = 'Enter a name.'; return; }
+    if(!firstName){ errEl.textContent = 'Enter your first name.'; return; }
+    if(!lastName){ errEl.textContent = 'Enter your last name.'; return; }
+    const taken = await nameIsTaken(newName, auth.currentUser.uid);
+    if(taken){ errEl.textContent = `Someone else is already using "${newName}" — try adding an initial.`; return; }
     try{
       await auth.currentUser.updateProfile({ displayName: newName });
+      await db.collection('members').doc(auth.currentUser.uid).set({
+        name: newName, firstName, lastName, phone, email: auth.currentUser.email || ''
+      }, { merge: true });
       whoamiName.textContent = newName;
-      okEl.textContent = 'Name updated.';
+      okEl.textContent = 'Saved.';
     }catch(e){
       errEl.textContent = friendlyAuthError(e);
     }
@@ -861,33 +1088,68 @@
     return result;
   }
 
+  async function lookupBookItunes(titleVal, authorVal){
+    let term = titleVal.trim();
+    if(authorVal && authorVal.trim()) term += ' ' + authorVal.trim();
+    const res = await fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(term) + '&entity=ebook&limit=1');
+    if(!res.ok) throw new Error('itunes search failed');
+    const data = await res.json();
+    const item = data.results && data.results[0];
+    if(!item) return null;
+    let cover = item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : null;
+    let description = item.description || item.shortDescription || '';
+    if(description){
+      description = description.replace(/<[^>]+>/g, '');
+      if(description.length > 500) description = description.slice(0, 497) + '…';
+    }
+    return {
+      title: item.trackName || titleVal,
+      author: item.artistName || authorVal || '',
+      coverUrl: cover,
+      description
+    };
+  }
+
   async function lookupBook(titleVal, authorVal){
     if(!titleVal || !titleVal.trim()) return null;
+    const result = { title: titleVal.trim(), author: (authorVal || '').trim(), coverUrl: null, description: '' };
+    let foundAny = false;
+
     try{
-      const googleResult = await lookupBookGoogle(titleVal, authorVal);
-      if(googleResult){
-        // Google Books usually has richer descriptions; fall back to Open Library
-        // only to fill in a missing cover or description, not to replace Google's.
-        if(!googleResult.coverUrl || !googleResult.description){
-          try{
-            const olResult = await lookupBookOpenLibrary(titleVal, authorVal);
-            if(olResult){
-              if(!googleResult.coverUrl) googleResult.coverUrl = olResult.coverUrl;
-              if(!googleResult.description) googleResult.description = olResult.description;
-            }
-          }catch(e){}
-        }
-        return googleResult;
+      const g = await lookupBookGoogle(titleVal, authorVal);
+      if(g){
+        foundAny = true;
+        if(g.title) result.title = g.title;
+        if(!result.author && g.author) result.author = g.author;
+        if(g.coverUrl) result.coverUrl = g.coverUrl;
+        if(g.description) result.description = g.description;
       }
-    }catch(e){
-      console.error('Google Books lookup failed:', e);
+    }catch(e){ console.error('Google Books lookup failed:', e); }
+
+    if(!result.description || !result.coverUrl){
+      try{
+        const it = await lookupBookItunes(titleVal, authorVal);
+        if(it){
+          foundAny = true;
+          if(!result.coverUrl && it.coverUrl) result.coverUrl = it.coverUrl;
+          if(!result.description && it.description) result.description = it.description;
+          if(!result.author && it.author) result.author = it.author;
+        }
+      }catch(e){ console.error('iTunes lookup failed:', e); }
     }
-    try{
-      return await lookupBookOpenLibrary(titleVal, authorVal);
-    }catch(e){
-      console.error('Book lookup failed:', e);
-      return null;
+
+    if(!result.description || !result.coverUrl){
+      try{
+        const ol = await lookupBookOpenLibrary(titleVal, authorVal);
+        if(ol){
+          foundAny = true;
+          if(!result.coverUrl && ol.coverUrl) result.coverUrl = ol.coverUrl;
+          if(!result.description && ol.description) result.description = ol.description;
+        }
+      }catch(e){ console.error('Open Library lookup failed:', e); }
     }
+
+    return foundAny ? result : null;
   }
 
   function wireLookup(btnId, titleId, authorId, previewId, descId, coverSetter){
@@ -909,15 +1171,19 @@
       }
       if(result.title) titleEl.value = result.title;
       if(!authorEl.value.trim() && result.author) authorEl.value = result.author;
+      let descFilled = false;
       if(descId){
         const descEl = document.getElementById(descId);
-        if(descEl && !descEl.value.trim() && result.description) descEl.value = result.description;
+        if(descEl && !descEl.value.trim() && result.description){
+          descEl.value = result.description;
+          descFilled = true;
+        }
       }
       coverSetter(result.coverUrl);
       preview.style.display = 'flex';
-      preview.innerHTML = result.coverUrl
-        ? `<img src="${result.coverUrl}" alt=""><span>Found it — title and cover updated.</span>`
-        : `<span>Found the book, but no cover image was available.</span>`;
+      const coverMsg = result.coverUrl ? 'Cover updated.' : 'No cover image was available.';
+      const descMsg = descId ? (descFilled ? ' Description filled in.' : ' No description was available from either source — feel free to type your own.') : '';
+      preview.innerHTML = (result.coverUrl ? `<img src="${result.coverUrl}" alt="">` : '') + `<span>${coverMsg}${descMsg}</span>`;
     });
   }
   wireLookup('schLookup','schTitle','schAuthor','schCoverPreview','schDesc', (url) => { schCover = url; });
@@ -929,6 +1195,7 @@
     const current = schedule.find(s => s.current);
     if(!current){
       nowReadingEl.innerHTML = `<div><div class="eyebrow">Now reading</div><p class="empty" style="margin-top:8px;">Nothing's been picked yet. Add a book below and mark it current.</p></div>`;
+      document.getElementById('ratingBadge').innerHTML = '';
       return;
     }
     const snippet = truncate(current.description, 160);
@@ -941,6 +1208,27 @@
         <h2 class="book-open" data-kind="schedule" data-id="${current.id}" style="cursor:pointer;">${escapeHtml(current.title)}</h2>
         <div class="byline">${escapeHtml(current.author)}</div>
         ${current.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
+        <button class="link-btn share-current" style="margin-top:10px;">Share this pick</button>
+      </div>`;
+
+    renderRatingBadge();
+  }
+
+  function renderRatingBadge(){
+    const badgeEl = document.getElementById('ratingBadge');
+    const eligible = schedule
+      .filter(isEligibleForRating)
+      .sort((a, b) => (parseEntryDate(b.month) || 0) - (parseEntryDate(a.month) || 0));
+    const mostRecent = eligible[0];
+    if(!mostRecent){
+      badgeEl.innerHTML = '';
+      return;
+    }
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    badgeEl.innerHTML = `
+      <div class="rating-badge">
+        <span class="badge-text">Open for rating: <strong class="book-open" data-kind="schedule" data-id="${mostRecent.id}" style="cursor:pointer;">${escapeHtml(mostRecent.title)}</strong></span>
+        ${renderStarRating(mostRecent, uid)}
       </div>`;
   }
 
@@ -953,6 +1241,7 @@
       renderNowReading();
       return;
     }
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
     scheduleListEl.innerHTML = schedule.map(entry => {
       const snippet = truncate(entry.description, 120);
       const moreLink = entry.description && entry.description.length > 120
@@ -965,6 +1254,7 @@
           <h3 class="book-open" data-kind="schedule" data-id="${entry.id}" style="cursor:pointer;">${escapeHtml(entry.title)}</h3>
           <div class="byline">${escapeHtml(entry.author)}</div>
           ${entry.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
+          ${isEligibleForRating(entry) ? renderStarRating(entry, uid) : ''}
           ${isAdmin ? `
           <div class="log-actions">
             <button class="link-btn set-current ${entry.current ? 'current' : ''}" data-id="${entry.id}">${entry.current ? "This is what we're reading" : 'Mark as current'}</button>
@@ -987,6 +1277,7 @@
     recListEl.innerHTML = sorted.map(rec => {
       const voted = uid && rec.votes.includes(uid);
       const voterNames = Object.values(rec.votesDetail || {});
+      const canRemove = isAdmin || (uid && rec.submittedByUid === uid);
       return `
       <div class="rec" data-id="${rec.id}">
         <div class="rec-vote">
@@ -1000,12 +1291,14 @@
           <h3 class="book-open" data-kind="rec" data-id="${rec.id}" style="cursor:pointer;">${escapeHtml(rec.title)}</h3>
           <div class="byline">${escapeHtml(rec.author)}</div>
           ${rec.note ? `<p class="note">${escapeHtml(rec.note)}</p>` : ''}
-          <div class="meta">Suggested by ${escapeHtml(rec.submittedBy || 'someone')}<button class="link-btn remove-rec" data-id="${rec.id}">Remove</button></div>
+          <div class="meta">Suggested by ${escapeHtml(rec.submittedBy || 'someone')}${canRemove ? `<button class="link-btn remove-rec" data-id="${rec.id}">Remove</button>` : ''}</div>
           ${voterNames.length ? `<div class="meta">Voted by ${escapeHtml(voterNames.join(', '))}</div>` : ''}
         </div>
       </div>`;
     }).join('');
   }
+
+  let showFullMemberInfo = false;
 
   function renderMembers(){
     if(members.length === 0){
@@ -1016,16 +1309,20 @@
       const badge = m.id === ownerId
         ? '<span class="owner-tag">Owner</span>'
         : (adminIds.includes(m.id) ? '<span class="owner-tag">Admin</span>' : '');
+      const fullName = [m.firstName, m.lastName].filter(Boolean).join(' ') || m.name;
+      const displayLine = showFullMemberInfo ? fullName : m.name;
+      const showsGoesBy = showFullMemberInfo && fullName !== m.name;
       return `
       <div class="member-row" data-id="${m.id}">
         <div>
-          <h3>${escapeHtml(m.name)}${badge}</h3>
+          <h3>${escapeHtml(displayLine)}${badge}</h3>
+          ${showsGoesBy ? `<div class="contact" style="margin-top:2px;"><span>Goes by: ${escapeHtml(m.name)}</span></div>` : ''}
           <div class="contact">
-            ${m.email ? `<span>${escapeHtml(m.email)}</span>` : ''}
-            ${m.phone ? `<span>${escapeHtml(m.phone)}</span>` : ''}
+            ${(showFullMemberInfo && m.email) ? `<span>${escapeHtml(m.email)}</span>` : ''}
+            ${(showFullMemberInfo && m.phone) ? `<span>${escapeHtml(m.phone)}</span>` : ''}
           </div>
         </div>
-        <button class="link-btn remove-member" data-id="${m.id}">Remove</button>
+        ${isAdmin ? `<button class="link-btn remove-member" data-id="${m.id}">Remove</button>` : ''}
       </div>`;
     }).join('');
   }
@@ -1084,6 +1381,18 @@
     catch(e){ showToast("Couldn't remove — try again."); }
   }
 
+  async function setRating(id, value){
+    if(!auth.currentUser) return;
+    const uid = auth.currentUser.uid;
+    const entry = schedule.find(s => s.id === id);
+    if(!entry) return;
+    const current = (entry.ratings || {})[uid] || 0;
+    const newValue = current === value ? firebase.firestore.FieldValue.delete() : value; // click same star again to clear
+    try{
+      await db.collection('schedule').doc(id).update({ [`ratings.${uid}`]: newValue });
+    }catch(e){ showToast("Couldn't save your rating — try again."); }
+  }
+
   const editScheduleOverlay = document.getElementById('editScheduleOverlay');
   function openEditSchedule(id){
     const entry = schedule.find(s => s.id === id);
@@ -1126,10 +1435,19 @@
     const author = document.getElementById('recAuthor').value.trim();
     const note = document.getElementById('recNote').value.trim();
     if(!title){ showToast('Add a book title first.'); return; }
+    document.getElementById('recDupNotice').style.display = 'none';
+    const existing = recommendations.find(r => r.title.trim().toLowerCase() === title.toLowerCase());
+    if(existing){
+      document.getElementById('recDupText').textContent = `"${existing.title}" is already suggested.`;
+      document.getElementById('recVoteExisting').dataset.id = existing.id;
+      document.getElementById('recDupNotice').style.display = 'block';
+      return;
+    }
     const name = auth.currentUser ? (auth.currentUser.displayName || 'someone') : 'someone';
+    const submitterUid = auth.currentUser ? auth.currentUser.uid : null;
     try{
       await db.collection('recommendations').add({
-        title, author, note, submittedBy: name, votes: [], votesDetail: {}, coverUrl: recCover,
+        title, author, note, submittedBy: name, submittedByUid: submitterUid, votes: [], votesDetail: {}, coverUrl: recCover,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }catch(e){ showToast("Couldn't save — try again."); return; }
@@ -1174,6 +1492,14 @@
     populateMonthYearSelects('schMonthSelect', 'schYearSelect');
     document.getElementById('schSubmit').addEventListener('click', addScheduleEntry);
     document.getElementById('recSubmit').addEventListener('click', addRecommendation);
+    document.getElementById('recVoteExisting').addEventListener('click', () => {
+      const id = document.getElementById('recVoteExisting').dataset.id;
+      if(id) toggleVote(id);
+      document.getElementById('recDupNotice').style.display = 'none';
+      document.getElementById('recTitle').value = '';
+      document.getElementById('recAuthor').value = '';
+      document.getElementById('recNote').value = '';
+    });
 
     scheduleListEl.addEventListener('click', (e) => {
       const cur = e.target.closest('.set-current');
@@ -1194,6 +1520,45 @@
     memberListEl.addEventListener('click', (e) => {
       const rem = e.target.closest('.remove-member');
       if(rem) removeMember(rem.dataset.id);
+    });
+
+    document.getElementById('memberDetailToggle').addEventListener('click', () => {
+      showFullMemberInfo = !showFullMemberInfo;
+      document.getElementById('memberDetailToggle').textContent = showFullMemberInfo ? 'Hide full details' : 'Show full details';
+      renderMembers();
+    });
+
+    document.getElementById('emailEveryoneLink').addEventListener('click', () => {
+      const emails = members.map(m => m.email).filter(Boolean);
+      if(emails.length === 0){ showToast('No member emails on file yet.'); return; }
+      const bcc = encodeURIComponent(emails.join(','));
+      window.location.href = `mailto:?bcc=${bcc}&subject=${encodeURIComponent('Riptide Readers')}`;
+    });
+
+    document.getElementById('textEveryoneLink').addEventListener('click', () => {
+      const numbers = members.map(m => (m.phone || '').replace(/[^\d+]/g, '')).filter(Boolean);
+      if(numbers.length === 0){ showToast('No cell numbers on file yet.'); return; }
+      const current = schedule.find(s => s.current);
+      const body = current
+        ? `Riptide Readers: we're reading "${current.title}" by ${current.author} this month!`
+        : `Riptide Readers update:`;
+      window.location.href = `sms:${numbers.join(',')}?&body=${encodeURIComponent(body)}`;
+    });
+
+    nowReadingEl.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.share-current');
+      if(!btn) return;
+      const current = schedule.find(s => s.current);
+      if(!current) return;
+      const text = `We're reading "${current.title}" by ${current.author} this month for Riptide Readers 📖`;
+      if(navigator.share){
+        try{ await navigator.share({ text, url: window.location.href }); }catch(e){ /* user cancelled, ignore */ }
+      }else{
+        try{
+          await navigator.clipboard.writeText(text + ' ' + window.location.href);
+          showToast('Copied — paste it anywhere you like.');
+        }catch(e){ showToast("Couldn't copy — try again."); }
+      }
     });
 
     document.getElementById('copyLink').addEventListener('click', () => {
@@ -1242,6 +1607,8 @@
             const existing = staleDocs[0];
             await db.collection('members').doc(uid).set({
               name: auth.currentUser.displayName || (existing && existing.name) || '',
+              firstName: (existing && existing.firstName) || auth.currentUser.displayName || '',
+              lastName: (existing && existing.lastName) || '',
               email,
               phone: (existing && existing.phone) || '',
               createdAt: (existing && existing.createdAt) || firebase.firestore.FieldValue.serverTimestamp()
@@ -1263,6 +1630,8 @@
       isAdmin = isOwner || adminIds.includes(auth.currentUser.uid);
       ownerTag.style.display = isOwner ? 'inline' : 'none';
       adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
+      document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('textEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       checkOwnerValidity();
       renderSchedule();
       renderMembers();
