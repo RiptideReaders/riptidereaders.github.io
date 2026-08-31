@@ -1040,6 +1040,23 @@
   });
 
   // ================= BOOK LOOKUP =================
+  function cleanDescription(text){
+    if(!text) return text;
+    let t = text.trim();
+    // Strip a leading all-caps badge line, e.g. "#1 NEW YORK TIMES BESTSELLER • NOW A MAJOR MOTION PICTURE"
+    t = t.replace(/^[#\d][#\dA-Z\s•\-,]{8,}(?=[A-Z][a-z])/, '').trim();
+    // Repeatedly strip leading quoted press blurbs like “...”—Source or "..."—Source
+    const quoteBlurb = /^[“"][^”"]{2,300}[”"]\s*[—\-–]\s*[^.]{1,60}?(?=[A-Z][a-z])/;
+    let prev;
+    let guard = 0;
+    do {
+      prev = t;
+      t = t.replace(quoteBlurb, '').trim();
+      guard++;
+    } while(t !== prev && t.length > 0 && guard < 8);
+    return t || text; // never return empty — fall back to the original if we stripped it all
+  }
+
   async function lookupBookGoogle(titleVal, authorVal){
     let q = 'intitle:' + encodeURIComponent(titleVal.trim());
     if(authorVal && authorVal.trim()) q += '+inauthor:' + encodeURIComponent(authorVal.trim());
@@ -1054,7 +1071,8 @@
     let description = info.description || '';
     if(description){
       description = description.replace(/<[^>]+>/g, ''); // strip any HTML tags
-      if(description.length > 500) description = description.slice(0, 497) + '…';
+      description = cleanDescription(description);
+      if(description.length > 650) description = description.slice(0, 647) + '…';
     }
     return {
       title: info.title || titleVal,
@@ -1085,7 +1103,7 @@
           const workData = await workRes.json();
           let desc = workData.description;
           if(desc && typeof desc === 'object') desc = desc.value;
-          if(typeof desc === 'string') result.description = desc.split('\n')[0].slice(0, 500);
+          if(typeof desc === 'string') result.description = cleanDescription(desc.split('\n')[0]).slice(0, 650);
         }
       }catch(e){}
     }
@@ -1104,7 +1122,8 @@
     let description = item.description || item.shortDescription || '';
     if(description){
       description = description.replace(/<[^>]+>/g, '');
-      if(description.length > 500) description = description.slice(0, 497) + '…';
+      description = cleanDescription(description);
+      if(description.length > 650) description = description.slice(0, 647) + '…';
     }
     return {
       title: item.trackName || titleVal,
