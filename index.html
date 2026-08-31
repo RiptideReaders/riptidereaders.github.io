@@ -282,8 +282,8 @@
   <div class="topbar-inner">
     <div class="brand">
       <svg class="brand-mark" width="26" height="22" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M17 20 C 21 17, 23 12, 26 8 C 29 4, 32 2, 36 2 C 38 2, 39.5 3.5, 39.5 5.5 C 39.5 7.5, 38 9, 36 9 L 30 12 L 22 24 C 15 26, 9 25, 3 22 C 9 20, 13 20, 17 20 Z" fill="#FF7A45"/>
-        <circle cx="41" cy="14" r="5" fill="#FF7A45"/>
+        <path d="M14 20 L26 6 L38 2" stroke="#FF7A45" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="41" cy="9" r="4.5" fill="#FF7A45"/>
         <path d="M6 17 C 12 13, 18 13, 22 17 C 26 21, 32 21, 38 17 C 42 14, 46 14, 50 17" stroke="#F1E6C8" stroke-opacity="0.55" stroke-width="1.6" stroke-linecap="round" fill="none"/>
         <path d="M8 26 C 14 23, 18 23, 22 26 L 22 38 C 18 35, 14 35, 8 38 Z" stroke="#F1E6C8" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
         <path d="M36 26 C 30 23, 26 23, 22 26 L 22 38 C 26 35, 30 35, 36 38 Z" stroke="#F1E6C8" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
@@ -309,12 +309,8 @@
   <section class="hero" style="border:none; padding-bottom:0;">
     <div class="hero-mark">
       <svg width="84" height="70" viewBox="0 0 84 70" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="14.5" cy="14.5" r="4.8" stroke="#FF7A45" stroke-width="2.5"/>
-        <path d="M19 13 L30.5 1.5 L47 8" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <path d="M19 18 C 32 24, 48 24, 61 18" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-        <path d="M21 19 L35 16" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" fill="none"/>
-        <path d="M61 19 C 69 14, 76 22, 80 17.5" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-        <path d="M43.5 5 C 46.5 1.5, 50 1.5, 53 5" stroke="#FF7A45" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+        <path d="M27 32 C 34 27, 37 19, 42 13 C 47 7, 51 3, 58 3 C 61.5 3, 64 5.5, 64 9 C 64 12.5, 61.5 15, 58 15 L 48 19 L 35 39 C 24 42, 14 40, 4 35 C 14 32, 21 32, 27 32 Z" fill="#FF7A45"/>
+        <circle cx="66" cy="22.5" r="8" fill="#FF7A45"/>
         <path d="M10 27 C 19 21, 29 21, 36 27 C 43 33, 53 33, 62 27 C 68 23, 76 23, 82 27" stroke="#F1E6C8" stroke-opacity="0.55" stroke-width="2" stroke-linecap="round" fill="none"/>
         <path d="M14 42 C 23 37, 30 37, 36 42 L 36 63 C 30 58, 23 58, 14 63 Z" stroke="#F1E6C8" stroke-width="2" fill="none" stroke-linejoin="round"/>
         <path d="M58 42 C 49 37, 42 37, 36 42 L 36 63 C 42 58, 49 58, 58 63 Z" stroke="#F1E6C8" stroke-width="2" fill="none" stroke-linejoin="round"/>
@@ -423,7 +419,10 @@
           <input id="memPhone" type="tel" placeholder="Cell number">
         </div>
       </div>
-      <button class="submit-btn" id="memSubmit">Add member</button>
+      <div style="display:flex; gap:16px; align-items:center; margin-top:14px;">
+        <button class="submit-btn" id="memSubmit">Add member</button>
+        <button class="link-btn" id="memFillMe" type="button">Fill in my info</button>
+      </div>
     </div>
   </section>
 
@@ -926,6 +925,11 @@
     document.getElementById('schSubmit').addEventListener('click', addScheduleEntry);
     document.getElementById('recSubmit').addEventListener('click', addRecommendation);
     document.getElementById('memSubmit').addEventListener('click', addMember);
+    document.getElementById('memFillMe').addEventListener('click', () => {
+      if(!auth.currentUser) return;
+      document.getElementById('memName').value = auth.currentUser.displayName || '';
+      document.getElementById('memEmail').value = auth.currentUser.email || '';
+    });
 
     scheduleListEl.addEventListener('click', (e) => {
       const cur = e.target.closest('.set-current');
