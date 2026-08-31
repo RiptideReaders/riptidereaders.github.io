@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Riptide Readers</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -206,6 +208,13 @@
   .member-row .contact{ color:var(--sand-dim); font-size:0.9rem; margin-top:4px; }
   .member-row .contact span{ margin-right:16px; }
 
+  .admin-row{
+    display:flex; justify-content:space-between; align-items:center; gap:14px;
+    padding:12px 0; border-bottom:1px solid var(--line-strong); font-size:0.92rem;
+  }
+  .admin-row:last-of-type{ border-bottom:none; }
+  .admin-row .owner-note{ color:var(--sand-dim); font-size:0.8rem; }
+
   .join-box{
     padding:20px 24px; background:var(--panel); border-radius:4px;
     display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:space-between;
@@ -276,14 +285,25 @@
   </div>
 </div>
 
+<div class="overlay" id="adminOverlay" style="display:none; background:rgba(11,32,39,0.88);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong);">
+    <button class="text-btn" id="adminClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
+    <h1 style="font-size:1.4rem;">Manage admins</h1>
+    <p>Admins can add books to the schedule, mark one as current, and remove entries. Everyone else can view the schedule and still suggest &amp; vote.</p>
+    <div id="adminMemberList" style="margin-top:20px;"></div>
+  </div>
+</div>
+
 <div id="appRoot" style="display:none;">
 
 <div class="topbar">
   <div class="topbar-inner">
     <div class="brand">
       <svg class="brand-mark" width="26" height="22" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="26" cy="15" r="6" fill="#FF7A45"/>
-        <path d="M14 21 L26 5 L38 21" stroke="#FF7A45" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="26" cy="5" r="3.3" fill="#FF7A45"/>
+        <path d="M21 9 L31 9 L33 15 L19 15 Z" fill="#FF7A45"/>
+        <path d="M21 10 L9 4" stroke="#FF7A45" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+        <path d="M31 10 L43 4" stroke="#FF7A45" stroke-width="2.4" stroke-linecap="round" fill="none"/>
         <path d="M6 17 C 12 13, 18 13, 22 17 C 26 21, 32 21, 38 17 C 42 14, 46 14, 50 17" stroke="#F1E6C8" stroke-opacity="0.55" stroke-width="1.6" stroke-linecap="round" fill="none"/>
         <path d="M8 26 C 14 23, 18 23, 22 26 L 22 38 C 18 35, 14 35, 8 38 Z" stroke="#F1E6C8" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
         <path d="M36 26 C 30 23, 26 23, 22 26 L 22 38 C 26 35, 30 35, 36 38 Z" stroke="#F1E6C8" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
@@ -299,6 +319,7 @@
     <div class="whoami">
       Signed in as <strong id="whoamiName"></strong><span id="ownerTag" class="owner-tag" style="display:none;">Owner</span> &middot;
       <button class="text-btn" id="accountLink">Account</button> &middot;
+      <button class="text-btn" id="adminLink" style="display:none;">Manage admins</button> &middot;
       <button class="text-btn" id="logoutLink">Log out</button>
     </div>
   </div>
@@ -309,8 +330,10 @@
   <section class="hero" style="border:none; padding-bottom:0;">
     <div class="hero-mark">
       <svg width="84" height="70" viewBox="0 0 84 70" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="42" cy="22" r="10" fill="#FF7A45"/>
-        <path d="M20 34 L42 4 L64 34" stroke="#FF7A45" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="42" cy="7" r="5.5" fill="#FF7A45"/>
+        <path d="M34 14 L50 14 L54 24 L30 24 Z" fill="#FF7A45"/>
+        <path d="M34 16 L10 5" stroke="#FF7A45" stroke-width="4" stroke-linecap="round" fill="none"/>
+        <path d="M50 16 L74 5" stroke="#FF7A45" stroke-width="4" stroke-linecap="round" fill="none"/>
         <path d="M10 27 C 19 21, 29 21, 36 27 C 43 33, 53 33, 62 27 C 68 23, 76 23, 82 27" stroke="#F1E6C8" stroke-opacity="0.55" stroke-width="2" stroke-linecap="round" fill="none"/>
         <path d="M14 42 C 23 37, 30 37, 36 42 L 36 63 C 30 58, 23 58, 14 63 Z" stroke="#F1E6C8" stroke-width="2" fill="none" stroke-linejoin="round"/>
         <path d="M58 42 C 49 37, 42 37, 36 42 L 36 63 C 42 58, 49 58, 58 63 Z" stroke="#F1E6C8" stroke-width="2" fill="none" stroke-linejoin="round"/>
@@ -332,7 +355,7 @@
       <p>What we've read and what's coming up. Mark a title as current once your group settles on it.</p>
     </div>
     <div id="scheduleList"></div>
-    <div class="form-panel">
+    <div class="form-panel" id="scheduleAddPanel" style="display:none;">
       <h3>Add to the schedule</h3>
       <div class="field-row">
         <div class="field" style="flex:0 0 200px;">
@@ -446,6 +469,7 @@
   const toastEl = document.getElementById('toast');
   const whoamiName = document.getElementById('whoamiName');
   const ownerTag = document.getElementById('ownerTag');
+  const adminLink = document.getElementById('adminLink');
 
   const nowReadingEl = document.getElementById('nowReading');
   const scheduleListEl = document.getElementById('scheduleList');
@@ -458,6 +482,9 @@
   let schCover = null;
   let recCover = null;
   let ownerId = null;
+  let adminIds = [];
+  let isOwner = false;
+  let isAdmin = false;
   let appInited = false;
 
   function showToast(msg){
@@ -572,10 +599,16 @@
       whoamiName.textContent = user.displayName || 'you';
       try{
         const configDoc = await db.collection('meta').doc('config').get();
-        ownerId = configDoc.exists ? configDoc.data().ownerId : null;
-        ownerTag.style.display = (ownerId === user.uid) ? 'inline' : 'none';
+        const configData = configDoc.exists ? configDoc.data() : {};
+        ownerId = configData.ownerId || null;
+        adminIds = configData.adminIds || [];
+        isOwner = ownerId === user.uid;
+        isAdmin = isOwner || adminIds.includes(user.uid);
+        ownerTag.style.display = isOwner ? 'inline' : 'none';
+        adminLink.style.display = isOwner ? 'inline' : 'none';
       }catch(e){ /* non-fatal */ }
       if(!appInited){ appInited = true; initApp(); }
+      else { renderSchedule(); }
     }else{
       gateOverlay.style.display = 'flex';
       appRoot.style.display = 'none';
@@ -598,6 +631,49 @@
     accountOverlay.style.display = 'flex';
   });
   document.getElementById('accountClose').addEventListener('click', () => { accountOverlay.style.display = 'none'; });
+
+  const adminOverlay = document.getElementById('adminOverlay');
+  function renderAdminList(){
+    const listEl = document.getElementById('adminMemberList');
+    if(members.length === 0){
+      listEl.innerHTML = `<p class="empty-state">No members yet.</p>`;
+      return;
+    }
+    listEl.innerHTML = members.map(m => {
+      const isOwnerRow = m.id === ownerId;
+      const checked = isOwnerRow || adminIds.includes(m.id);
+      return `
+      <div class="admin-row" data-id="${m.id}">
+        <span>${escapeHtml(m.name)}${isOwnerRow ? ' <span class="owner-note">(owner)</span>' : ''}</span>
+        <label style="display:flex; align-items:center; gap:8px; cursor:${isOwnerRow ? 'default' : 'pointer'};">
+          <span style="font-size:0.82rem; color:var(--sand-dim);">Admin</span>
+          <input type="checkbox" class="admin-toggle" data-id="${m.id}" ${checked ? 'checked' : ''} ${isOwnerRow ? 'disabled' : ''}>
+        </label>
+      </div>`;
+    }).join('');
+  }
+  adminLink.addEventListener('click', () => {
+    renderAdminList();
+    adminOverlay.style.display = 'flex';
+  });
+  document.getElementById('adminClose').addEventListener('click', () => { adminOverlay.style.display = 'none'; });
+  document.getElementById('adminMemberList').addEventListener('change', async (e) => {
+    const box = e.target.closest('.admin-toggle');
+    if(!box) return;
+    const uid = box.dataset.id;
+    try{
+      await db.collection('meta').doc('config').update({
+        adminIds: box.checked
+          ? firebase.firestore.FieldValue.arrayUnion(uid)
+          : firebase.firestore.FieldValue.arrayRemove(uid)
+      });
+      adminIds = box.checked ? [...adminIds, uid] : adminIds.filter(id => id !== uid);
+      showToast(box.checked ? 'Admin access granted.' : 'Admin access removed.');
+    }catch(e){
+      box.checked = !box.checked;
+      showToast("Couldn't update — try again.");
+    }
+  });
   document.getElementById('accNameSubmit').addEventListener('click', async () => {
     const newName = document.getElementById('accName').value.trim();
     const errEl = document.getElementById('accNameError');
@@ -717,8 +793,11 @@
   }
 
   function renderSchedule(){
+    document.getElementById('scheduleAddPanel').style.display = isAdmin ? 'block' : 'none';
     if(schedule.length === 0){
-      scheduleListEl.innerHTML = `<p class="empty-state">The log is empty. Add your first pick below.</p>`;
+      scheduleListEl.innerHTML = isAdmin
+        ? `<p class="empty-state">The log is empty. Add your first pick below.</p>`
+        : `<p class="empty-state">Nothing's on the schedule yet.</p>`;
       renderNowReading();
       return;
     }
@@ -730,10 +809,11 @@
           <h3>${escapeHtml(entry.title)}</h3>
           <div class="byline">${escapeHtml(entry.author)}</div>
           ${entry.description ? `<p class="desc">${escapeHtml(entry.description)}</p>` : ''}
+          ${isAdmin ? `
           <div class="log-actions">
             <button class="link-btn set-current ${entry.current ? 'current' : ''}" data-id="${entry.id}">${entry.current ? "This is what we're reading" : 'Mark as current'}</button>
             <button class="link-btn remove-schedule" data-id="${entry.id}">Remove</button>
-          </div>
+          </div>` : ''}
         </div>
       </div>`).join('');
     renderNowReading();
@@ -943,6 +1023,18 @@
       members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderMembers();
     }, () => showToast("Couldn't load members."));
+
+    db.collection('meta').doc('config').onSnapshot(snap => {
+      if(!snap.exists || !auth.currentUser) return;
+      const data = snap.data();
+      ownerId = data.ownerId || null;
+      adminIds = data.adminIds || [];
+      isOwner = ownerId === auth.currentUser.uid;
+      isAdmin = isOwner || adminIds.includes(auth.currentUser.uid);
+      ownerTag.style.display = isOwner ? 'inline' : 'none';
+      adminLink.style.display = isOwner ? 'inline' : 'none';
+      renderSchedule();
+    });
   }
 })();
 </script>
