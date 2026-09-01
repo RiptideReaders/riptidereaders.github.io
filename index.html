@@ -1357,8 +1357,8 @@
     }
     const uid = auth.currentUser ? auth.currentUser.uid : null;
     scheduleListEl.innerHTML = schedule.map(entry => {
-      const snippet = truncate(entry.description, 120);
-      const moreLink = entry.description && entry.description.length > 120
+      const snippet = truncate(entry.description, 90);
+      const moreLink = entry.description && entry.description.length > 90
         ? ` <button class="link-btn book-open" data-kind="schedule" data-id="${entry.id}" style="font-size:0.85rem;">Read more</button>` : '';
       return `
       <div class="log-entry" data-id="${entry.id}">
@@ -1392,8 +1392,8 @@
       const voted = uid && rec.votes.includes(uid);
       const voterNames = Object.values(rec.votesDetail || {});
       const canRemove = isAdmin || (uid && rec.submittedByUid === uid);
-      const snippet = truncate(rec.description, 120);
-      const moreLink = rec.description && rec.description.length > 120
+      const snippet = truncate(rec.description, 80);
+      const moreLink = rec.description && rec.description.length > 80
         ? ` <button class="link-btn book-open" data-kind="rec" data-id="${rec.id}" style="font-size:0.85rem;">Read more</button>` : '';
       return `
       <div class="rec" data-id="${rec.id}">
