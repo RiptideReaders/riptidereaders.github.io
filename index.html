@@ -587,6 +587,7 @@
       </div>
       <div style="display:flex; gap:16px; flex-wrap:wrap;">
         <button class="link-btn" id="emailEveryoneLink" style="white-space:nowrap; display:none;">Email everyone</button>
+        <button class="link-btn" id="textEveryoneLink" style="white-space:nowrap; display:none;">Text everyone</button>
         <button class="link-btn" id="memberDetailToggle" style="white-space:nowrap;">Show full details</button>
       </div>
     </div>
@@ -947,6 +948,7 @@
       document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('join').style.display = isAdmin ? 'block' : 'none';
       document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('textEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       checkOwnerValidity();
     }catch(e){ /* non-fatal */ }
     if(!appInited){ appInited = true; initApp(); }
@@ -1810,6 +1812,7 @@
       document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('join').style.display = isAdmin ? 'block' : 'none';
       document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('textEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       checkOwnerValidity();
       renderSchedule();
       renderMembers();
