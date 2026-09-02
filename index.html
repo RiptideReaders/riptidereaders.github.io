@@ -448,6 +448,7 @@
     <nav class="topnav">
       <a href="#schedule">Schedule</a>
       <a href="#suggest">Suggest &amp; vote</a>
+      <a href="#history">History</a>
       <a href="#members">Members</a>
       <a href="#join" id="joinNavLink" style="display:none;">Join</a>
     </nav>
@@ -489,7 +490,6 @@
     </div>
     <div class="now-reading" id="nowReading"></div>
     <div id="ratingBadge"></div>
-    <div id="readStatusWidget"></div>
   </section>
 
   <section id="schedule">
@@ -566,6 +566,17 @@
       </div>
       <button class="submit-btn" id="recSubmit" style="margin-top:14px;">Suggest this book</button>
     </div>
+  </section>
+
+  <section id="history">
+    <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;">
+      <div>
+        <h2>History</h2>
+        <p>Every book once the month's over — ratings and who finished it live here, and you can update your own status or rating any time.</p>
+      </div>
+      <button class="link-btn" id="remindRatingLink" style="white-space:nowrap; display:none;">Remind everyone to rate</button>
+    </div>
+    <div id="historyList"></div>
   </section>
 
   <section id="members">
@@ -935,6 +946,7 @@
       document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('join').style.display = isAdmin ? 'block' : 'none';
+      document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
       checkOwnerValidity();
     }catch(e){ /* non-fatal */ }
     if(!appInited){ appInited = true; initApp(); }
@@ -1298,31 +1310,28 @@
       </div>`;
 
     renderRatingBadge();
-    renderReadStatus(current);
   }
 
-  function renderReadStatus(current){
-    const widgetEl = document.getElementById('readStatusWidget');
-    if(!current){ widgetEl.innerHTML = ''; return; }
-    const uid = auth.currentUser ? auth.currentUser.uid : null;
-    const statuses = current.readStatus || {};
+  function renderReadStatusHtml(entry, uid){
+    const statuses = entry.readStatus || {};
     const myStatus = uid ? statuses[uid] : null;
-    const labels = { 'not-started': "Haven't started", 'reading': 'Reading it', 'finished': 'Finished' };
-    const groups = { 'not-started': [], 'reading': [], 'finished': [] };
+    const labels = { 'not-started': "Haven't started", 'reading': 'Reading it', 'finished': 'Finished', 'not-finished': "Didn't finish" };
+    const order = ['not-started', 'reading', 'finished', 'not-finished'];
+    const groups = {}; order.forEach(k => groups[k] = []);
     Object.keys(statuses).forEach(u => {
       const s = statuses[u];
       if(!groups[s]) return;
       const m = members.find(mm => mm.id === u);
       groups[s].push(m ? m.name : 'someone');
     });
-    const summaryParts = Object.keys(labels)
+    const summaryParts = order
       .filter(key => groups[key].length > 0)
       .map(key => `<strong>${labels[key]}</strong>: ${escapeHtml(groups[key].join(', '))}`);
-    widgetEl.innerHTML = `
+    return `
       <div class="status-widget">
         <div class="status-prompt">Where are you at with this one?</div>
         <div class="status-buttons">
-          ${Object.keys(labels).map(key => `<button class="status-btn ${myStatus === key ? 'active' : ''}" data-status="${key}">${labels[key]}</button>`).join('')}
+          ${order.map(key => `<button class="status-btn ${myStatus === key ? 'active' : ''}" data-id="${entry.id}" data-status="${key}">${labels[key]}</button>`).join('')}
         </div>
         ${summaryParts.length ? `<div class="status-summary">${summaryParts.join(' &middot; ')}</div>` : ''}
       </div>`;
@@ -1346,40 +1355,58 @@
       </div>`;
   }
 
+  function scheduleEntryHtml(entry, uid){
+    const snippet = truncate(entry.description, 90);
+    const moreLink = entry.description && entry.description.length > 90
+      ? ` <button class="link-btn book-open" data-kind="schedule" data-id="${entry.id}" style="font-size:0.85rem;">Read more</button>` : '';
+    return `
+    <div class="log-entry" data-id="${entry.id}">
+      <div class="log-month">${escapeHtml(entry.month)}</div>
+      ${entry.coverUrl ? `<div class="log-cover"><img class="book-open" data-kind="schedule" data-id="${entry.id}" src="${entry.coverUrl}" alt=""></div>` : ''}
+      <div class="log-body">
+        <h3 class="book-open" data-kind="schedule" data-id="${entry.id}" style="cursor:pointer;">${escapeHtml(entry.title)}</h3>
+        <div class="byline">${escapeHtml(entry.author)}</div>
+        ${entry.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
+        ${(entry.current || isEligibleForRating(entry)) ? renderReadStatusHtml(entry, uid) : ''}
+        ${isEligibleForRating(entry) ? renderStarRating(entry, uid) : ''}
+        ${isAdmin ? `
+        <div class="log-actions">
+          <button class="link-btn set-current ${entry.current ? 'current' : ''}" data-id="${entry.id}">${entry.current ? "This is what we're reading" : 'Mark as current'}</button>
+          <button class="link-btn edit-schedule" data-id="${entry.id}">Edit</button>
+          <button class="link-btn remove-schedule" data-id="${entry.id}">Remove</button>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+
   function renderSchedule(){
     document.getElementById('scheduleAddPanel').style.display = isAdmin ? 'block' : 'none';
-    if(schedule.length === 0){
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+
+    // "The schedule" stays forward-looking: current pick + upcoming ones.
+    const upcoming = schedule.filter(e => e.current || !isEligibleForRating(e));
+    if(upcoming.length === 0){
       scheduleListEl.innerHTML = isAdmin
         ? `<p class="empty-state">The log is empty. Add your first pick below.</p>`
         : `<p class="empty-state">Nothing's on the schedule yet.</p>`;
-      renderNowReading();
-      return;
+    }else{
+      scheduleListEl.innerHTML = upcoming.map(entry => scheduleEntryHtml(entry, uid)).join('');
     }
-    const uid = auth.currentUser ? auth.currentUser.uid : null;
-    scheduleListEl.innerHTML = schedule.map(entry => {
-      const snippet = truncate(entry.description, 90);
-      const moreLink = entry.description && entry.description.length > 90
-        ? ` <button class="link-btn book-open" data-kind="schedule" data-id="${entry.id}" style="font-size:0.85rem;">Read more</button>` : '';
-      return `
-      <div class="log-entry" data-id="${entry.id}">
-        <div class="log-month">${escapeHtml(entry.month)}</div>
-        ${entry.coverUrl ? `<div class="log-cover"><img class="book-open" data-kind="schedule" data-id="${entry.id}" src="${entry.coverUrl}" alt=""></div>` : ''}
-        <div class="log-body">
-          <h3 class="book-open" data-kind="schedule" data-id="${entry.id}" style="cursor:pointer;">${escapeHtml(entry.title)}</h3>
-          <div class="byline">${escapeHtml(entry.author)}</div>
-          ${entry.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
-          ${isEligibleForRating(entry) ? renderStarRating(entry, uid) : ''}
-          ${isAdmin ? `
-          <div class="log-actions">
-            <button class="link-btn set-current ${entry.current ? 'current' : ''}" data-id="${entry.id}">${entry.current ? "This is what we're reading" : 'Mark as current'}</button>
-            <button class="link-btn edit-schedule" data-id="${entry.id}">Edit</button>
-            <button class="link-btn remove-schedule" data-id="${entry.id}">Remove</button>
-          </div>` : ''}
-        </div>
-      </div>`;
-    }).join('');
+
+    // "History" holds everything once its month has passed — ratings and status live here.
+    const past = schedule
+      .filter(isEligibleForRating)
+      .sort((a, b) => (parseEntryDate(b.month) || 0) - (parseEntryDate(a.month) || 0));
+    const historyListEl = document.getElementById('historyList');
+    if(past.length === 0){
+      historyListEl.innerHTML = `<p class="empty-state">Nothing here yet — finished picks show up once their month wraps up.</p>`;
+    }else{
+      historyListEl.innerHTML = past.map(entry => scheduleEntryHtml(entry, uid)).join('');
+    }
+
     renderNowReading();
   }
+
 
   function renderRecommendations(){
     if(recommendations.length === 0){
@@ -1621,14 +1648,30 @@
       document.getElementById('recNote').value = '';
     });
 
-    scheduleListEl.addEventListener('click', (e) => {
+    async function handleScheduleAreaClick(e){
       const cur = e.target.closest('.set-current');
       const rem = e.target.closest('.remove-schedule');
       const edit = e.target.closest('.edit-schedule');
+      const statusBtn = e.target.closest('.status-btn');
       if(cur) setCurrent(cur.dataset.id);
       if(rem) removeScheduleEntry(rem.dataset.id);
       if(edit) openEditSchedule(edit.dataset.id);
-    });
+      if(statusBtn && auth.currentUser){
+        const uid = auth.currentUser.uid;
+        const status = statusBtn.dataset.status;
+        const entry = schedule.find(s => s.id === statusBtn.dataset.id);
+        if(entry){
+          const already = (entry.readStatus || {})[uid] === status;
+          try{
+            await db.collection('schedule').doc(entry.id).update({
+              [`readStatus.${uid}`]: already ? firebase.firestore.FieldValue.delete() : status
+            });
+          }catch(err){ showToast("Couldn't save — try again."); }
+        }
+      }
+    }
+    scheduleListEl.addEventListener('click', handleScheduleAreaClick);
+    document.getElementById('historyList').addEventListener('click', handleScheduleAreaClick);
 
     recListEl.addEventListener('click', (e) => {
       const vote = e.target.closest('.vote-btn');
@@ -1655,19 +1698,19 @@
       window.location.href = `mailto:?bcc=${bcc}&subject=${encodeURIComponent('Riptide Readers')}`;
     });
 
-    document.getElementById('readStatusWidget').addEventListener('click', async (e) => {
-      const btn = e.target.closest('.status-btn');
-      if(!btn || !auth.currentUser) return;
-      const current = schedule.find(s => s.current);
-      if(!current) return;
-      const uid = auth.currentUser.uid;
-      const status = btn.dataset.status;
-      const already = (current.readStatus || {})[uid] === status;
-      try{
-        await db.collection('schedule').doc(current.id).update({
-          [`readStatus.${uid}`]: already ? firebase.firestore.FieldValue.delete() : status
-        });
-      }catch(e){ showToast("Couldn't save — try again."); }
+    document.getElementById('remindRatingLink').addEventListener('click', () => {
+      const eligible = schedule
+        .filter(isEligibleForRating)
+        .sort((a, b) => (parseEntryDate(b.month) || 0) - (parseEntryDate(a.month) || 0));
+      const mostRecent = eligible[0];
+      if(!mostRecent){ showToast('Nothing open for rating yet.'); return; }
+      const numbers = members.map(m => (m.phone || '').replace(/[^\d+]/g, '')).filter(Boolean);
+      const text = `Riptide Readers: don't forget to rate "${mostRecent.title}" and update your reading status!`;
+      if(numbers.length > 0){
+        window.location.href = `sms:${numbers.join(',')}?&body=${encodeURIComponent(text)}`;
+      }else{
+        showToast('No cell numbers on file yet.');
+      }
     });
 
     nowReadingEl.addEventListener('click', async (e) => {
@@ -1766,6 +1809,7 @@
       document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('join').style.display = isAdmin ? 'block' : 'none';
+      document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
       checkOwnerValidity();
       renderSchedule();
       renderMembers();
