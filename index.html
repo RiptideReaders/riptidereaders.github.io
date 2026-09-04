@@ -1243,6 +1243,14 @@
     return `https://www.google.com/search?tbm=bks&q=${q}`;
   }
 
+  function openGroupText(numbers, body){
+    if(numbers.length === 0){ showToast('No cell numbers on file yet.'); return; }
+    const numberList = numbers.join(', ');
+    navigator.clipboard.writeText(numberList).catch(() => {});
+    window.location.href = `sms:&body=${encodeURIComponent(body)}`;
+    showToast('Message drafted, numbers copied — paste them into "To:" (iPhone group texts need each number added manually).');
+  }
+
   function wireLookup(btnId, titleId, authorId, previewId, descId, coverSetter){
     const btn = document.getElementById(btnId);
     btn.addEventListener('click', async () => {
@@ -1708,17 +1716,12 @@
       if(!mostRecent){ showToast('Nothing open for rating yet.'); return; }
       const numbers = members.map(m => (m.phone || '').replace(/[^\d+]/g, '')).filter(Boolean);
       const text = `Riptide Readers: don't forget to rate "${mostRecent.title}" and update your reading status!`;
-      if(numbers.length > 0){
-        window.location.href = `sms:${numbers.join(',')}?&body=${encodeURIComponent(text)}`;
-      }else{
-        showToast('No cell numbers on file yet.');
-      }
+      openGroupText(numbers, text);
     });
 
     document.getElementById('textEveryoneLink').addEventListener('click', () => {
       const numbers = members.map(m => (m.phone || '').replace(/[^\d+]/g, '')).filter(Boolean);
-      if(numbers.length === 0){ showToast('No cell numbers on file yet.'); return; }
-      window.location.href = `sms:${numbers.join(',')}?&body=${encodeURIComponent('Riptide Readers: ')}`;
+      openGroupText(numbers, 'Riptide Readers: ');
     });
 
     nowReadingEl.addEventListener('click', async (e) => {
@@ -1731,7 +1734,7 @@
       if(isAdmin){
         const numbers = members.map(m => (m.phone || '').replace(/[^\d+]/g, '')).filter(Boolean);
         if(numbers.length > 0){
-          window.location.href = `sms:${numbers.join(',')}?&body=${encodeURIComponent(text)}`;
+          openGroupText(numbers, text);
           return;
         }
       }
