@@ -1715,6 +1715,12 @@
       }
     });
 
+    document.getElementById('textEveryoneLink').addEventListener('click', () => {
+      const numbers = members.map(m => (m.phone || '').replace(/[^\d+]/g, '')).filter(Boolean);
+      if(numbers.length === 0){ showToast('No cell numbers on file yet.'); return; }
+      window.location.href = `sms:${numbers.join(',')}?&body=${encodeURIComponent('Riptide Readers: ')}`;
+    });
+
     nowReadingEl.addEventListener('click', async (e) => {
       const btn = e.target.closest('.share-current');
       if(!btn) return;
