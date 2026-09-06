@@ -418,6 +418,48 @@
   </div>
 </div>
 
+<div class="overlay" id="editRecOverlay" style="display:none; background:rgba(11,32,39,0.88);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); max-width:460px;">
+    <button class="text-btn" id="editRecClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
+    <h1 style="font-size:1.4rem;">Edit this suggestion</h1>
+    <div class="field-row" style="margin-top:20px;">
+      <div class="field">
+        <label for="erTitle">Book title</label>
+        <div class="title-lookup-row">
+          <input id="erTitle" type="text" placeholder="Title">
+          <button class="lookup-btn" id="erLookup" type="button">Find book</button>
+        </div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="erAuthor">Author</label>
+        <input id="erAuthor" type="text" placeholder="Author">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="erNote">Why this one?</label>
+        <textarea id="erNote" placeholder="Optional — what makes it worth reading"></textarea>
+      </div>
+    </div>
+    <textarea id="erDescHidden" style="display:none;"></textarea>
+    <div class="cover-preview" id="erCoverPreview" style="display:none;"></div>
+    <button class="overlay-submit" id="erSubmit" style="margin-top:14px;">Save changes</button>
+  </div>
+</div>
+
+<div class="overlay" id="recDupOverlay" style="display:none; background:rgba(11,32,39,0.9);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); text-align:center;">
+    <h1 style="font-size:1.3rem;">Already suggested</h1>
+    <p id="recDupText" style="margin-top:10px;"></p>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-top:22px;">
+      <button class="overlay-submit" id="recDupVote" style="margin-top:0;">Yes, vote for it instead</button>
+      <button class="link-btn" id="recDupCancel" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="bookDetailOverlay" style="display:none; background:rgba(11,32,39,0.92); padding:24px;">
   <div class="overlay-card" style="max-width:520px; background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); display:flex; gap:20px; align-items:flex-start;">
     <button class="text-btn" id="bookDetailClose" style="position:absolute; top:8px; right:8px; font-size:1.5rem; text-decoration:none; padding:10px 14px; z-index:5;">&times;</button>
@@ -560,11 +602,10 @@
       </div>
       <textarea id="recDescHidden" style="display:none;"></textarea>
       <div class="cover-preview" id="recCoverPreview" style="display:none;"></div>
-      <div id="recDupNotice" style="display:none; margin-top:14px; padding:14px; background:var(--ink); border-radius:4px; border:1px solid var(--line-strong);">
-        <p style="color:var(--sand-dim); font-size:0.9rem;" id="recDupText"></p>
-        <button class="link-btn" id="recVoteExisting" type="button" style="margin-top:6px;">Vote for it instead</button>
+      <div style="display:flex; gap:16px; align-items:center; margin-top:14px;">
+        <button class="submit-btn" id="recSubmit">Suggest this book</button>
+        <button class="link-btn" id="recCancel" type="button">Cancel</button>
       </div>
-      <button class="submit-btn" id="recSubmit" style="margin-top:14px;">Suggest this book</button>
     </div>
   </section>
 
@@ -652,6 +693,8 @@
   let recCover = null;
   let edCover = null;
   let edEntryId = null;
+  let erCover = null;
+  let erEntryId = null;
   let ownerId = null;
   let adminIds = [];
   let isOwner = false;
@@ -1311,6 +1354,7 @@
   }
   wireLookup('schLookup','schTitle','schAuthor','schCoverPreview','schDesc', (url) => { schCover = url; });
   wireLookup('edLookup','edTitle','edAuthor','edCoverPreview','edDesc', (url) => { edCover = url; });
+  wireLookup('erLookup','erTitle','erAuthor','erCoverPreview','erDescHidden', (url) => { erCover = url; });
   wireLookup('recLookup','recTitle','recAuthor','recCoverPreview', 'recDescHidden', (url) => { recCover = url; });
 
   // ---------- render: now reading ----------
@@ -1461,7 +1505,7 @@
           <div class="byline">${escapeHtml(rec.author)}</div>
           ${rec.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
           ${rec.note ? `<p class="note">${escapeHtml(rec.note)}</p>` : ''}
-          <div class="meta">Suggested by ${escapeHtml(rec.submittedBy || 'someone')}${canRemove ? `<button class="link-btn remove-rec" data-id="${rec.id}">Remove</button>` : ''}</div>
+          <div class="meta">Suggested by ${escapeHtml(rec.submittedBy || 'someone')}${isAdmin ? `<button class="link-btn edit-rec" data-id="${rec.id}">Edit</button>` : ''}${canRemove ? `<button class="link-btn remove-rec" data-id="${rec.id}">Remove</button>` : ''}</div>
           ${voterNames.length ? `<div class="meta">Voted by ${escapeHtml(voterNames.join(', '))}</div>` : ''}
         </div>
       </div>`;
@@ -1600,18 +1644,51 @@
     }catch(e){ showToast("Couldn't save — try again."); }
   });
 
+  const editRecOverlay = document.getElementById('editRecOverlay');
+  function openEditRec(id){
+    const entry = recommendations.find(r => r.id === id);
+    if(!entry) return;
+    erEntryId = id;
+    erCover = entry.coverUrl || null;
+    document.getElementById('erTitle').value = entry.title || '';
+    document.getElementById('erAuthor').value = entry.author || '';
+    document.getElementById('erNote').value = entry.note || '';
+    document.getElementById('erDescHidden').value = entry.description || '';
+    const preview = document.getElementById('erCoverPreview');
+    if(entry.coverUrl){
+      preview.style.display = 'flex';
+      preview.innerHTML = `<img src="${entry.coverUrl}" alt=""><span>Current cover.</span>`;
+    }else{
+      preview.style.display = 'none';
+    }
+    editRecOverlay.style.display = 'flex';
+  }
+  document.getElementById('editRecClose').addEventListener('click', () => { editRecOverlay.style.display = 'none'; });
+  document.getElementById('erSubmit').addEventListener('click', async () => {
+    if(!erEntryId) return;
+    const title = document.getElementById('erTitle').value.trim();
+    const author = document.getElementById('erAuthor').value.trim();
+    const note = document.getElementById('erNote').value.trim();
+    const description = document.getElementById('erDescHidden').value.trim();
+    if(!title){ showToast('Add a book title first.'); return; }
+    try{
+      await db.collection('recommendations').doc(erEntryId).update({ title, author, note, description, coverUrl: erCover });
+      editRecOverlay.style.display = 'none';
+      showToast('Updated.');
+    }catch(e){ showToast("Couldn't save — try again."); }
+  });
+
   async function addRecommendation(){
     const title = document.getElementById('recTitle').value.trim();
     const author = document.getElementById('recAuthor').value.trim();
     const note = document.getElementById('recNote').value.trim();
     const description = document.getElementById('recDescHidden').value.trim();
     if(!title){ showToast('Add a book title first.'); return; }
-    document.getElementById('recDupNotice').style.display = 'none';
     const existing = recommendations.find(r => r.title.trim().toLowerCase() === title.toLowerCase());
     if(existing){
-      document.getElementById('recDupText').textContent = `"${existing.title}" is already suggested.`;
-      document.getElementById('recVoteExisting').dataset.id = existing.id;
-      document.getElementById('recDupNotice').style.display = 'block';
+      document.getElementById('recDupText').textContent = `"${existing.title}" was already suggested — would you like to vote for it instead?`;
+      document.getElementById('recDupVote').dataset.id = existing.id;
+      document.getElementById('recDupOverlay').style.display = 'flex';
       return;
     }
     const name = auth.currentUser ? (auth.currentUser.displayName || 'someone') : 'someone';
@@ -1664,13 +1741,27 @@
     populateMonthYearSelects('schMonthSelect', 'schYearSelect');
     document.getElementById('schSubmit').addEventListener('click', addScheduleEntry);
     document.getElementById('recSubmit').addEventListener('click', addRecommendation);
-    document.getElementById('recVoteExisting').addEventListener('click', () => {
-      const id = document.getElementById('recVoteExisting').dataset.id;
-      if(id) toggleVote(id);
-      document.getElementById('recDupNotice').style.display = 'none';
+    document.getElementById('recCancel').addEventListener('click', () => {
       document.getElementById('recTitle').value = '';
       document.getElementById('recAuthor').value = '';
       document.getElementById('recNote').value = '';
+      document.getElementById('recDescHidden').value = '';
+      document.getElementById('recCoverPreview').style.display = 'none';
+      recCover = null;
+    });
+    document.getElementById('recDupVote').addEventListener('click', () => {
+      const id = document.getElementById('recDupVote').dataset.id;
+      if(id) toggleVote(id);
+      document.getElementById('recDupOverlay').style.display = 'none';
+      document.getElementById('recTitle').value = '';
+      document.getElementById('recAuthor').value = '';
+      document.getElementById('recNote').value = '';
+      document.getElementById('recDescHidden').value = '';
+      document.getElementById('recCoverPreview').style.display = 'none';
+      recCover = null;
+    });
+    document.getElementById('recDupCancel').addEventListener('click', () => {
+      document.getElementById('recDupOverlay').style.display = 'none';
     });
 
     async function handleScheduleAreaClick(e){
@@ -1701,8 +1792,10 @@
     recListEl.addEventListener('click', (e) => {
       const vote = e.target.closest('.vote-btn');
       const rem = e.target.closest('.remove-rec');
+      const edit = e.target.closest('.edit-rec');
       if(vote) toggleVote(vote.dataset.id);
       if(rem) removeRecommendation(rem.dataset.id);
+      if(edit) openEditRec(edit.dataset.id);
     });
 
     memberListEl.addEventListener('click', (e) => {
