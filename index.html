@@ -1679,10 +1679,10 @@
   });
 
   async function addRecommendation(){
-    const title = document.getElementById('recTitle').value.trim();
-    const author = document.getElementById('recAuthor').value.trim();
+    let title = document.getElementById('recTitle').value.trim();
+    let author = document.getElementById('recAuthor').value.trim();
     const note = document.getElementById('recNote').value.trim();
-    const description = document.getElementById('recDescHidden').value.trim();
+    let description = document.getElementById('recDescHidden').value.trim();
     if(!title){ showToast('Add a book title first.'); return; }
     const existing = recommendations.find(r => r.title.trim().toLowerCase() === title.toLowerCase());
     if(existing){
@@ -1691,6 +1691,26 @@
       document.getElementById('recDupOverlay').style.display = 'flex';
       return;
     }
+    const btn = document.getElementById('recSubmit');
+
+    // If nobody used "Find book" already, quietly try the lookup ourselves
+    // before saving, so a cover/description isn't just skipped by default.
+    if(!recCover && !description){
+      btn.disabled = true;
+      btn.textContent = 'Looking up book…';
+      try{
+        const result = await lookupBook(title, author);
+        if(result){
+          if(result.title) title = result.title;
+          if(!author && result.author) author = result.author;
+          if(result.description) description = result.description;
+          if(result.coverUrl) recCover = result.coverUrl;
+        }
+      }catch(e){ /* non-fatal — just save without it */ }
+      btn.disabled = false;
+      btn.textContent = 'Suggest this book';
+    }
+
     const name = auth.currentUser ? (auth.currentUser.displayName || 'someone') : 'someone';
     const submitterUid = auth.currentUser ? auth.currentUser.uid : null;
     try{
