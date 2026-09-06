@@ -104,6 +104,7 @@
   .topnav{display:flex; align-items:center; gap:16px; font-size:0.92rem; flex-wrap:wrap;}
   .topnav a{color:var(--sand-dim); text-decoration:none;}
   .topnav a:hover{color:var(--accent);}
+  .topnav a.active-tab{ color:var(--accent); font-weight:600; border-bottom:2px solid var(--accent); padding-bottom:2px; }
   .text-btn{ color:var(--sand-dim); font-size:0.85rem; cursor:pointer; text-decoration:underline; text-underline-offset:3px; background:none; border:none; font-family:'Work Sans',sans-serif; padding:0; }
   .text-btn:hover{ color:var(--accent); }
   .whoami{ font-size:0.85rem; color:var(--sand-dim); }
@@ -488,11 +489,11 @@
       Riptide Readers
     </div>
     <nav class="topnav">
-      <a href="#schedule">Schedule</a>
-      <a href="#suggest">Suggest &amp; vote</a>
-      <a href="#history">History</a>
-      <a href="#members">Members</a>
-      <a href="#join" id="joinNavLink" style="display:none;">Join</a>
+      <a href="#schedule" data-tab="schedule">Schedule</a>
+      <a href="#suggest" data-tab="suggest">Suggest &amp; vote</a>
+      <a href="#history" data-tab="history">History</a>
+      <a href="#members" data-tab="members">Members</a>
+      <a href="#join" data-tab="join" id="joinNavLink" style="display:none;">Join</a>
     </nav>
     <div class="whoami">
       Signed in as <strong id="whoamiName"></strong><span id="ownerTag" class="owner-tag" style="display:none;">Admin</span> &middot;
@@ -534,7 +535,7 @@
     <div id="ratingBadge"></div>
   </section>
 
-  <section id="schedule">
+  <section id="schedule" class="tab-section">
     <div class="section-head">
       <h2>The schedule</h2>
       <p>What we've read and what's coming up. Mark a title as current once your group settles on it.</p>
@@ -573,7 +574,7 @@
     </div>
   </section>
 
-  <section id="suggest">
+  <section id="suggest" class="tab-section">
     <div class="section-head">
       <h2>Suggest &amp; vote</h2>
       <p>Anyone can throw a title into the pool. Everyone gets one vote per book.</p>
@@ -609,7 +610,7 @@
     </div>
   </section>
 
-  <section id="history">
+  <section id="history" class="tab-section">
     <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;">
       <div>
         <h2>History</h2>
@@ -620,7 +621,7 @@
     <div id="historyList"></div>
   </section>
 
-  <section id="members">
+  <section id="members" class="tab-section">
     <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;">
       <div>
         <h2>Members</h2>
@@ -635,7 +636,7 @@
     <div id="memberList"></div>
   </section>
 
-  <section id="join" style="display:none;">
+  <section id="join" class="tab-section" style="display:none;">
     <div class="section-head">
       <h2>Join us</h2>
       <p>Share this page's link. Anyone you send it to creates their own account to get in.</p>
@@ -1004,13 +1005,12 @@
       adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
       document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
-      document.getElementById('join').style.display = isAdmin ? 'block' : 'none';
       document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('textEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       checkOwnerValidity();
     }catch(e){ /* non-fatal */ }
     if(!appInited){ appInited = true; initApp(); }
-    else { renderSchedule(); renderMembers(); }
+    else { showTab(activeTab); renderSchedule(); renderMembers(); }
   }
 
   auth.onAuthStateChanged(async (user) => {
@@ -1299,6 +1299,25 @@
   function bookSearchUrl(title, author){
     const q = encodeURIComponent((title || '') + ' ' + (author || ''));
     return `https://www.google.com/search?tbm=bks&q=${q}`;
+  }
+
+  const TAB_IDS = ['schedule', 'suggest', 'history', 'members', 'join'];
+  let activeTab = 'schedule';
+  function showTab(id){
+    if(!TAB_IDS.includes(id)) id = 'schedule';
+    activeTab = id;
+    TAB_IDS.forEach(t => {
+      const el = document.getElementById(t);
+      if(!el) return;
+      if(t === 'join'){
+        el.style.display = (t === id && isAdmin) ? 'block' : 'none';
+      }else{
+        el.style.display = (t === id) ? 'block' : 'none';
+      }
+    });
+    document.querySelectorAll('.topnav a[data-tab]').forEach(a => {
+      a.classList.toggle('active-tab', a.dataset.tab === id);
+    });
   }
 
   function openGroupText(numbers, body){
@@ -1758,6 +1777,13 @@
 
   // ---------- init app (post-login, once) ----------
   function initApp(){
+    document.querySelectorAll('.topnav a[data-tab]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        showTab(a.dataset.tab);
+      });
+    });
+    showTab('schedule');
     populateMonthYearSelects('schMonthSelect', 'schYearSelect');
     document.getElementById('schSubmit').addEventListener('click', addScheduleEntry);
     document.getElementById('recSubmit').addEventListener('click', addRecommendation);
@@ -1947,10 +1973,10 @@
       adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
       document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
-      document.getElementById('join').style.display = isAdmin ? 'block' : 'none';
       document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('textEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       checkOwnerValidity();
+      showTab(activeTab);
       renderSchedule();
       renderMembers();
     });
