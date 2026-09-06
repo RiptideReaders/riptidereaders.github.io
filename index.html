@@ -782,10 +782,25 @@
         <input id="siPass" type="password" placeholder="Password" autocomplete="current-password">
       </div>
       <div class="overlay-error" id="gateError"></div>
+      <div class="overlay-success" id="gateSuccess" style="color:#9BD6A4; font-size:0.85rem; margin-top:4px; min-height:1.2em;"></div>
       <button class="overlay-submit" id="siSubmit">Sign in</button>
+      <div class="overlay-switch"><button id="forgotPass" type="button">Forgot password?</button></div>
       <div class="overlay-switch">New here? <button id="toSignUp" type="button">Create an account</button></div>
     `;
     document.getElementById('toSignUp').addEventListener('click', () => renderSignUp(document.getElementById('siEmail').value));
+    document.getElementById('forgotPass').addEventListener('click', async () => {
+      const email = document.getElementById('siEmail').value.trim();
+      const errEl = document.getElementById('gateError');
+      const okEl = document.getElementById('gateSuccess');
+      errEl.textContent = ''; okEl.textContent = '';
+      if(!email){ errEl.textContent = 'Enter your email above first, then tap "Forgot password?" again.'; return; }
+      try{
+        await auth.sendPasswordResetEmail(email);
+        okEl.textContent = `Check ${email} for a link to reset your password.`;
+      }catch(e){
+        errEl.textContent = e.code === 'auth/user-not-found' ? 'No account found with that email.' : friendlyAuthError(e);
+      }
+    });
     const submit = async () => {
       const email = document.getElementById('siEmail').value.trim();
       const pass = document.getElementById('siPass').value;
