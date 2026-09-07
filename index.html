@@ -691,7 +691,7 @@
   let recommendations = [];
   let members = [];
   let schCover = null;
-  let schSourceRecId = null;
+  let schSourceRec = null;
   let recCover = null;
   let edCover = null;
   let edEntryId = null;
@@ -1462,6 +1462,7 @@
         <div class="log-actions">
           <button class="link-btn set-current ${entry.current ? 'current' : ''}" data-id="${entry.id}">${entry.current ? "This is what we're reading" : 'Mark as current'}</button>
           <button class="link-btn edit-schedule" data-id="${entry.id}">Edit</button>
+          ${entry.sourceRec ? `<button class="link-btn unschedule-entry" data-id="${entry.id}">Move back to suggestions</button>` : ''}
           <button class="link-btn remove-schedule" data-id="${entry.id}">Remove</button>
         </div>` : ''}
       </div>
@@ -1586,13 +1587,25 @@
     const description = document.getElementById('schDesc').value.trim();
     if(!title){ showToast('Add a book title first.'); return; }
     try{
-      await db.collection('schedule').add({
+      const payload = {
         month, title, author, description, current:false,
         coverUrl: schCover, meetingDate: null, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      if(schSourceRecId){
-        try{ await db.collection('recommendations').doc(schSourceRecId).delete(); }catch(e){ /* non-fatal */ }
-        schSourceRecId = null;
+      };
+      if(schSourceRec){
+        // Keep the original suggestion's votes/note/submitter so this can be
+        // restored to Suggest & Vote later without losing that history.
+        payload.sourceRec = {
+          note: schSourceRec.note || '',
+          submittedBy: schSourceRec.submittedBy || 'someone',
+          submittedByUid: schSourceRec.submittedByUid || null,
+          votes: schSourceRec.votes || [],
+          votesDetail: schSourceRec.votesDetail || {}
+        };
+      }
+      await db.collection('schedule').add(payload);
+      if(schSourceRec){
+        try{ await db.collection('recommendations').doc(schSourceRec.id).delete(); }catch(e){ /* non-fatal */ }
+        schSourceRec = null;
       }
     }catch(e){ showToast("Couldn't save — try again."); return; }
     document.getElementById('schTitle').value = '';
@@ -1605,7 +1618,7 @@
   function scheduleFromRec(id){
     const rec = recommendations.find(r => r.id === id);
     if(!rec) return;
-    schSourceRecId = id;
+    schSourceRec = rec;
     schCover = rec.coverUrl || null;
     document.getElementById('schTitle').value = rec.title || '';
     document.getElementById('schAuthor').value = rec.author || '';
@@ -1620,6 +1633,31 @@
     showTab('schedule');
     showToast('Fill in the month, then tap "Add to schedule" — the suggestion will be removed once it\'s scheduled.');
     document.getElementById('scheduleAddPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function unscheduleToSuggestion(id){
+    const entry = schedule.find(s => s.id === id);
+    if(!entry) return;
+    if(!entry.sourceRec){
+      // Wasn't originally a suggestion — just remove it outright.
+      removeScheduleEntry(id);
+      return;
+    }
+    try{
+      await db.collection('recommendations').add({
+        title: entry.title, author: entry.author,
+        note: entry.sourceRec.note || '',
+        description: entry.description || '',
+        coverUrl: entry.coverUrl || null,
+        submittedBy: entry.sourceRec.submittedBy || 'someone',
+        submittedByUid: entry.sourceRec.submittedByUid || null,
+        votes: entry.sourceRec.votes || [],
+        votesDetail: entry.sourceRec.votesDetail || {},
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await db.collection('schedule').doc(id).delete();
+      showToast('Moved back to Suggest & vote, votes intact.');
+    }catch(e){ showToast("Couldn't move it back — try again."); }
   }
 
   async function setCurrent(id){
@@ -1839,10 +1877,12 @@
       const cur = e.target.closest('.set-current');
       const rem = e.target.closest('.remove-schedule');
       const edit = e.target.closest('.edit-schedule');
+      const unsched = e.target.closest('.unschedule-entry');
       const statusBtn = e.target.closest('.status-btn');
       if(cur) setCurrent(cur.dataset.id);
       if(rem) removeScheduleEntry(rem.dataset.id);
       if(edit) openEditSchedule(edit.dataset.id);
+      if(unsched) unscheduleToSuggestion(unsched.dataset.id);
       if(statusBtn && auth.currentUser){
         const uid = auth.currentUser.uid;
         const status = statusBtn.dataset.status;
