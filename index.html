@@ -577,7 +577,10 @@
         </div>
       </div>
       <div class="cover-preview" id="schCoverPreview" style="display:none;"></div>
-      <button class="submit-btn" id="schSubmit" style="margin-top:14px;">Add to schedule</button>
+      <div style="display:flex; gap:16px; align-items:center; margin-top:14px;">
+        <button class="submit-btn" id="schSubmit">Add to schedule</button>
+        <button class="link-btn" id="schCancel" type="button">Cancel</button>
+      </div>
     </div>
   </section>
 
@@ -1864,6 +1867,14 @@
     showTab('schedule');
     populateMonthYearSelects('schMonthSelect', 'schYearSelect');
     document.getElementById('schSubmit').addEventListener('click', addScheduleEntry);
+    document.getElementById('schCancel').addEventListener('click', () => {
+      document.getElementById('schTitle').value = '';
+      document.getElementById('schAuthor').value = '';
+      document.getElementById('schDesc').value = '';
+      document.getElementById('schCoverPreview').style.display = 'none';
+      schCover = null;
+      schSourceRec = null;
+    });
     document.getElementById('recSubmit').addEventListener('click', addRecommendation);
     document.getElementById('recCancel').addEventListener('click', () => {
       document.getElementById('recTitle').value = '';
