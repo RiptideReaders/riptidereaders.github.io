@@ -691,6 +691,7 @@
   let recommendations = [];
   let members = [];
   let schCover = null;
+  let schSourceRecId = null;
   let recCover = null;
   let edCover = null;
   let edEntryId = null;
@@ -1524,7 +1525,7 @@
           <div class="byline">${escapeHtml(rec.author)}</div>
           ${rec.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
           ${rec.note ? `<p class="note">${escapeHtml(rec.note)}</p>` : ''}
-          <div class="meta">Suggested by ${escapeHtml(rec.submittedBy || 'someone')}${isAdmin ? `<button class="link-btn edit-rec" data-id="${rec.id}">Edit</button>` : ''}${canRemove ? `<button class="link-btn remove-rec" data-id="${rec.id}">Remove</button>` : ''}</div>
+          <div class="meta">Suggested by ${escapeHtml(rec.submittedBy || 'someone')}${isAdmin ? `<button class="link-btn schedule-rec" data-id="${rec.id}">Schedule this</button><button class="link-btn edit-rec" data-id="${rec.id}">Edit</button>` : ''}${canRemove ? `<button class="link-btn remove-rec" data-id="${rec.id}">Remove</button>` : ''}</div>
           ${voterNames.length ? `<div class="meta">Voted by ${escapeHtml(voterNames.join(', '))}</div>` : ''}
         </div>
       </div>`;
@@ -1589,12 +1590,36 @@
         month, title, author, description, current:false,
         coverUrl: schCover, meetingDate: null, createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+      if(schSourceRecId){
+        try{ await db.collection('recommendations').doc(schSourceRecId).delete(); }catch(e){ /* non-fatal */ }
+        schSourceRecId = null;
+      }
     }catch(e){ showToast("Couldn't save — try again."); return; }
     document.getElementById('schTitle').value = '';
     document.getElementById('schAuthor').value = '';
     document.getElementById('schDesc').value = '';
     document.getElementById('schCoverPreview').style.display = 'none';
     schCover = null;
+  }
+
+  function scheduleFromRec(id){
+    const rec = recommendations.find(r => r.id === id);
+    if(!rec) return;
+    schSourceRecId = id;
+    schCover = rec.coverUrl || null;
+    document.getElementById('schTitle').value = rec.title || '';
+    document.getElementById('schAuthor').value = rec.author || '';
+    document.getElementById('schDesc').value = rec.description || '';
+    const preview = document.getElementById('schCoverPreview');
+    if(rec.coverUrl){
+      preview.style.display = 'flex';
+      preview.innerHTML = `<img src="${rec.coverUrl}" alt=""><span>Carried over from the suggestion.</span>`;
+    }else{
+      preview.style.display = 'none';
+    }
+    showTab('schedule');
+    showToast('Fill in the month, then tap "Add to schedule" — the suggestion will be removed once it\'s scheduled.');
+    document.getElementById('scheduleAddPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   async function setCurrent(id){
@@ -1839,9 +1864,11 @@
       const vote = e.target.closest('.vote-btn');
       const rem = e.target.closest('.remove-rec');
       const edit = e.target.closest('.edit-rec');
+      const sched = e.target.closest('.schedule-rec');
       if(vote) toggleVote(vote.dataset.id);
       if(rem) removeRecommendation(rem.dataset.id);
       if(edit) openEditRec(edit.dataset.id);
+      if(sched) scheduleFromRec(sched.dataset.id);
     });
 
     memberListEl.addEventListener('click', (e) => {
