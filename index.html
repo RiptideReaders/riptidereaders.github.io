@@ -469,7 +469,14 @@
       <h2 id="bookDetailTitle" style="font-size:1.3rem;"></h2>
       <div id="bookDetailAuthor" style="color:var(--sand-dim); margin-top:4px; font-size:0.95rem;"></div>
       <p id="bookDetailDesc" style="margin-top:14px; color:var(--sand); line-height:1.6; white-space:pre-line;"></p>
-      <p id="bookDetailSearchLink" style="display:none; margin-top:10px;"><a id="bookDetailSearchA" href="#" target="_blank" style="color:var(--accent);">Search for this book online →</a></p>
+      <p id="bookDetailSearchLink" style="display:none; margin-top:12px; font-size:0.9rem;">
+        <span style="color:var(--sand-dim);">Read more:</span>
+        <a id="bookDetailGoodreads" href="#" target="_blank" style="color:var(--accent); margin-left:6px;">Goodreads</a>
+        <span style="color:var(--sand-dim);">&middot;</span>
+        <a id="bookDetailAmazon" href="#" target="_blank" style="color:var(--accent);">Amazon</a>
+        <span style="color:var(--sand-dim);">&middot;</span>
+        <a id="bookDetailSearchA" href="#" target="_blank" style="color:var(--accent);">Google</a>
+      </p>
     </div>
   </div>
 </div>
@@ -739,9 +746,9 @@
     document.getElementById('bookDetailTitle').textContent = entry.title || '';
     document.getElementById('bookDetailAuthor').textContent = entry.author || '';
     document.getElementById('bookDetailDesc').textContent = desc;
-    const searchLinkEl = document.getElementById('bookDetailSearchA');
-    searchLinkEl.href = bookSearchUrl(entry.title, entry.author);
-    searchLinkEl.textContent = hasRealDesc ? 'Read the full description online →' : 'Search for this book online →';
+    document.getElementById('bookDetailGoodreads').href = goodreadsSearchUrl(entry.title, entry.author);
+    document.getElementById('bookDetailAmazon').href = amazonSearchUrl(entry.title, entry.author);
+    document.getElementById('bookDetailSearchA').href = bookSearchUrl(entry.title, entry.author);
     document.getElementById('bookDetailSearchLink').style.display = 'block';
     bookDetailOverlay.style.display = 'flex';
   }
@@ -1298,8 +1305,16 @@
   }
 
   function bookSearchUrl(title, author){
+    const q = encodeURIComponent((title || '') + ' ' + (author || '') + ' book');
+    return `https://www.google.com/search?q=${q}`;
+  }
+  function goodreadsSearchUrl(title, author){
     const q = encodeURIComponent((title || '') + ' ' + (author || ''));
-    return `https://www.google.com/search?tbm=bks&q=${q}`;
+    return `https://www.goodreads.com/search?q=${q}`;
+  }
+  function amazonSearchUrl(title, author){
+    const q = encodeURIComponent((title || '') + ' ' + (author || '') + ' book');
+    return `https://www.amazon.com/s?k=${q}`;
   }
 
   const TAB_IDS = ['schedule', 'suggest', 'history', 'members', 'join'];
