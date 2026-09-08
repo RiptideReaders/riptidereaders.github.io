@@ -709,6 +709,7 @@
   let erEntryId = null;
   let ownerId = null;
   let adminIds = [];
+  let removedUids = [];
   let isOwner = false;
   let isAdmin = false;
   let appInited = false;
@@ -1010,6 +1011,7 @@
       const configData = configDoc.exists ? configDoc.data() : {};
       ownerId = configData.ownerId || null;
       adminIds = configData.adminIds || [];
+      removedUids = configData.removedUids || [];
       isOwner = ownerId === user.uid;
       isAdmin = isOwner || adminIds.includes(user.uid);
       ownerTag.style.display = isAdmin ? 'inline' : 'none';
@@ -1026,6 +1028,21 @@
 
   auth.onAuthStateChanged(async (user) => {
     if(user){
+      let removed = false;
+      try{
+        const configDoc = await db.collection('meta').doc('config').get();
+        const removedList = (configDoc.exists && configDoc.data().removedUids) || [];
+        removed = removedList.includes(user.uid);
+      }catch(e){ /* non-fatal */ }
+      if(removed){
+        profileOverlay.style.display = 'none';
+        appRoot.style.display = 'none';
+        gateOverlay.style.display = 'flex';
+        gateSubtext.textContent = "Your access to this club has been removed. Contact an admin if you think that's a mistake.";
+        gateFormArea.innerHTML = `<button class="overlay-submit" id="removedSignOut">Sign out</button>`;
+        document.getElementById('removedSignOut').addEventListener('click', () => auth.signOut());
+        return;
+      }
       let memberData = null;
       try{
         const memberDoc = await db.collection('members').doc(user.uid).get();
@@ -1852,8 +1869,13 @@
   }
 
   async function removeMember(id){
-    try{ await db.collection('members').doc(id).delete(); }
-    catch(e){ showToast("Couldn't remove — try again."); }
+    try{
+      await db.collection('members').doc(id).delete();
+      await db.collection('meta').doc('config').set({
+        removedUids: firebase.firestore.FieldValue.arrayUnion(id),
+        adminIds: firebase.firestore.FieldValue.arrayRemove(id)
+      }, { merge: true });
+    }catch(e){ showToast("Couldn't remove — try again."); }
   }
 
   // ---------- init app (post-login, once) ----------
@@ -2030,7 +2052,9 @@
       // One-time self-heal: make sure the current user has a members record
       // keyed by their real uid (older accounts may have a mismatched id),
       // so owner/admin badges and ownership checks can find them.
-      if(!didSelfHeal && auth.currentUser){
+      // Skip entirely if an admin has deliberately removed this person —
+      // otherwise a simple page reload would silently bring them back.
+      if(!didSelfHeal && auth.currentUser && !removedUids.includes(auth.currentUser.uid)){
         didSelfHeal = true;
         const uid = auth.currentUser.uid;
         const hasCorrectRecord = members.some(m => m.id === uid);
@@ -2060,6 +2084,7 @@
       const data = snap.data();
       ownerId = data.ownerId || null;
       adminIds = data.adminIds || [];
+      removedUids = data.removedUids || [];
       isOwner = ownerId === auth.currentUser.uid;
       isAdmin = isOwner || adminIds.includes(auth.currentUser.uid);
       ownerTag.style.display = isAdmin ? 'inline' : 'none';
