@@ -328,7 +328,8 @@
     <h1 style="font-size:1.4rem;">Account settings</h1>
 
     <p style="margin-top:20px; font-weight:600; color:var(--sand);">Your info</p>
-    <div class="field-row">
+    <p style="color:var(--sand-dim); font-size:0.9rem; margin-top:4px;">Signed in as <span id="accEmailDisplay" style="color:var(--sand);"></span></p>
+    <div class="field-row" style="margin-top:16px;">
       <div class="field">
         <label for="accFirstName">First name</label>
         <input id="accFirstName" type="text" placeholder="First name">
@@ -457,6 +458,17 @@
     <div style="display:flex; flex-direction:column; gap:10px; margin-top:22px;">
       <button class="overlay-submit" id="recDupVote" style="margin-top:0;">Yes, vote for it instead</button>
       <button class="link-btn" id="recDupCancel" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="removeMemberOverlay" style="display:none; background:rgba(11,32,39,0.9);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); text-align:center;">
+    <h1 style="font-size:1.3rem;">Remove this member?</h1>
+    <p id="removeMemberText" style="margin-top:10px;"></p>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-top:22px;">
+      <button class="overlay-submit" id="removeMemberYes" style="margin-top:0;">Yes, remove them</button>
+      <button class="link-btn" id="removeMemberCancel" type="button">Cancel</button>
     </div>
   </div>
 </div>
@@ -1068,6 +1080,7 @@
   const accountOverlay = document.getElementById('accountOverlay');
   document.getElementById('accountLink').addEventListener('click', () => {
     const own = auth.currentUser ? members.find(m => m.id === auth.currentUser.uid) : null;
+    document.getElementById('accEmailDisplay').textContent = auth.currentUser ? (auth.currentUser.email || '') : '';
     document.getElementById('accName').value = auth.currentUser ? (auth.currentUser.displayName || '') : '';
     document.getElementById('accFirstName').value = (own && own.firstName) || '';
     document.getElementById('accLastName').value = (own && own.lastName) || '';
@@ -1961,7 +1974,22 @@
 
     memberListEl.addEventListener('click', (e) => {
       const rem = e.target.closest('.remove-member');
-      if(rem) removeMember(rem.dataset.id);
+      if(rem){
+        const m = members.find(mm => mm.id === rem.dataset.id);
+        document.getElementById('removeMemberText').textContent = m
+          ? `Are you sure you want to remove ${m.name}? They'll lose access until someone re-adds them, and this can't be undone automatically.`
+          : 'Are you sure you want to remove this member?';
+        document.getElementById('removeMemberYes').dataset.id = rem.dataset.id;
+        document.getElementById('removeMemberOverlay').style.display = 'flex';
+      }
+    });
+    document.getElementById('removeMemberYes').addEventListener('click', () => {
+      const id = document.getElementById('removeMemberYes').dataset.id;
+      document.getElementById('removeMemberOverlay').style.display = 'none';
+      if(id) removeMember(id);
+    });
+    document.getElementById('removeMemberCancel').addEventListener('click', () => {
+      document.getElementById('removeMemberOverlay').style.display = 'none';
     });
 
     document.getElementById('memberDetailToggle').addEventListener('click', () => {
