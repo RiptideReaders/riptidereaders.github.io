@@ -175,6 +175,15 @@
   .star-rating .star-btn.filled{ color:var(--accent); }
   .star-rating .star-summary{ font-size:0.82rem; color:var(--sand-dim); }
   .star-rating .star-label{ font-size:0.82rem; color:var(--sand-dim); }
+  .review-box{ margin-top:10px; }
+  .review-box .review-input{
+    width:100%; min-height:56px; background:var(--panel); border:1px solid var(--line-strong);
+    color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.9rem;
+    padding:8px 10px; border-radius:3px; resize:vertical;
+  }
+  .review-list{ margin-top:10px; }
+  .review-item{ padding:8px 0; border-top:1px solid var(--line); font-size:0.88rem; color:var(--sand); }
+  .review-item strong{ color:var(--sand-dim); font-weight:600; }
   .link-btn{
     background:none; border:none; color:var(--sand-dim); cursor:pointer;
     font-family:'Work Sans',sans-serif; font-size:0.85rem; padding:0;
@@ -636,7 +645,7 @@
     <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;">
       <div>
         <h2>History</h2>
-        <p>Every book once the month's over — ratings and who finished it live here, and you can update your own status or rating any time.</p>
+        <p>Every book once the month's over — ratings, comments, and who finished it live here, and you can update your own any time.</p>
       </div>
       <button class="link-btn" id="remindRatingLink" style="white-space:nowrap; display:none;">Remind everyone to rate</button>
     </div>
@@ -669,7 +678,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Sep 10, 2026, 10:49 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Sep 10, 2026, 11:05 AM CT</span></footer>
 
 </div>
 </div>
@@ -807,7 +816,7 @@
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     return d < thisMonth; // strictly before the current month — that month has to be fully over
   }
-  function renderStarRating(entry, uid){
+  function renderStarsOnly(entry, uid){
     const ratings = entry.ratings || {};
     const values = Object.values(ratings);
     const avg = values.length ? (values.reduce((a,b) => a+b, 0) / values.length) : 0;
@@ -818,6 +827,25 @@
       : 'No ratings yet';
     const label = myRating ? 'Your rating:' : 'Rate it:';
     return `<div class="star-rating"><span class="star-label">${label}</span><span class="stars">${stars}</span><span class="star-summary">${summary}</span></div>`;
+  }
+  function renderStarRating(entry, uid){
+    const reviews = entry.reviews || {};
+    const myReview = uid ? (reviews[uid] || '') : '';
+    const otherReviews = Object.keys(reviews)
+      .filter(u => reviews[u] && reviews[u].trim())
+      .map(u => {
+        const m = members.find(mm => mm.id === u);
+        return `<div class="review-item"><strong>${escapeHtml(m ? m.name : 'someone')}:</strong> ${escapeHtml(reviews[u])}</div>`;
+      }).join('');
+
+    return `
+      ${renderStarsOnly(entry, uid)}
+      <div class="review-box">
+        <label style="font-size:0.82rem; color:var(--sand-dim); display:block; margin-bottom:6px;">Leave a comment</label>
+        <textarea class="review-input" data-id="${entry.id}" placeholder="What did you think?">${escapeHtml(myReview)}</textarea>
+        <button class="link-btn save-review" data-id="${entry.id}" style="margin-top:6px;">Save comment</button>
+        ${otherReviews ? `<div class="review-list">${otherReviews}</div>` : ''}
+      </div>`;
   }
 
   function escapeHtml(str){
@@ -1487,8 +1515,8 @@
     const uid = auth.currentUser ? auth.currentUser.uid : null;
     badgeEl.innerHTML = `
       <div class="rating-badge">
-        <span class="badge-text">Open for rating: <strong class="book-open" data-kind="schedule" data-id="${mostRecent.id}" style="cursor:pointer;">${escapeHtml(mostRecent.title)}</strong></span>
-        ${renderStarRating(mostRecent, uid)}
+        <span class="badge-text">Open for rating: <strong class="book-open" data-kind="schedule" data-id="${mostRecent.id}" style="cursor:pointer;">${escapeHtml(mostRecent.title)}</strong> — head to History to leave a comment too.</span>
+        ${renderStarsOnly(mostRecent, uid)}
       </div>`;
   }
 
@@ -1940,6 +1968,7 @@
       const edit = e.target.closest('.edit-schedule');
       const unsched = e.target.closest('.unschedule-entry');
       const statusBtn = e.target.closest('.status-btn');
+      const saveReview = e.target.closest('.save-review');
       if(cur) setCurrent(cur.dataset.id);
       if(rem) removeScheduleEntry(rem.dataset.id);
       if(edit) openEditSchedule(edit.dataset.id);
@@ -1954,6 +1983,20 @@
             await db.collection('schedule').doc(entry.id).update({
               [`readStatus.${uid}`]: already ? firebase.firestore.FieldValue.delete() : status
             });
+          }catch(err){ showToast("Couldn't save — try again."); }
+        }
+      }
+      if(saveReview && auth.currentUser){
+        const id = saveReview.dataset.id;
+        const textarea = document.querySelector(`.review-input[data-id="${id}"]`);
+        if(textarea){
+          const text = textarea.value.trim();
+          const uid = auth.currentUser.uid;
+          try{
+            await db.collection('schedule').doc(id).update({
+              [`reviews.${uid}`]: text || firebase.firestore.FieldValue.delete()
+            });
+            showToast('Comment saved.');
           }catch(err){ showToast("Couldn't save — try again."); }
         }
       }
@@ -2012,7 +2055,7 @@
       const mostRecent = eligible[0];
       if(!mostRecent){ showToast('Nothing open for rating yet.'); return; }
       const numbers = members.map(m => (m.phone || '').replace(/[^\d+]/g, '')).filter(Boolean);
-      const text = `Riptide Readers: don't forget to rate "${mostRecent.title}" and update your reading status!`;
+      const text = `Riptide Readers: don't forget to rate "${mostRecent.title}" and leave a comment on what you thought!`;
       openGroupText(numbers, text);
     });
 
