@@ -569,6 +569,7 @@
       <p>What we've read and what's coming up. Mark a title as current once your group settles on it.</p>
     </div>
     <div id="scheduleList"></div>
+    <p id="scheduleAddHint" style="display:none; color:var(--sand-dim); font-size:0.9rem; margin-top:24px; padding-top:24px; border-top:1px dashed var(--line-strong);">Books only get added to the schedule from Suggest &amp; vote — head there and tap "Schedule this" on the pick your group's chosen.</p>
     <div class="form-panel" id="scheduleAddPanel" style="display:none;">
       <h3>Add to the schedule</h3>
       <div class="field-row">
@@ -678,7 +679,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Sep 10, 2026, 11:05 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Sep 10, 2026, 11:25 AM CT</span></footer>
 
 </div>
 </div>
@@ -1546,7 +1547,8 @@
   }
 
   function renderSchedule(){
-    document.getElementById('scheduleAddPanel').style.display = isAdmin ? 'block' : 'none';
+    document.getElementById('scheduleAddPanel').style.display = (isAdmin && schSourceRec) ? 'block' : 'none';
+    document.getElementById('scheduleAddHint').style.display = (isAdmin && !schSourceRec) ? 'block' : 'none';
     const uid = auth.currentUser ? auth.currentUser.uid : null;
 
     // "The schedule" stays forward-looking: current pick + upcoming ones.
@@ -1657,6 +1659,7 @@
   }
 
   async function addScheduleEntry(){
+    if(!schSourceRec){ showToast("Books can only be scheduled from a suggestion — use \"Schedule this\" in Suggest & vote."); return; }
     const month = document.getElementById('schMonthSelect').value + ' ' + document.getElementById('schYearSelect').value;
     const title = document.getElementById('schTitle').value.trim();
     const author = document.getElementById('schAuthor').value.trim();
@@ -1707,6 +1710,8 @@
       preview.style.display = 'none';
     }
     showTab('schedule');
+    document.getElementById('scheduleAddPanel').style.display = 'block';
+    document.getElementById('scheduleAddHint').style.display = 'none';
     showToast('Fill in the month, then tap "Add to schedule" — the suggestion will be removed once it\'s scheduled.');
     document.getElementById('scheduleAddPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -1937,6 +1942,8 @@
       document.getElementById('schCoverPreview').style.display = 'none';
       schCover = null;
       schSourceRec = null;
+      document.getElementById('scheduleAddPanel').style.display = 'none';
+      document.getElementById('scheduleAddHint').style.display = isAdmin ? 'block' : 'none';
     });
     document.getElementById('recSubmit').addEventListener('click', addRecommendation);
     document.getElementById('recCancel').addEventListener('click', () => {
