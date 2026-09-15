@@ -692,7 +692,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Sep 15, 2026, 8:23 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Sep 15, 2026, 8:30 AM CT</span></footer>
 
 </div>
 </div>
@@ -1586,6 +1586,7 @@
     const snippet = truncate(current.description, 160);
     const moreLink = current.description && current.description.length > 160
       ? ` <button class="link-btn book-open" data-kind="schedule" data-id="${current.id}" style="font-size:0.85rem;">Read more</button>` : '';
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
     nowReadingEl.innerHTML = `
       ${current.coverUrl ? `<div class="nr-cover"><img class="book-open" data-kind="schedule" data-id="${current.id}" src="${current.coverUrl}" alt=""></div>` : ''}
       <div>
@@ -1593,7 +1594,7 @@
         <h2 class="book-open" data-kind="schedule" data-id="${current.id}" style="cursor:pointer;">${escapeHtml(current.title)}</h2>
         <div class="byline">${escapeHtml(current.author)}</div>
         ${current.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
-        <button class="link-btn share-current" style="margin-top:10px;">${isAdmin ? 'Text this pick to everyone' : 'Share this pick'}</button>
+        ${renderReadStatusHtml(current, uid)}
       </div>`;
 
     renderRatingBadge();
@@ -1654,7 +1655,7 @@
         <h3 class="book-open" data-kind="schedule" data-id="${entry.id}" style="cursor:pointer;">${escapeHtml(entry.title)}</h3>
         <div class="byline">${escapeHtml(entry.author)}</div>
         ${entry.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
-        ${(entry.current || isEligibleForRating(entry)) ? renderReadStatusHtml(entry, uid) : ''}
+        ${isEligibleForRating(entry) ? renderReadStatusHtml(entry, uid) : ''}
         ${isEligibleForRating(entry) ? renderStarRating(entry, uid) : ''}
         ${isAdmin ? `
         <div class="log-actions">
@@ -2131,6 +2132,7 @@
     }
     scheduleListEl.addEventListener('click', handleScheduleAreaClick);
     document.getElementById('historyList').addEventListener('click', handleScheduleAreaClick);
+    nowReadingEl.addEventListener('click', handleScheduleAreaClick);
 
     recListEl.addEventListener('click', (e) => {
       const vote = e.target.closest('.vote-btn');
@@ -2190,30 +2192,6 @@
     document.getElementById('textEveryoneLink').addEventListener('click', () => {
       const numbers = members.map(m => (m.phone || '').replace(/[^\d+]/g, '')).filter(Boolean);
       openGroupText(numbers, 'Riptide Readers: ');
-    });
-
-    nowReadingEl.addEventListener('click', async (e) => {
-      const btn = e.target.closest('.share-current');
-      if(!btn) return;
-      const current = schedule.find(s => s.current);
-      if(!current) return;
-      const text = `We're reading "${current.title}" by ${current.author} this month for Riptide Readers 📖`;
-
-      if(isAdmin){
-        const numbers = members.map(m => (m.phone || '').replace(/[^\d+]/g, '')).filter(Boolean);
-        if(numbers.length > 0){
-          openGroupText(numbers, text);
-          return;
-        }
-      }
-      if(navigator.share){
-        try{ await navigator.share({ text, url: window.location.href }); }catch(e){ /* user cancelled, ignore */ }
-      }else{
-        try{
-          await navigator.clipboard.writeText(text + ' ' + window.location.href);
-          showToast('Copied — paste it anywhere you like.');
-        }catch(e){ showToast("Couldn't copy — try again."); }
-      }
     });
 
     document.getElementById('copyLink').addEventListener('click', () => {
