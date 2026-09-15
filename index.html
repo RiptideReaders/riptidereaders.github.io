@@ -551,7 +551,7 @@
 
 <div class="wrap">
 
-  <section class="hero" style="border:none; padding-bottom:0;">
+  <section id="heroSection" class="hero" style="border:none; padding-bottom:0;">
     <div class="hero-mark">
       <svg width="84" height="70" viewBox="0 0 84 70" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="42" cy="8" r="5.5" fill="#FF7A45"/>
@@ -574,7 +574,12 @@
     <div id="ratingBadge"></div>
   </section>
 
+  <section id="pageTitleSection" class="hero" style="display:none; border:none; padding:56px 0 0;">
+    <h1 id="pageTitleH1"></h1>
+  </section>
+
   <section id="schedule" class="tab-section">
+    <div id="deadlinesBanner"></div>
     <div class="section-head">
       <h2>The schedule</h2>
       <p>What we've read and what's coming up. Mark a title as current once your group settles on it.</p>
@@ -618,9 +623,7 @@
   </section>
 
   <section id="suggest" class="tab-section">
-    <div id="votingDeadlineBanner"></div>
     <div class="section-head">
-      <h2>Suggest &amp; vote</h2>
       <p>Anyone can throw a title into the pool. Everyone gets one vote per book.</p>
     </div>
     <div id="recList"></div>
@@ -657,7 +660,6 @@
   <section id="history" class="tab-section">
     <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;">
       <div>
-        <h2>History</h2>
         <p>Every book once the month's over — ratings, comments, and who finished it live here, and you can update your own any time.</p>
       </div>
       <button class="link-btn" id="remindRatingLink" style="white-space:nowrap; display:none;">Remind everyone to rate</button>
@@ -668,7 +670,6 @@
   <section id="members" class="tab-section">
     <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;">
       <div>
-        <h2>Members</h2>
         <p>Everyone who's signed up, built automatically from your club's logins.</p>
       </div>
       <div style="display:flex; gap:16px; flex-wrap:wrap;">
@@ -682,7 +683,6 @@
 
   <section id="join" class="tab-section" style="display:none;">
     <div class="section-head">
-      <h2>Join us</h2>
       <p>Share this page's link. Anyone you send it to creates their own account to get in.</p>
     </div>
     <div class="join-box">
@@ -744,6 +744,7 @@
   let ownerId = null;
   let adminIds = [];
   let removedUids = [];
+  let suggestDeadline = null;
   let votingDeadline = null;
   let isOwner = false;
   let isAdmin = false;
@@ -1063,56 +1064,67 @@
     return dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   }
 
-  function renderVotingDeadline(){
-    const el = document.getElementById('votingDeadlineBanner');
+  const DEADLINE_KINDS = [
+    { key: 'suggestDeadline', field: 'suggestDeadline', closedLabel: 'Suggestions close', unsetLabel: 'No deadline set for suggestions.', setLabel: 'Set a suggestion deadline' },
+    { key: 'votingDeadline', field: 'votingDeadline', closedLabel: 'Voting closes', unsetLabel: 'No deadline set for voting.', setLabel: 'Set a voting deadline' }
+  ];
+  function getDeadlineValue(key){ return key === 'suggestDeadline' ? suggestDeadline : votingDeadline; }
+  function setDeadlineValue(key, val){ if(key === 'suggestDeadline') suggestDeadline = val; else votingDeadline = val; }
+
+  function renderDeadlines(){
+    const el = document.getElementById('deadlinesBanner');
     if(!el) return;
-    if(votingDeadline){
-      const formatted = formatDeadline(votingDeadline);
-      el.innerHTML = `
-        <div class="deadline-banner">
-          <span class="deadline-text">Suggestions &amp; voting close <strong>${formatted}</strong></span>
-          ${isAdmin ? `<button class="link-btn" id="editDeadlineBtn" type="button">Change</button>` : ''}
-        </div>`;
-    }else if(isAdmin){
-      el.innerHTML = `
-        <div class="deadline-banner">
-          <span class="deadline-text">No deadline set for this round of suggestions &amp; voting.</span>
-          <button class="link-btn" id="editDeadlineBtn" type="button">Set a deadline</button>
-        </div>`;
-    }else{
-      el.innerHTML = '';
-    }
-    const btn = document.getElementById('editDeadlineBtn');
-    if(btn){
-      btn.addEventListener('click', () => {
-        el.innerHTML = `
+    el.innerHTML = DEADLINE_KINDS.map(kind => {
+      const value = getDeadlineValue(kind.key);
+      if(value){
+        const formatted = formatDeadline(value);
+        return `
           <div class="deadline-banner">
-            <div class="deadline-edit-row">
-              <input type="date" id="deadlineDateInput" value="${votingDeadline || ''}">
-              <button class="submit-btn" id="saveDeadlineBtn" style="padding:8px 16px;">Save</button>
-              <button class="link-btn" id="clearDeadlineBtn" type="button">${votingDeadline ? 'Clear deadline' : ''}</button>
-              <button class="link-btn" id="cancelDeadlineBtn" type="button">Cancel</button>
-            </div>
+            <span class="deadline-text">${kind.closedLabel} <strong>${formatted}</strong></span>
+            ${isAdmin ? `<button class="link-btn edit-deadline-btn" data-kind="${kind.key}" type="button">Change</button>` : ''}
           </div>`;
-        document.getElementById('saveDeadlineBtn').addEventListener('click', async () => {
-          const val = document.getElementById('deadlineDateInput').value;
+      }else if(isAdmin){
+        return `
+          <div class="deadline-banner">
+            <span class="deadline-text">${kind.unsetLabel}</span>
+            <button class="link-btn edit-deadline-btn" data-kind="${kind.key}" type="button">${kind.setLabel}</button>
+          </div>`;
+      }else{
+        return '';
+      }
+    }).join('');
+
+    el.querySelectorAll('.edit-deadline-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const kind = DEADLINE_KINDS.find(k => k.key === btn.dataset.kind);
+        const current = getDeadlineValue(kind.key);
+        const row = btn.closest('.deadline-banner');
+        row.innerHTML = `
+          <div class="deadline-edit-row">
+            <input type="date" class="deadline-date-input" value="${current || ''}">
+            <button class="submit-btn save-deadline-btn" style="padding:8px 16px;" type="button">Save</button>
+            <button class="link-btn clear-deadline-btn" type="button">${current ? 'Clear deadline' : ''}</button>
+            <button class="link-btn cancel-deadline-btn" type="button">Cancel</button>
+          </div>`;
+        row.querySelector('.save-deadline-btn').addEventListener('click', async () => {
+          const val = row.querySelector('.deadline-date-input').value;
           if(!val){ showToast('Pick a date first.'); return; }
           try{
-            await db.collection('meta').doc('config').set({ votingDeadline: val }, { merge: true });
-            votingDeadline = val;
-            renderVotingDeadline();
+            await db.collection('meta').doc('config').set({ [kind.field]: val }, { merge: true });
+            setDeadlineValue(kind.key, val);
+            renderDeadlines();
           }catch(e){ showToast("Couldn't save — try again."); }
         });
-        document.getElementById('clearDeadlineBtn').addEventListener('click', async () => {
+        row.querySelector('.clear-deadline-btn').addEventListener('click', async () => {
           try{
-            await db.collection('meta').doc('config').set({ votingDeadline: firebase.firestore.FieldValue.delete() }, { merge: true });
-            votingDeadline = null;
-            renderVotingDeadline();
+            await db.collection('meta').doc('config').set({ [kind.field]: firebase.firestore.FieldValue.delete() }, { merge: true });
+            setDeadlineValue(kind.key, null);
+            renderDeadlines();
           }catch(e){ showToast("Couldn't save — try again."); }
         });
-        document.getElementById('cancelDeadlineBtn').addEventListener('click', () => renderVotingDeadline());
+        row.querySelector('.cancel-deadline-btn').addEventListener('click', () => renderDeadlines());
       });
-    }
+    });
   }
 
   async function enterMainApp(user){
@@ -1126,6 +1138,7 @@
       ownerId = configData.ownerId || null;
       adminIds = configData.adminIds || [];
       removedUids = configData.removedUids || [];
+      suggestDeadline = configData.suggestDeadline || null;
       votingDeadline = configData.votingDeadline || null;
       isOwner = ownerId === user.uid;
       isAdmin = isOwner || adminIds.includes(user.uid);
@@ -1136,10 +1149,10 @@
       document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('textEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       checkOwnerValidity();
-      renderVotingDeadline();
+      renderDeadlines();
     }catch(e){ /* non-fatal */ }
     if(!appInited){ appInited = true; initApp(); }
-    else { showTab(activeTab); renderSchedule(); renderMembers(); renderVotingDeadline(); }
+    else { showTab(activeTab); renderSchedule(); renderMembers(); renderDeadlines(); }
   }
 
   auth.onAuthStateChanged(async (user) => {
@@ -1455,6 +1468,7 @@
   }
 
   const TAB_IDS = ['schedule', 'suggest', 'history', 'members', 'join'];
+  const TAB_LABELS = { suggest: 'Suggest & vote', history: 'History', members: 'Members', join: 'Join us' };
   let activeTab = 'schedule';
   function showTab(id){
     if(!TAB_IDS.includes(id)) id = 'schedule';
@@ -1471,6 +1485,14 @@
     document.querySelectorAll('.topnav a[data-tab]').forEach(a => {
       a.classList.toggle('active-tab', a.dataset.tab === id);
     });
+    document.getElementById('heroSection').style.display = (id === 'schedule') ? '' : 'none';
+    const pageTitleSection = document.getElementById('pageTitleSection');
+    if(id === 'schedule'){
+      pageTitleSection.style.display = 'none';
+    }else{
+      document.getElementById('pageTitleH1').textContent = TAB_LABELS[id] || '';
+      pageTitleSection.style.display = '';
+    }
   }
 
   function openGroupText(numbers, body){
@@ -2238,6 +2260,7 @@
       ownerId = data.ownerId || null;
       adminIds = data.adminIds || [];
       removedUids = data.removedUids || [];
+      suggestDeadline = data.suggestDeadline || null;
       votingDeadline = data.votingDeadline || null;
       isOwner = ownerId === auth.currentUser.uid;
       isAdmin = isOwner || adminIds.includes(auth.currentUser.uid);
@@ -2251,7 +2274,7 @@
       showTab(activeTab);
       renderSchedule();
       renderMembers();
-      renderVotingDeadline();
+      renderDeadlines();
     });
 
     document.getElementById('claimOwnerBtn').addEventListener('click', async () => {
