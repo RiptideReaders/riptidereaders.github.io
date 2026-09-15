@@ -206,7 +206,8 @@
   .log-body h3{ font-size:1.2rem; }
   .log-body .byline{ color:var(--sand-dim); font-size:0.92rem; margin-top:2px; }
   .log-body .desc{ margin-top:8px; color:var(--sand); }
-  .log-actions{ margin-top:10px; display:flex; gap:16px; }
+  .log-actions{ margin-top:10px; display:flex; gap:16px; flex-wrap:wrap; align-items:center; }
+  .current-badge{ color:var(--accent); font-size:0.9rem; font-weight:600; }
   .star-rating{ margin-top:10px; display:flex; align-items:center; gap:10px; }
   .star-rating .stars{ display:flex; gap:2px; }
   .star-rating .star-btn{ background:none; border:none; padding:0; cursor:pointer; font-size:1.15rem; line-height:1; color:var(--line-strong); }
@@ -520,6 +521,18 @@
   </div>
 </div>
 
+<div class="overlay" id="genericConfirmOverlay" style="display:none; background:rgba(11,32,39,0.9);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); text-align:center;">
+    <h1 id="genericConfirmTitle" style="font-size:1.3rem;">Are you sure?</h1>
+    <p id="genericConfirmText" style="margin-top:10px;"></p>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-top:22px;">
+      <button class="overlay-submit" id="genericConfirmYes" style="margin-top:0;">Yes</button>
+      <button class="link-btn" id="genericConfirmCancel" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="overlay" id="bookDetailOverlay" style="display:none; background:rgba(11,32,39,0.92); padding:24px;">
   <div class="overlay-card" style="max-width:520px; background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); display:flex; gap:20px; align-items:flex-start;">
     <button class="text-btn" id="bookDetailClose" style="position:absolute; top:8px; right:8px; font-size:1.5rem; text-decoration:none; padding:10px 14px; z-index:5;">&times;</button>
@@ -727,7 +740,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Sep 15, 2026, 11:45 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Sep 15, 2026, 3:51 PM CT</span></footer>
 
 </div>
 </div>
@@ -1088,6 +1101,25 @@
       return;
     }
     await saveProfile(suggested, firstName, lastName);
+  });
+
+  let pendingConfirmAction = null;
+  function confirmAction(message, onYes, yesLabel, title){
+    document.getElementById('genericConfirmTitle').textContent = title || 'Are you sure?';
+    document.getElementById('genericConfirmText').textContent = message;
+    document.getElementById('genericConfirmYes').textContent = yesLabel || 'Yes';
+    pendingConfirmAction = onYes;
+    document.getElementById('genericConfirmOverlay').style.display = 'flex';
+  }
+  document.getElementById('genericConfirmYes').addEventListener('click', () => {
+    document.getElementById('genericConfirmOverlay').style.display = 'none';
+    const fn = pendingConfirmAction;
+    pendingConfirmAction = null;
+    if(fn) fn();
+  });
+  document.getElementById('genericConfirmCancel').addEventListener('click', () => {
+    document.getElementById('genericConfirmOverlay').style.display = 'none';
+    pendingConfirmAction = null;
   });
 
   function checkOwnerValidity(){
@@ -1717,7 +1749,9 @@
         ${isEligibleForRating(entry) ? renderStarRating(entry, uid) : ''}
         ${isAdmin ? `
         <div class="log-actions">
-          <button class="link-btn set-current ${entry.current ? 'current' : ''}" data-id="${entry.id}">${entry.current ? "This is what we're reading" : 'Mark as current'}</button>
+          ${entry.current
+            ? `<span class="current-badge">This is what we're reading</span>`
+            : `<button class="link-btn set-current" data-id="${entry.id}">Mark as current</button>`}
           <button class="link-btn edit-schedule" data-id="${entry.id}">Edit</button>
           ${entry.sourceRec ? `<button class="link-btn unschedule-entry" data-id="${entry.id}">Move back to suggestions</button>` : ''}
           <button class="link-btn remove-schedule" data-id="${entry.id}">Remove</button>
@@ -2156,10 +2190,36 @@
       const unsched = e.target.closest('.unschedule-entry');
       const statusBtn = e.target.closest('.status-btn');
       const saveReview = e.target.closest('.save-review');
-      if(cur) setCurrent(cur.dataset.id);
-      if(rem) removeScheduleEntry(rem.dataset.id);
+      if(cur){
+        const targetEntry = schedule.find(s => s.id === cur.dataset.id);
+        const existingCurrent = schedule.find(s => s.current);
+        if(targetEntry && existingCurrent && existingCurrent.id !== targetEntry.id){
+          confirmAction(
+            `Mark "${targetEntry.title}" as current? This will replace "${existingCurrent.title}" as what you're currently reading.`,
+            () => setCurrent(cur.dataset.id),
+            'Yes, switch the current book'
+          );
+        }else{
+          setCurrent(cur.dataset.id);
+        }
+      }
+      if(rem){
+        const targetEntry = schedule.find(s => s.id === rem.dataset.id);
+        confirmAction(
+          targetEntry ? `Remove "${targetEntry.title}" from the schedule? This can't be undone.` : 'Remove this from the schedule?',
+          () => removeScheduleEntry(rem.dataset.id),
+          'Yes, remove it'
+        );
+      }
       if(edit) openEditSchedule(edit.dataset.id);
-      if(unsched) unscheduleToSuggestion(unsched.dataset.id);
+      if(unsched){
+        const targetEntry = schedule.find(s => s.id === unsched.dataset.id);
+        confirmAction(
+          targetEntry ? `Move "${targetEntry.title}" back to Suggest & vote? It'll leave the schedule, keeping its votes and who suggested it.` : 'Move this back to suggestions?',
+          () => unscheduleToSuggestion(unsched.dataset.id),
+          'Yes, move it back'
+        );
+      }
       if(statusBtn && auth.currentUser){
         const uid = auth.currentUser.uid;
         const status = statusBtn.dataset.status;
