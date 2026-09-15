@@ -101,15 +101,42 @@
   .brand-mark{ flex:0 0 auto; display:block; }
   .hero-mark{ margin-bottom:18px; }
   .hero-mark svg{ display:block; }
-  .topnav{display:flex; align-items:center; gap:16px; font-size:0.92rem; flex-wrap:wrap;}
-  .topnav a{color:var(--sand-dim); text-decoration:none;}
+  .topnav{display:flex; align-items:center; gap:22px; font-size:1.05rem; font-weight:600; flex-wrap:wrap;}
+  .topnav a{color:var(--sand-dim); text-decoration:none; padding-bottom:4px; border-bottom:2px solid transparent;}
   .topnav a:hover{color:var(--accent);}
-  .topnav a.active-tab{ color:var(--accent); font-weight:600; border-bottom:2px solid var(--accent); padding-bottom:2px; }
+  .topnav a.active-tab{ color:var(--accent); border-bottom-color:var(--accent); }
   .text-btn{ color:var(--sand-dim); font-size:0.85rem; cursor:pointer; text-decoration:underline; text-underline-offset:3px; background:none; border:none; font-family:'Work Sans',sans-serif; padding:0; }
   .text-btn:hover{ color:var(--accent); }
   .whoami{ font-size:0.85rem; color:var(--sand-dim); }
   .whoami strong{ color:var(--sand); font-weight:600; }
   .owner-tag{ color:var(--accent); font-size:0.78rem; margin-left:6px; }
+
+  .account-menu{ position:relative; flex:0 0 auto; }
+  .account-btn{
+    width:36px; height:36px; border-radius:50%; flex:0 0 auto;
+    background:var(--panel-2); border:1px solid var(--line-strong); color:var(--sand);
+    font-family:'Bitter',serif; font-weight:700; font-size:0.95rem;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .account-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .account-dropdown{
+    position:absolute; top:calc(100% + 10px); right:0; min-width:220px;
+    background:var(--panel-2); border:1px solid var(--line-strong); border-radius:6px;
+    padding:8px; box-shadow:0 12px 28px rgba(0,0,0,0.4); z-index:30;
+    display:none;
+  }
+  .account-dropdown.open{ display:block; }
+  .account-dropdown-header{
+    padding:8px 10px 10px; font-size:0.82rem; color:var(--sand-dim);
+    border-bottom:1px solid var(--line); margin-bottom:6px;
+  }
+  .account-dropdown-header strong{ color:var(--sand); font-weight:600; }
+  .dropdown-item{
+    display:block; width:100%; text-align:left; background:none; border:none;
+    color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.9rem;
+    padding:9px 10px; border-radius:4px; cursor:pointer;
+  }
+  .dropdown-item:hover{ background:var(--panel); color:var(--accent); }
 
   .toast{
     position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
@@ -286,7 +313,7 @@
     .hero h1{ font-size:2.2rem; }
     .log-entry{ flex-direction:column; gap:6px; }
     .log-month{ flex:none; }
-    .topnav{ font-size:0.85rem; gap:14px; width:100%; order:3; margin-top:2px; }
+    .topnav{ font-size:0.95rem; gap:16px; width:100%; order:3; margin-top:6px; }
   }
 </style>
 </head>
@@ -534,12 +561,20 @@
       <a href="#members" data-tab="members">Members</a>
       <a href="#join" data-tab="join" id="joinNavLink" style="display:none;">Join</a>
     </nav>
-    <div class="whoami">
-      Signed in as <strong id="whoamiName"></strong><span id="ownerTag" class="owner-tag" style="display:none;">Admin</span> &middot;
-      <button class="text-btn" id="accountLink">Account</button>
-      <span id="adminLinkWrap" style="display:none;"> &middot; <button class="text-btn" id="adminLink">Manage admins</button></span>
-      &middot;
-      <button class="text-btn" id="logoutLink">Log out</button>
+    <div class="account-menu">
+      <button class="account-btn" id="accountMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">
+        <span id="accountAvatar">W</span>
+      </button>
+      <div class="account-dropdown" id="accountDropdown">
+        <div class="account-dropdown-header whoami">
+          Signed in as <strong id="whoamiName"></strong><span id="ownerTag" class="owner-tag" style="display:none;">Admin</span>
+        </div>
+        <button class="dropdown-item" id="accountLink">Account</button>
+        <div id="adminLinkWrap" style="display:none;">
+          <button class="dropdown-item" id="adminLink">Manage admins</button>
+        </div>
+        <button class="dropdown-item" id="logoutLink">Log out</button>
+      </div>
     </div>
   </div>
 </div>
@@ -692,7 +727,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Sep 15, 2026, 11:30 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Sep 15, 2026, 11:45 AM CT</span></footer>
 
 </div>
 </div>
@@ -722,6 +757,11 @@
   const appRoot = document.getElementById('appRoot');
   const toastEl = document.getElementById('toast');
   const whoamiName = document.getElementById('whoamiName');
+  const accountAvatar = document.getElementById('accountAvatar');
+  function setWhoamiName(name){
+    whoamiName.textContent = name;
+    accountAvatar.textContent = (name || '?').trim().charAt(0).toUpperCase() || '?';
+  }
   const ownerTag = document.getElementById('ownerTag');
   const adminLink = document.getElementById('adminLink');
   const adminLinkWrap = document.getElementById('adminLinkWrap');
@@ -1155,7 +1195,7 @@
     gateOverlay.style.display = 'none';
     profileOverlay.style.display = 'none';
     appRoot.style.display = 'block';
-    whoamiName.textContent = user.displayName || 'you';
+    setWhoamiName(user.displayName || 'you');
     try{
       const configDoc = await db.collection('meta').doc('config').get();
       const configData = configDoc.exists ? configDoc.data() : {};
@@ -1167,7 +1207,7 @@
       isOwner = ownerId === user.uid;
       isAdmin = isOwner || adminIds.includes(user.uid);
       ownerTag.style.display = isAdmin ? 'inline' : 'none';
-      adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
+      adminLinkWrap.style.display = isOwner ? 'block' : 'none';
       document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
@@ -1214,6 +1254,24 @@
       appRoot.style.display = 'none';
       renderSignIn('');
     }
+  });
+
+  const accountMenuBtn = document.getElementById('accountMenuBtn');
+  const accountDropdown = document.getElementById('accountDropdown');
+  function closeAccountDropdown(){
+    accountDropdown.classList.remove('open');
+    accountMenuBtn.setAttribute('aria-expanded', 'false');
+  }
+  accountMenuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = accountDropdown.classList.toggle('open');
+    accountMenuBtn.setAttribute('aria-expanded', String(isOpen));
+  });
+  accountDropdown.addEventListener('click', (e) => {
+    if(e.target.closest('.dropdown-item')) closeAccountDropdown();
+  });
+  document.addEventListener('click', (e) => {
+    if(!e.target.closest('.account-menu')) closeAccountDropdown();
   });
 
   document.getElementById('logoutLink').addEventListener('click', () => auth.signOut());
@@ -1297,7 +1355,7 @@
       await db.collection('members').doc(auth.currentUser.uid).set({
         name: newName, firstName, lastName, phone, email: auth.currentUser.email || ''
       }, { merge: true });
-      whoamiName.textContent = newName;
+      setWhoamiName(newName);
       okEl.textContent = 'Saved.';
     }catch(e){
       errEl.textContent = friendlyAuthError(e);
@@ -2267,7 +2325,7 @@
       isOwner = ownerId === auth.currentUser.uid;
       isAdmin = isOwner || adminIds.includes(auth.currentUser.uid);
       ownerTag.style.display = isAdmin ? 'inline' : 'none';
-      adminLinkWrap.style.display = isOwner ? 'inline' : 'none';
+      adminLinkWrap.style.display = isOwner ? 'block' : 'none';
       document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
