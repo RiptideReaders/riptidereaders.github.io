@@ -140,6 +140,17 @@
   }
   .rating-badge .badge-text{ font-size:0.9rem; color:var(--sand); flex:1; min-width:180px; }
   .rating-badge .badge-text strong{ color:var(--accent); }
+  .deadline-banner{
+    margin-bottom:28px; padding:14px 20px; background:var(--panel); border-radius:4px;
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  }
+  .deadline-banner .deadline-text{ font-size:0.9rem; color:var(--sand); flex:1; min-width:180px; }
+  .deadline-banner .deadline-text strong{ color:var(--accent); }
+  .deadline-edit-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .deadline-edit-row input{
+    background:var(--ink); border:1px solid var(--line-strong); color:var(--sand);
+    font-family:'Work Sans',sans-serif; font-size:0.9rem; padding:8px 10px; border-radius:3px;
+  }
   .status-widget{
     margin-top:12px; padding:14px 20px; background:var(--panel); border-radius:4px;
   }
@@ -607,6 +618,7 @@
   </section>
 
   <section id="suggest" class="tab-section">
+    <div id="votingDeadlineBanner"></div>
     <div class="section-head">
       <h2>Suggest &amp; vote</h2>
       <p>Anyone can throw a title into the pool. Everyone gets one vote per book.</p>
@@ -732,6 +744,7 @@
   let ownerId = null;
   let adminIds = [];
   let removedUids = [];
+  let votingDeadline = null;
   let isOwner = false;
   let isAdmin = false;
   let appInited = false;
@@ -1042,6 +1055,66 @@
     claimOwnerBanner.style.display = ownerExists ? 'none' : 'block';
   }
 
+  function formatDeadline(dateStr){
+    // dateStr is a plain "YYYY-MM-DD" — build the date using local parts so it
+    // doesn't shift a day off due to UTC parsing.
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+
+  function renderVotingDeadline(){
+    const el = document.getElementById('votingDeadlineBanner');
+    if(!el) return;
+    if(votingDeadline){
+      const formatted = formatDeadline(votingDeadline);
+      el.innerHTML = `
+        <div class="deadline-banner">
+          <span class="deadline-text">Suggestions &amp; voting close <strong>${formatted}</strong></span>
+          ${isAdmin ? `<button class="link-btn" id="editDeadlineBtn" type="button">Change</button>` : ''}
+        </div>`;
+    }else if(isAdmin){
+      el.innerHTML = `
+        <div class="deadline-banner">
+          <span class="deadline-text">No deadline set for this round of suggestions &amp; voting.</span>
+          <button class="link-btn" id="editDeadlineBtn" type="button">Set a deadline</button>
+        </div>`;
+    }else{
+      el.innerHTML = '';
+    }
+    const btn = document.getElementById('editDeadlineBtn');
+    if(btn){
+      btn.addEventListener('click', () => {
+        el.innerHTML = `
+          <div class="deadline-banner">
+            <div class="deadline-edit-row">
+              <input type="date" id="deadlineDateInput" value="${votingDeadline || ''}">
+              <button class="submit-btn" id="saveDeadlineBtn" style="padding:8px 16px;">Save</button>
+              <button class="link-btn" id="clearDeadlineBtn" type="button">${votingDeadline ? 'Clear deadline' : ''}</button>
+              <button class="link-btn" id="cancelDeadlineBtn" type="button">Cancel</button>
+            </div>
+          </div>`;
+        document.getElementById('saveDeadlineBtn').addEventListener('click', async () => {
+          const val = document.getElementById('deadlineDateInput').value;
+          if(!val){ showToast('Pick a date first.'); return; }
+          try{
+            await db.collection('meta').doc('config').set({ votingDeadline: val }, { merge: true });
+            votingDeadline = val;
+            renderVotingDeadline();
+          }catch(e){ showToast("Couldn't save — try again."); }
+        });
+        document.getElementById('clearDeadlineBtn').addEventListener('click', async () => {
+          try{
+            await db.collection('meta').doc('config').set({ votingDeadline: firebase.firestore.FieldValue.delete() }, { merge: true });
+            votingDeadline = null;
+            renderVotingDeadline();
+          }catch(e){ showToast("Couldn't save — try again."); }
+        });
+        document.getElementById('cancelDeadlineBtn').addEventListener('click', () => renderVotingDeadline());
+      });
+    }
+  }
+
   async function enterMainApp(user){
     gateOverlay.style.display = 'none';
     profileOverlay.style.display = 'none';
@@ -1053,6 +1126,7 @@
       ownerId = configData.ownerId || null;
       adminIds = configData.adminIds || [];
       removedUids = configData.removedUids || [];
+      votingDeadline = configData.votingDeadline || null;
       isOwner = ownerId === user.uid;
       isAdmin = isOwner || adminIds.includes(user.uid);
       ownerTag.style.display = isAdmin ? 'inline' : 'none';
@@ -1062,9 +1136,10 @@
       document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('textEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       checkOwnerValidity();
+      renderVotingDeadline();
     }catch(e){ /* non-fatal */ }
     if(!appInited){ appInited = true; initApp(); }
-    else { showTab(activeTab); renderSchedule(); renderMembers(); }
+    else { showTab(activeTab); renderSchedule(); renderMembers(); renderVotingDeadline(); }
   }
 
   auth.onAuthStateChanged(async (user) => {
@@ -2163,6 +2238,7 @@
       ownerId = data.ownerId || null;
       adminIds = data.adminIds || [];
       removedUids = data.removedUids || [];
+      votingDeadline = data.votingDeadline || null;
       isOwner = ownerId === auth.currentUser.uid;
       isAdmin = isOwner || adminIds.includes(auth.currentUser.uid);
       ownerTag.style.display = isAdmin ? 'inline' : 'none';
@@ -2175,6 +2251,7 @@
       showTab(activeTab);
       renderSchedule();
       renderMembers();
+      renderVotingDeadline();
     });
 
     document.getElementById('claimOwnerBtn').addEventListener('click', async () => {
