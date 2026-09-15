@@ -627,7 +627,8 @@
       <p>Anyone can throw a title into the pool. Everyone gets one vote per book.</p>
     </div>
     <div id="recList"></div>
-    <div class="form-panel">
+    <p id="suggestClosedNote" style="display:none; color:var(--sand-dim); font-size:0.9rem; margin-top:32px; padding-top:24px; border-top:1px dashed var(--line-strong);">Suggestions are closed for this round — cast your vote above. Suggesting opens back up once voting wraps up.</p>
+    <div class="form-panel" id="suggestFormPanel">
       <h3>Suggest a book</h3>
       <div class="field-row">
         <div class="field">
@@ -691,7 +692,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Sep 15, 2026, 8:17 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Sep 15, 2026, 8:23 AM CT</span></footer>
 
 </div>
 </div>
@@ -1064,6 +1065,27 @@
     return dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   }
 
+  function todayStr(){
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  }
+  // A "YYYY-MM-DD" deadline is inclusive — it's the last day that thing is open.
+  function isPastDeadline(dateStr){
+    return !!dateStr && todayStr() > dateStr;
+  }
+
+  function updateSuggestFormVisibility(){
+    const panel = document.getElementById('suggestFormPanel');
+    const note = document.getElementById('suggestClosedNote');
+    if(!panel || !note) return;
+    // Suggestions close once their own deadline passes, but reopen once voting
+    // wraps up too — that's the start of the next round.
+    const suggestingClosed = isPastDeadline(suggestDeadline) && !isPastDeadline(votingDeadline);
+    panel.style.display = suggestingClosed ? 'none' : '';
+    note.style.display = suggestingClosed ? 'block' : 'none';
+  }
+
   const DEADLINE_KINDS = [
     { key: 'suggestDeadline', field: 'suggestDeadline', closedLabel: 'Suggestions close', unsetLabel: 'No deadline set for suggestions.', setLabel: 'Set a suggestion deadline' },
     { key: 'votingDeadline', field: 'votingDeadline', closedLabel: 'Voting closes', unsetLabel: 'No deadline set for voting.', setLabel: 'Set a voting deadline' }
@@ -1125,6 +1147,8 @@
         row.querySelector('.cancel-deadline-btn').addEventListener('click', () => renderDeadlines());
       });
     });
+
+    updateSuggestFormVisibility();
   }
 
   async function enterMainApp(user){
