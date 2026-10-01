@@ -221,6 +221,15 @@
     padding:8px 10px; border-radius:3px; resize:vertical;
   }
   .review-list{ margin-top:10px; }
+  .avg-line{ margin-top:6px; font-size:0.92rem; color:var(--sand-dim); }
+  .avg-line .avg-num{ color:var(--accent); font-weight:700; font-size:1.05rem; margin-right:4px; }
+  .thoughts-list{ margin-top:14px; }
+  .thought-item{ padding:10px 0; border-top:1px solid var(--line); font-size:0.9rem; color:var(--sand); }
+  .thought-head{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .thought-head strong{ color:var(--sand); font-weight:600; }
+  .thought-stars{ color:var(--accent); letter-spacing:1px; font-size:0.95rem; }
+  .thought-text{ margin-top:4px; color:var(--sand-dim); line-height:1.5; }
+  .thought-empty{ color:var(--sand-dim); font-size:0.85rem; font-style:italic; }
   .review-item{ padding:8px 0; border-top:1px solid var(--line); font-size:0.88rem; color:var(--sand); }
   .review-item strong{ color:var(--sand-dim); font-weight:600; }
   .link-btn{
@@ -740,7 +749,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Sep 15, 2026, 3:51 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 1, 2026, 8:13 AM CT</span></footer>
 
 </div>
 </div>
@@ -885,7 +894,7 @@
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     return d < thisMonth; // strictly before the current month — that month has to be fully over
   }
-  function renderStarsOnly(entry, uid){
+  function renderStarsOnly(entry, uid, showSummary = true){
     const ratings = entry.ratings || {};
     const values = Object.values(ratings);
     const avg = values.length ? (values.reduce((a,b) => a+b, 0) / values.length) : 0;
@@ -895,25 +904,48 @@
       ? `${avg.toFixed(1)} avg (${values.length} rating${values.length===1?'':'s'})`
       : 'No ratings yet';
     const label = myRating ? 'Your rating:' : 'Rate it:';
-    return `<div class="star-rating"><span class="star-label">${label}</span><span class="stars">${stars}</span><span class="star-summary">${summary}</span></div>`;
+    return `<div class="star-rating"><span class="star-label">${label}</span><span class="stars">${stars}</span>${showSummary ? `<span class="star-summary">${summary}</span>` : ''}</div>`;
   }
+
+  function starsText(n){
+    n = Math.max(0, Math.min(5, Math.round(n)));
+    return '★'.repeat(n) + '☆'.repeat(5 - n);
+  }
+
+  // "★ 4.3 average · 6 ratings" shown at the top of a finished book
+  function averageLineHtml(entry){
+    const values = Object.values(entry.ratings || {});
+    if(!values.length) return '';
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    return `<div class="avg-line"><span class="avg-num">★ ${avg.toFixed(1)}</span> average &middot; ${values.length} rating${values.length === 1 ? '' : 's'}</div>`;
+  }
+
   function renderStarRating(entry, uid){
     const reviews = entry.reviews || {};
     const myReview = uid ? (reviews[uid] || '') : '';
-    const otherReviews = Object.keys(reviews)
-      .filter(u => reviews[u] && reviews[u].trim())
+    const ratings = entry.ratings || {};
+    const everyone = Array.from(new Set([...Object.keys(ratings), ...Object.keys(reviews)]))
+      .filter(u => ratings[u] || (reviews[u] && reviews[u].trim()))
       .map(u => {
         const m = members.find(mm => mm.id === u);
-        return `<div class="review-item"><strong>${escapeHtml(m ? m.name : 'someone')}:</strong> ${escapeHtml(reviews[u])}</div>`;
-      }).join('');
+        return { name: m ? m.name : 'someone', rating: ratings[u] || 0, review: (reviews[u] || '').trim() };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const otherReviews = everyone.map(p => `
+      <div class="thought-item">
+        <div class="thought-head"><strong>${escapeHtml(p.name)}</strong>${p.rating ? `<span class="thought-stars">${starsText(p.rating)}</span>` : ''}</div>
+        ${p.review ? `<div class="thought-text">${escapeHtml(p.review)}</div>` : ''}
+      </div>`).join('');
 
     return `
-      ${renderStarsOnly(entry, uid)}
+      ${renderStarsOnly(entry, uid, false)}
       <div class="review-box">
         <label style="font-size:0.82rem; color:var(--sand-dim); display:block; margin-bottom:6px;">Leave a comment</label>
         <textarea class="review-input" data-id="${entry.id}" placeholder="What did you think?">${escapeHtml(myReview)}</textarea>
         <button class="link-btn save-review" data-id="${entry.id}" style="margin-top:6px;">Save comment</button>
-        ${otherReviews ? `<div class="review-list">${otherReviews}</div>` : ''}
+        <div class="thoughts-list">
+          ${otherReviews || '<div class="thought-empty">No ratings or comments yet.</div>'}
+        </div>
       </div>`;
   }
 
@@ -1744,6 +1776,7 @@
       <div class="log-body">
         <h3 class="book-open" data-kind="schedule" data-id="${entry.id}" style="cursor:pointer;">${escapeHtml(entry.title)}</h3>
         <div class="byline">${escapeHtml(entry.author)}</div>
+        ${isEligibleForRating(entry) ? averageLineHtml(entry) : ''}
         ${entry.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
         ${isEligibleForRating(entry) ? renderReadStatusHtml(entry, uid) : ''}
         ${isEligibleForRating(entry) ? renderStarRating(entry, uid) : ''}
@@ -1955,6 +1988,11 @@
     }catch(e){ showToast("Couldn't move it back — try again."); }
   }
 
+  function thisMonthKey(){
+    const n = new Date();
+    return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+  }
+
   async function setCurrent(id){
     try{
       const batch = db.batch();
@@ -1963,6 +2001,9 @@
         if(s.id === id) batch.update(ref, { current: !s.current });
         else if(s.current) batch.update(ref, { current: false });
       });
+      // A manual switch counts as "this month is handled", so the automatic
+      // switch won't undo it later in the month.
+      batch.set(db.collection('meta').doc('config'), { autoAdvancedMonth: thisMonthKey() }, { merge: true });
       await batch.commit();
     }catch(e){ showToast("Couldn't update — try again."); }
   }
@@ -2328,9 +2369,56 @@
     recListEl.innerHTML = `<p class="empty-state">Loading…</p>`;
     memberListEl.innerHTML = `<p class="empty-state">Loading…</p>`;
 
+    // When a new month has started, move the "now reading" flag to the book
+    // scheduled for that month. The old book then drops into History on its own,
+    // since its month has passed and it's no longer current. Runs once per page
+    // load, whenever anyone opens the site.
+    let didAutoAdvance = false;
+    async function autoAdvanceCurrentBook(){
+      if(didAutoAdvance) return;
+      didAutoAdvance = true;
+      try{
+        const cfg = await db.collection('meta').doc('config').get();
+        if(cfg.exists && cfg.data().autoAdvancedMonth === thisMonthKey()) return; // already handled this month
+      }catch(e){ return; }
+      const now = new Date();
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      const current = schedule.find(s => s.current);
+      let next = null;
+      if(current){
+        const curDate = parseEntryDate(current.month);
+        if(!curDate || curDate.getTime() >= thisMonthStart) return; // still its month, nothing to do
+        // Newest book whose month has arrived and comes after the current one
+        schedule.forEach(s => {
+          if(s.id === current.id) return;
+          const d = parseEntryDate(s.month);
+          if(!d) return;
+          const t = d.getTime();
+          if(t > curDate.getTime() && t <= thisMonthStart){
+            if(!next || t > parseEntryDate(next.month).getTime()) next = s;
+          }
+        });
+      }else{
+        // Nothing marked current: only pick a book scheduled for this exact month
+        next = schedule.find(s => {
+          const d = parseEntryDate(s.month);
+          return d && d.getTime() === thisMonthStart;
+        }) || null;
+      }
+      if(!next) return; // nothing scheduled for the new month yet, so leave things as they are
+      try{
+        const batch = db.batch();
+        batch.update(db.collection('schedule').doc(next.id), { current: true });
+        if(current) batch.update(db.collection('schedule').doc(current.id), { current: false });
+        batch.set(db.collection('meta').doc('config'), { autoAdvancedMonth: thisMonthKey() }, { merge: true });
+        await batch.commit();
+      }catch(e){ /* non-fatal; an admin can still switch it by hand */ }
+    }
+
     db.collection('schedule').orderBy('createdAt', 'asc').onSnapshot(snap => {
       schedule = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderSchedule();
+      if(!snap.metadata.fromCache) autoAdvanceCurrentBook();
     }, () => showToast("Couldn't load the schedule."));
 
     db.collection('recommendations').orderBy('createdAt', 'asc').onSnapshot(snap => {
