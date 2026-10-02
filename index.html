@@ -222,6 +222,25 @@
   }
   .review-list{ margin-top:10px; }
   .log-entry{ scroll-margin-top:250px; }
+  .announce-card{ padding:20px 0; border-bottom:1px solid var(--line); }
+  .announce-card.past{ opacity:0.6; }
+  .announce-head{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  .announce-head h3{ font-family:'Bitter',serif; font-size:1.25rem; color:var(--sand); }
+  .announce-past{ font-size:0.75rem; color:var(--sand-dim); border:1px solid var(--line-strong); padding:2px 8px; border-radius:10px; }
+  .announce-when{ margin-top:6px; font-size:0.95rem; color:var(--sand); }
+  .announce-when strong{ color:var(--accent); font-weight:600; margin-right:4px; }
+  .announce-details{ margin-top:10px; color:var(--sand-dim); line-height:1.6; white-space:pre-line; }
+  .announce-meta{ margin-top:12px; font-size:0.82rem; color:var(--sand-dim); display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .announce-banner{ margin-bottom:28px; padding:16px 20px; background:var(--panel); border-left:4px solid var(--accent); border-radius:4px; }
+  .announce-banner-label{ font-size:0.75rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent); font-weight:700; }
+  .announce-banner-item{ margin-top:10px; }
+  .announce-banner-item + .announce-banner-item{ padding-top:10px; border-top:1px solid var(--line); }
+  .announce-banner-title{ font-family:'Bitter',serif; font-size:1.1rem; color:var(--sand); margin-top:4px; }
+  .announce-banner-item .announce-banner-title{ margin-top:0; }
+  .announce-pin{ font-size:0.75rem; color:var(--accent); border:1px solid var(--accent); padding:2px 8px; border-radius:10px; }
+  .check-row{ display:flex; align-items:center; gap:10px; margin-top:6px; font-size:0.9rem; color:var(--sand-dim); cursor:pointer; }
+  .check-row input{ width:18px; height:18px; accent-color:var(--accent); }
+  .announce-banner-when{ margin-top:4px; font-size:0.92rem; color:var(--sand-dim); }
   .avg-line{ margin-top:6px; font-size:0.92rem; color:var(--sand-dim); }
   .avg-line .avg-num{ color:var(--accent); font-weight:700; font-size:1.05rem; margin-right:4px; }
   .thoughts-list{ margin-top:14px; }
@@ -579,6 +598,7 @@
     </div>
     <nav class="topnav">
       <a href="#schedule" data-tab="schedule">Schedule</a>
+      <a href="#announcements" data-tab="announcements">Announcements</a>
       <a href="#suggest" data-tab="suggest">Suggest &amp; vote</a>
       <a href="#history" data-tab="history">Reviews</a>
       <a href="#members" data-tab="members">Members</a>
@@ -610,6 +630,7 @@
 <div class="wrap">
 
   <section id="heroSection" class="hero" style="border:none; padding-bottom:0;">
+    <div id="announceBanner"></div>
     <div class="hero-mark">
       <svg width="84" height="70" viewBox="0 0 84 70" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="42" cy="8" r="5.5" fill="#FF7A45"/>
@@ -716,6 +737,52 @@
     </div>
   </section>
 
+  <section id="announcements" class="tab-section">
+    <div class="section-head">
+      <p>Events and things everyone should know about.</p>
+    </div>
+    <div id="announceList"></div>
+    <div class="form-panel" id="announceFormPanel" style="display:none;">
+      <h3 id="announceFormTitle">Post an announcement</h3>
+      <div class="field-row">
+        <div class="field">
+          <label for="anTitle">Title</label>
+          <input id="anTitle" type="text" placeholder="e.g. Book review get-together">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="anDate">Date (optional)</label>
+          <input id="anDate" type="date">
+        </div>
+        <div class="field">
+          <label for="anTime">Time (optional)</label>
+          <input id="anTime" type="time">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="anPlace">Where (optional)</label>
+          <input id="anPlace" type="text" placeholder="Place or address">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="anDetails">Details (optional)</label>
+          <textarea id="anDetails" placeholder="Anything else people should know"></textarea>
+        </div>
+      </div>
+      <label class="check-row">
+        <input type="checkbox" id="anHome" checked>
+        <span>Show a short summary on the main page</span>
+      </label>
+      <div style="display:flex; gap:16px; align-items:center; margin-top:14px;">
+        <button class="submit-btn" id="anSubmit">Post announcement</button>
+        <button class="link-btn" id="anCancel" type="button">Cancel</button>
+      </div>
+    </div>
+  </section>
+
   <section id="history" class="tab-section">
     <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;">
       <div>
@@ -750,7 +817,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 2, 2026, 5:32 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 2, 2026, 6:43 AM CT</span></footer>
 
 </div>
 </div>
@@ -797,6 +864,8 @@
 
   let schedule = [];
   let recommendations = [];
+  let announcements = [];
+  let editingAnnouncementId = null;
   let members = [];
   let schCover = null;
   let schSourceRec = null;
@@ -866,6 +935,12 @@
     const star = e.target.closest('.star-btn');
     if(star){
       setRating(star.dataset.id, parseInt(star.dataset.value, 10));
+      return;
+    }
+    const goAnnounce = e.target.closest('.go-announcements');
+    if(goAnnounce){
+      showTab('announcements');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     const goHistory = e.target.closest('.go-history');
@@ -1287,9 +1362,10 @@
       document.getElementById('textEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       checkOwnerValidity();
       renderDeadlines();
+      renderAnnouncements();
     }catch(e){ /* non-fatal */ }
     if(!appInited){ appInited = true; initApp(); }
-    else { showTab(activeTab); renderSchedule(); renderMembers(); renderDeadlines(); }
+    else { showTab(activeTab); renderSchedule(); renderMembers(); renderDeadlines(); renderAnnouncements(); }
   }
 
   auth.onAuthStateChanged(async (user) => {
@@ -1622,8 +1698,8 @@
     return `https://www.amazon.com/s?k=${q}`;
   }
 
-  const TAB_IDS = ['schedule', 'suggest', 'history', 'members', 'join'];
-  const TAB_LABELS = { suggest: 'Suggest & vote', history: 'Reviews', members: 'Members', join: 'Join us' };
+  const TAB_IDS = ['schedule', 'announcements', 'suggest', 'history', 'members', 'join'];
+  const TAB_LABELS = { announcements: 'Announcements', suggest: 'Suggest & vote', history: 'Reviews', members: 'Members', join: 'Join us' };
   let activeTab = 'schedule';
   function showTab(id){
     if(!TAB_IDS.includes(id)) id = 'schedule';
@@ -1831,6 +1907,135 @@
     renderNowReading();
   }
 
+
+  function formatEventTime(t){
+    if(!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    return ((h % 12) || 12) + ':' + String(m).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+  }
+  function announcementWhen(a){
+    const parts = [];
+    if(a.eventDate) parts.push(formatDeadline(a.eventDate));
+    if(a.eventTime) parts.push(formatEventTime(a.eventTime));
+    return parts.join(' at ');
+  }
+  function announcementIsPast(a){
+    return !!(a.eventDate && a.eventDate < todayStr());
+  }
+  function announcementPostedOn(a){
+    return (a.createdAt && a.createdAt.toDate)
+      ? a.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '';
+  }
+
+  function announcementCardHtml(a, admin){
+    const when = announcementWhen(a);
+    const past = announcementIsPast(a);
+    const posted = announcementPostedOn(a);
+    return `
+      <div class="announce-card ${past ? 'past' : ''}" data-id="${a.id}">
+        <div class="announce-head">
+          <h3>${escapeHtml(a.title)}</h3>
+          ${past ? '<span class="announce-past">Past event</span>' : ''}
+          ${admin && !past && a.showOnHome !== false ? '<span class="announce-pin">On main page</span>' : ''}
+        </div>
+        ${when ? `<div class="announce-when"><strong>When:</strong> ${escapeHtml(when)}</div>` : ''}
+        ${a.place ? `<div class="announce-when"><strong>Where:</strong> ${escapeHtml(a.place)}</div>` : ''}
+        ${a.details ? `<p class="announce-details">${escapeHtml(a.details)}</p>` : ''}
+        <div class="announce-meta">
+          <span>Posted${a.postedBy ? ' by ' + escapeHtml(a.postedBy) : ''}${posted ? ' &middot; ' + posted : ''}</span>
+          ${admin ? `<button class="link-btn toggle-home" data-id="${a.id}">${a.showOnHome !== false ? 'Remove from main page' : 'Show on main page'}</button><button class="link-btn edit-announce" data-id="${a.id}">Edit</button><button class="link-btn remove-announce" data-id="${a.id}">Remove</button>` : ''}
+        </div>
+      </div>`;
+  }
+
+  // Main page: just a short summary (title, when, where) of the announcements an admin
+  // chose to show there. Events that have already happened drop off on their own.
+  function announceBannerHtml(list){
+    const shown = list.filter(a => a.showOnHome !== false && !announcementIsPast(a));
+    if(!shown.length) return '';
+    const items = shown.map(a => {
+      const when = announcementWhen(a);
+      const line = [when, a.place].filter(Boolean).map(escapeHtml).join(' &middot; ');
+      return `
+        <div class="announce-banner-item">
+          <div class="announce-banner-title">${escapeHtml(a.title)}</div>
+          ${line ? `<div class="announce-banner-when">${line}</div>` : ''}
+        </div>`;
+    }).join('');
+    return `
+      <div class="announce-banner">
+        <div class="announce-banner-label">${shown.length > 1 ? 'Announcements' : 'Announcement'}</div>
+        ${items}
+        <button class="link-btn go-announcements" type="button" style="margin-top:10px;">See all announcements &rarr;</button>
+      </div>`;
+  }
+
+  function renderAnnouncements(){
+    const listEl = document.getElementById('announceList');
+    if(!listEl) return;
+    document.getElementById('announceFormPanel').style.display = isAdmin ? 'block' : 'none';
+    listEl.innerHTML = announcements.length
+      ? announcements.map(a => announcementCardHtml(a, isAdmin)).join('')
+      : `<p class="empty-state">${isAdmin ? 'No announcements yet — post the first one below.' : 'No announcements yet.'}</p>`;
+    document.getElementById('announceBanner').innerHTML = announceBannerHtml(announcements);
+  }
+
+  function resetAnnouncementForm(){
+    editingAnnouncementId = null;
+    ['anTitle', 'anDate', 'anTime', 'anPlace', 'anDetails'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('anHome').checked = true;
+    document.getElementById('announceFormTitle').textContent = 'Post an announcement';
+    document.getElementById('anSubmit').textContent = 'Post announcement';
+  }
+
+  async function saveAnnouncement(){
+    const title = document.getElementById('anTitle').value.trim();
+    if(!title){ showToast('Add a title first.'); return; }
+    const data = {
+      title,
+      details: document.getElementById('anDetails').value.trim(),
+      eventDate: document.getElementById('anDate').value || '',
+      eventTime: document.getElementById('anTime').value || '',
+      place: document.getElementById('anPlace').value.trim(),
+      showOnHome: document.getElementById('anHome').checked
+    };
+    try{
+      if(editingAnnouncementId){
+        await db.collection('announcements').doc(editingAnnouncementId).update(data);
+        showToast('Updated.');
+      }else{
+        await db.collection('announcements').add({
+          ...data,
+          postedBy: auth.currentUser ? (auth.currentUser.displayName || 'an admin') : 'an admin',
+          postedByUid: auth.currentUser ? auth.currentUser.uid : null,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showToast('Posted.');
+      }
+    }catch(e){
+      showToast(e && e.code === 'permission-denied'
+        ? "Couldn't post — the Firestore rules need the announcements update."
+        : "Couldn't save — try again.");
+      return;
+    }
+    resetAnnouncementForm();
+  }
+
+  function startEditAnnouncement(id){
+    const a = announcements.find(x => x.id === id);
+    if(!a) return;
+    editingAnnouncementId = id;
+    document.getElementById('anTitle').value = a.title || '';
+    document.getElementById('anDate').value = a.eventDate || '';
+    document.getElementById('anTime').value = a.eventTime || '';
+    document.getElementById('anPlace').value = a.place || '';
+    document.getElementById('anDetails').value = a.details || '';
+    document.getElementById('anHome').checked = a.showOnHome !== false;
+    document.getElementById('announceFormTitle').textContent = 'Edit announcement';
+    document.getElementById('anSubmit').textContent = 'Save changes';
+    document.getElementById('announceFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   function renderRecommendations(){
     if(recommendations.length === 0){
@@ -2430,6 +2635,40 @@
       if(!snap.metadata.fromCache) autoAdvanceCurrentBook();
     }, () => showToast("Couldn't load the schedule."));
 
+    db.collection('announcements').orderBy('createdAt', 'desc').onSnapshot(snap => {
+      announcements = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderAnnouncements();
+    }, () => {
+      if(isAdmin) showToast("Couldn't load announcements — the Firestore rules need the announcements update.");
+    });
+
+    document.getElementById('anSubmit').addEventListener('click', saveAnnouncement);
+    document.getElementById('anCancel').addEventListener('click', resetAnnouncementForm);
+    document.getElementById('announceList').addEventListener('click', (e) => {
+      const edit = e.target.closest('.edit-announce');
+      const rem = e.target.closest('.remove-announce');
+      const tog = e.target.closest('.toggle-home');
+      if(tog){
+        const a = announcements.find(x => x.id === tog.dataset.id);
+        if(a){
+          db.collection('announcements').doc(a.id).update({ showOnHome: a.showOnHome === false })
+            .catch(() => showToast("Couldn't update — try again."));
+        }
+      }
+      if(edit) startEditAnnouncement(edit.dataset.id);
+      if(rem){
+        const a = announcements.find(x => x.id === rem.dataset.id);
+        confirmAction(
+          a ? `Remove "${a.title}"? This can't be undone.` : 'Remove this announcement?',
+          async () => {
+            try{ await db.collection('announcements').doc(rem.dataset.id).delete(); }
+            catch(err){ showToast("Couldn't remove — try again."); }
+          },
+          'Yes, remove it'
+        );
+      }
+    });
+
     db.collection('recommendations').orderBy('createdAt', 'asc').onSnapshot(snap => {
       recommendations = snap.docs.map(d => ({ id: d.id, votes: [], ...d.data() }));
       renderRecommendations();
@@ -2492,6 +2731,7 @@
       renderSchedule();
       renderMembers();
       renderDeadlines();
+      renderAnnouncements();
     });
 
     document.getElementById('claimOwnerBtn').addEventListener('click', async () => {
