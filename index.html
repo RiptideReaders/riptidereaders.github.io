@@ -580,7 +580,7 @@
     <nav class="topnav">
       <a href="#schedule" data-tab="schedule">Schedule</a>
       <a href="#suggest" data-tab="suggest">Suggest &amp; vote</a>
-      <a href="#history" data-tab="history">History</a>
+      <a href="#history" data-tab="history">Reviews</a>
       <a href="#members" data-tab="members">Members</a>
       <a href="#join" data-tab="join" id="joinNavLink" style="display:none;">Join</a>
     </nav>
@@ -750,7 +750,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 1, 2026, 10:20 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 2, 2026, 5:32 AM CT</span></footer>
 
 </div>
 </div>
@@ -1623,7 +1623,7 @@
   }
 
   const TAB_IDS = ['schedule', 'suggest', 'history', 'members', 'join'];
-  const TAB_LABELS = { suggest: 'Suggest & vote', history: 'History', members: 'Members', join: 'Join us' };
+  const TAB_LABELS = { suggest: 'Suggest & vote', history: 'Reviews', members: 'Members', join: 'Join us' };
   let activeTab = 'schedule';
   function showTab(id){
     if(!TAB_IDS.includes(id)) id = 'schedule';
@@ -1769,7 +1769,7 @@
     const uid = auth.currentUser ? auth.currentUser.uid : null;
     badgeEl.innerHTML = `
       <div class="rating-badge">
-        <span class="badge-text">Open for rating: <strong class="book-open" data-kind="schedule" data-id="${mostRecent.id}" style="cursor:pointer;">${escapeHtml(mostRecent.title)}</strong><br><button class="link-btn go-history" type="button" data-id="${mostRecent.id}" style="margin-top:6px;">Leave a review in History &rarr;</button></span>
+        <span class="badge-text">Open for rating: <strong class="book-open" data-kind="schedule" data-id="${mostRecent.id}" style="cursor:pointer;">${escapeHtml(mostRecent.title)}</strong><br><button class="link-btn go-history" type="button" data-id="${mostRecent.id}" style="margin-top:6px;">Leave a review &rarr;</button></span>
         ${renderStarsOnly(mostRecent, uid)}
       </div>`;
   }
@@ -1817,7 +1817,7 @@
       scheduleListEl.innerHTML = upcoming.map(entry => scheduleEntryHtml(entry, uid)).join('');
     }
 
-    // "History" holds everything once its month has passed — ratings and status live here.
+    // "Reviews" holds everything once its month has passed — ratings and status live here.
     const past = schedule
       .filter(isEligibleForRating)
       .sort((a, b) => (parseEntryDate(b.month) || 0) - (parseEntryDate(a.month) || 0));
@@ -2379,7 +2379,7 @@
     memberListEl.innerHTML = `<p class="empty-state">Loading…</p>`;
 
     // When a new month has started, move the "now reading" flag to the book
-    // scheduled for that month. The old book then drops into History on its own,
+    // scheduled for that month. The old book then drops into Reviews on its own,
     // since its month has passed and it's no longer current. Runs once per page
     // load, whenever anyone opens the site.
     let didAutoAdvance = false;
