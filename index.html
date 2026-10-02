@@ -99,6 +99,7 @@
   }
   .brand{ font-family:'Bitter', serif; font-weight:700; font-size:1.05rem; letter-spacing:0.01em; display:flex; align-items:center; gap:8px; }
   .brand-mark{ flex:0 0 auto; display:block; }
+  .brand{ cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .hero-mark{ margin-bottom:18px; }
   .hero-mark svg{ display:block; }
   .topnav{display:flex; align-items:center; gap:22px; font-size:1.05rem; font-weight:600; flex-wrap:wrap;}
@@ -586,7 +587,7 @@
 
 <div class="topbar">
   <div class="topbar-inner">
-    <div class="brand">
+    <div class="brand" id="brandHome" role="link" tabindex="0" title="Back to the schedule">
       <svg class="brand-mark" width="26" height="22" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="26" cy="5" r="3.3" fill="#FF7A45"/>
         <path d="M9 4 L21 10 C 23 12, 29 12, 31 10 L43 4" stroke="#FF7A45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
@@ -817,7 +818,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 2, 2026, 6:43 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 2, 2026, 6:53 AM CT</span></footer>
 
 </div>
 </div>
@@ -937,6 +938,11 @@
       setRating(star.dataset.id, parseInt(star.dataset.value, 10));
       return;
     }
+    if(e.target.closest('#brandHome')){
+      showTab('schedule');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     const goAnnounce = e.target.closest('.go-announcements');
     if(goAnnounce){
       showTab('announcements');
@@ -953,6 +959,13 @@
     }
     if(e.target === bookDetailOverlay){
       bookDetailOverlay.style.display = 'none';
+    }
+  });
+  document.getElementById('brandHome').addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      showTab('schedule');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   });
   function truncate(str, n){
