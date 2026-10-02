@@ -221,6 +221,7 @@
     padding:8px 10px; border-radius:3px; resize:vertical;
   }
   .review-list{ margin-top:10px; }
+  .log-entry{ scroll-margin-top:250px; }
   .avg-line{ margin-top:6px; font-size:0.92rem; color:var(--sand-dim); }
   .avg-line .avg-num{ color:var(--accent); font-weight:700; font-size:1.05rem; margin-right:4px; }
   .thoughts-list{ margin-top:14px; }
@@ -749,7 +750,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 1, 2026, 8:13 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 1, 2026, 10:20 PM CT</span></footer>
 
 </div>
 </div>
@@ -865,6 +866,14 @@
     const star = e.target.closest('.star-btn');
     if(star){
       setRating(star.dataset.id, parseInt(star.dataset.value, 10));
+      return;
+    }
+    const goHistory = e.target.closest('.go-history');
+    if(goHistory){
+      showTab('history');
+      const entryEl = document.querySelector('#historyList .log-entry[data-id="' + goHistory.dataset.id + '"]');
+      if(entryEl) entryEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     if(e.target === bookDetailOverlay){
@@ -1760,7 +1769,7 @@
     const uid = auth.currentUser ? auth.currentUser.uid : null;
     badgeEl.innerHTML = `
       <div class="rating-badge">
-        <span class="badge-text">Open for rating: <strong class="book-open" data-kind="schedule" data-id="${mostRecent.id}" style="cursor:pointer;">${escapeHtml(mostRecent.title)}</strong> — head to History to leave a comment too.</span>
+        <span class="badge-text">Open for rating: <strong class="book-open" data-kind="schedule" data-id="${mostRecent.id}" style="cursor:pointer;">${escapeHtml(mostRecent.title)}</strong><br><button class="link-btn go-history" type="button" data-id="${mostRecent.id}" style="margin-top:6px;">Leave a review in History &rarr;</button></span>
         ${renderStarsOnly(mostRecent, uid)}
       </div>`;
   }
