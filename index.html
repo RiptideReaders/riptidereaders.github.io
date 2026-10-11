@@ -247,6 +247,9 @@
   .thoughts-list{ margin-top:14px; }
   .thought-item{ padding:10px 0; border-top:1px solid var(--line); font-size:0.9rem; color:var(--sand); }
   .thought-head{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .early-review{ margin-top:10px; border-top:1px solid var(--line); padding-top:8px; }
+  .early-review summary{ cursor:pointer; color:var(--accent); font-size:0.88rem; }
+  .early-note{ font-size:0.8rem; color:var(--sand-dim); margin:6px 0 2px; }
   .edit-review{ background:none; border:0; color:var(--sand-dim); cursor:pointer; padding:4px; line-height:0; border-radius:3px; }
   .edit-review:hover{ color:var(--accent); }
   .review-editor{ margin-top:6px; }
@@ -823,7 +826,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 9, 2026, 6:48 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 11, 2026, 1:43 PM CT</span></footer>
 
 </div>
 </div>
@@ -1022,13 +1025,30 @@
     return `<div class="avg-line"><span class="avg-num">★ ${avg.toFixed(1)}</span> average &middot; ${values.length} rating${values.length === 1 ? '' : 's'}</div>`;
   }
 
-  function renderStarRating(entry, uid){
+  const earlyOpen = new Set();
+  function revealDateText(entry){
+    const d = parseEntryDate(entry.month);
+    if(!d) return 'the first of next month';
+    const n = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    return n.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  }
+  function renderEarlyReview(entry, uid){
+    if(!uid) return '';
+    const mine = (entry.ratings || {})[uid] || (entry.reviews || {})[uid];
+    return `<details class="early-review" data-id="${entry.id}" ${earlyOpen.has(entry.id) ? 'open' : ''}>
+      <summary>${mine ? 'Your early review' : 'Already read it? Review it early'}</summary>
+      <div class="early-note">Only you can see your rating and comment until ${revealDateText(entry)}, when everyone's show up in Reviews.</div>
+      ${renderStarRating(entry, uid, true)}
+    </details>`;
+  }
+
+  function renderStarRating(entry, uid, early){
     const reviews = entry.reviews || {};
     const ratings = entry.ratings || {};
     const ids = new Set([...Object.keys(ratings), ...Object.keys(reviews)]);
     if(uid) ids.add(uid);
     const everyone = Array.from(ids)
-      .filter(u => u === uid || ratings[u] || (reviews[u] && reviews[u].trim()))
+      .filter(u => early ? u === uid : (u === uid || ratings[u] || (reviews[u] && reviews[u].trim())))
       .map(u => {
         const m = members.find(mm => mm.id === u);
         return { uid: u, mine: u === uid, name: m ? m.name : 'someone', rating: ratings[u] || 0, review: (reviews[u] || '').trim() };
@@ -1885,7 +1905,7 @@
         ${isEligibleForRating(entry) ? averageLineHtml(entry) : ''}
         ${entry.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
         ${isEligibleForRating(entry) ? renderReadStatusHtml(entry, uid) : ''}
-        ${isEligibleForRating(entry) ? renderStarRating(entry, uid) : ''}
+        ${isEligibleForRating(entry) ? renderStarRating(entry, uid) : renderEarlyReview(entry, uid)}
         ${isAdmin ? `
         <div class="log-actions">
           ${entry.current
@@ -2542,6 +2562,12 @@
         }
       }
     }
+    document.addEventListener('toggle', (e) => {
+      const d = e.target;
+      if(d && d.classList && d.classList.contains('early-review')){
+        if(d.open) earlyOpen.add(d.dataset.id); else earlyOpen.delete(d.dataset.id);
+      }
+    }, true);
     scheduleListEl.addEventListener('click', handleScheduleAreaClick);
     document.getElementById('historyList').addEventListener('click', handleScheduleAreaClick);
     nowReadingEl.addEventListener('click', handleScheduleAreaClick);
