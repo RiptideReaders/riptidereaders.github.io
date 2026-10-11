@@ -232,6 +232,20 @@
   .announce-when strong{ color:var(--accent); font-weight:600; margin-right:4px; }
   .announce-details{ margin-top:10px; color:var(--sand-dim); line-height:1.6; white-space:pre-line; }
   .announce-meta{ margin-top:12px; font-size:0.82rem; color:var(--sand-dim); display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .rsvp-box{ margin-top:14px; padding:14px 16px; background:var(--panel); border:1px solid var(--line); border-radius:4px; }
+  .rsvp-count{ font-size:1rem; color:var(--sand); }
+  .rsvp-count strong{ color:var(--accent); font-size:1.25rem; }
+  .rsvp-btns{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .rsvp-btn{ background:none; border:1px solid var(--line-strong); color:var(--sand); padding:8px 14px; border-radius:20px; cursor:pointer; font-family:'Work Sans',sans-serif; font-size:0.9rem; }
+  .rsvp-btn.active{ background:var(--accent); border-color:var(--accent); color:#0B2027; font-weight:600; }
+  .rsvp-fields{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+  .rsvp-fields label{ font-size:0.82rem; color:var(--sand-dim); display:block; margin-bottom:3px; }
+  .rsvp-fields select, .rsvp-fields textarea{ width:100%; background:var(--bg, #0B2027); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.9rem; padding:8px 10px; border-radius:3px; }
+  .rsvp-fields textarea{ min-height:48px; resize:vertical; }
+  .rsvp-list{ margin-top:12px; }
+  .rsvp-row{ padding:8px 0; border-top:1px solid var(--line); font-size:0.9rem; color:var(--sand); }
+  .rsvp-row .rsvp-state{ color:var(--sand-dim); margin-left:6px; }
+  .rsvp-row .rsvp-food{ display:block; color:var(--sand-dim); margin-top:2px; }
   .announce-banner{ margin-bottom:28px; padding:16px 20px; background:var(--panel); border-left:4px solid var(--accent); border-radius:4px; }
   .announce-banner-label{ font-size:0.75rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent); font-weight:700; }
   .announce-banner-item{ margin-top:10px; }
@@ -785,6 +799,14 @@
         <input type="checkbox" id="anHome" checked>
         <span>Show a short summary on the main page</span>
       </label>
+      <label class="check-row">
+        <input type="checkbox" id="anRsvp">
+        <span>Ask people to RSVP (shows a headcount)</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="anFood">
+        <span>Also let people say what food they're bringing (only applies when RSVP is on)</span>
+      </label>
       <div style="display:flex; gap:16px; align-items:center; margin-top:14px;">
         <button class="submit-btn" id="anSubmit">Post announcement</button>
         <button class="link-btn" id="anCancel" type="button">Cancel</button>
@@ -826,7 +848,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 11, 2026, 1:43 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 11, 2026, 2:08 PM CT</span></footer>
 
 </div>
 </div>
@@ -1969,6 +1991,97 @@
       : '';
   }
 
+  // ---- RSVPs: each person's answer lives at announcements/{id}/rsvps/{uid} ----
+  const rsvpData = {};      // announcement id -> array of answers (null = couldn't load)
+  const rsvpUnsubs = {};
+  const rsvpDraft = {};     // unsaved edits, so a refresh from someone else's RSVP doesn't wipe typing
+  const RSVP_LABELS = { yes: 'Going', maybe: 'Maybe', no: "Can't make it" };
+
+  function syncRsvpListeners(){
+    const want = new Set(announcements.filter(a => a.rsvpEnabled).map(a => a.id));
+    Object.keys(rsvpUnsubs).forEach(id => {
+      if(!want.has(id)){ rsvpUnsubs[id](); delete rsvpUnsubs[id]; delete rsvpData[id]; }
+    });
+    want.forEach(id => {
+      if(rsvpUnsubs[id]) return;
+      rsvpUnsubs[id] = db.collection('announcements').doc(id).collection('rsvps').onSnapshot(snap => {
+        rsvpData[id] = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+        renderAnnouncements();
+      }, () => { rsvpData[id] = null; renderAnnouncements(); });
+    });
+  }
+  function myRsvpBase(id){
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    const mine = (rsvpData[id] || []).find(r => r.uid === uid);
+    return { status: mine ? mine.status : '', guests: mine ? (mine.guests || 0) : 0, note: mine ? (mine.note || '') : '' };
+  }
+  function ensureRsvpDraft(id){
+    if(!rsvpDraft[id]) rsvpDraft[id] = myRsvpBase(id);
+    return rsvpDraft[id];
+  }
+  function rsvpBoxHtml(a, past){
+    const list = rsvpData[a.id];
+    if(list === null){
+      return `<div class="rsvp-box"><div class="early-note">Couldn't load RSVPs — the Firestore rules need the RSVP update.</div></div>`;
+    }
+    const all = list || [];
+    const going = all.filter(r => r.status === 'yes');
+    const heads = going.reduce((n, r) => n + 1 + (r.guests || 0), 0);
+    const maybes = all.filter(r => r.status === 'maybe').reduce((n, r) => n + 1 + (r.guests || 0), 0);
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    const d = rsvpDraft[a.id] || myRsvpBase(a.id);
+    const hasMine = all.some(r => r.uid === uid);
+    const order = { yes: 0, maybe: 1, no: 2 };
+    const rows = [...all].sort((x, y) => (order[x.status] - order[y.status]) || (x.name || '').localeCompare(y.name || '')).map(r => `
+      <div class="rsvp-row"><strong>${escapeHtml(r.name || 'Someone')}</strong><span class="rsvp-state">${RSVP_LABELS[r.status] || ''}</span>
+        ${(r.note && a.foodEnabled) ? `<span class="rsvp-food">${escapeHtml(r.note)}</span>` : ''}</div>`).join('');
+    const form = past ? '' : `
+      <div class="rsvp-btns">
+        ${['yes', 'maybe', 'no'].map(k => `<button type="button" class="rsvp-btn ${d.status === k ? 'active' : ''}" data-id="${a.id}" data-status="${k}">${RSVP_LABELS[k]}</button>`).join('')}
+      </div>
+      ${a.foodEnabled && d.status && d.status !== 'no' ? `
+      <div class="rsvp-fields">
+        <div><label>Bringing food or drinks to share? (optional)</label>
+          <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(d.note)}</textarea></div>
+      </div>` : ''}
+      ${d.status ? `<div style="display:flex; gap:16px; margin-top:10px;"><button type="button" class="submit-btn rsvp-save" data-id="${a.id}">Save RSVP</button>${hasMine ? `<button type="button" class="link-btn rsvp-clear" data-id="${a.id}">Remove my RSVP</button>` : ''}</div>` : ''}`;
+    return `<div class="rsvp-box" data-id="${a.id}">
+      <div class="rsvp-count"><strong>${heads}</strong> ${past ? 'came' : 'coming'}${maybes ? ` &middot; ${maybes} maybe` : ''}</div>
+      ${form}
+      ${rows ? `<div class="rsvp-list">${rows}</div>` : ''}
+    </div>`;
+  }
+  async function saveRsvp(id){
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    const d = rsvpDraft[id];
+    if(!uid || !d || !d.status){ showToast("Pick Going, Maybe, or Can't make it first."); return; }
+    const m = members.find(mm => mm.id === uid);
+    const name = (m && m.name) || (auth.currentUser && auth.currentUser.displayName) || 'Someone';
+    try{
+      await db.collection('announcements').doc(id).collection('rsvps').doc(uid).set({
+        status: d.status,
+        guests: 0,
+        note: (d.status === 'no' || !(announcements.find(x => x.id === id) || {}).foodEnabled) ? '' : (d.note || '').trim().slice(0, 300),
+        name,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      delete rsvpDraft[id];
+      showToast('RSVP saved.');
+      renderAnnouncements();
+    }catch(e){
+      showToast(e && e.code === 'permission-denied' ? "Couldn't save — the Firestore rules need the RSVP update." : "Couldn't save — try again.");
+    }
+  }
+  async function clearRsvp(id){
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    if(!uid) return;
+    try{
+      await db.collection('announcements').doc(id).collection('rsvps').doc(uid).delete();
+      delete rsvpDraft[id];
+      showToast('RSVP removed.');
+    }catch(e){ showToast("Couldn't remove — try again."); }
+  }
+
   function announcementCardHtml(a, admin){
     const when = announcementWhen(a);
     const past = announcementIsPast(a);
@@ -1983,6 +2096,7 @@
         ${when ? `<div class="announce-when"><strong>When:</strong> ${escapeHtml(when)}</div>` : ''}
         ${a.place ? `<div class="announce-when"><strong>Where:</strong> ${escapeHtml(a.place)}</div>` : ''}
         ${a.details ? `<p class="announce-details">${escapeHtml(a.details)}</p>` : ''}
+        ${a.rsvpEnabled ? rsvpBoxHtml(a, past) : ''}
         <div class="announce-meta">
           <span>Posted${a.postedBy ? ' by ' + escapeHtml(a.postedBy) : ''}${posted ? ' &middot; ' + posted : ''}</span>
           ${admin ? `<button class="link-btn toggle-home" data-id="${a.id}">${a.showOnHome !== false ? 'Remove from main page' : 'Show on main page'}</button><button class="link-btn edit-announce" data-id="${a.id}">Edit</button><button class="link-btn remove-announce" data-id="${a.id}">Remove</button>` : ''}
@@ -1997,7 +2111,13 @@
     if(!shown.length) return '';
     const items = shown.map(a => {
       const when = announcementWhen(a);
-      const line = [when, a.place].filter(Boolean).map(escapeHtml).join(' &middot; ');
+      let line = [when, a.place].filter(Boolean).map(escapeHtml).join(' &middot; ');
+      if(a.rsvpEnabled && Array.isArray(rsvpData[a.id])){
+        const n = rsvpData[a.id].filter(r => r.status === 'yes').reduce((t, r) => t + 1 + (r.guests || 0), 0);
+        line += (line ? ' &middot; ' : '') + n + ' going &middot; RSVP inside';
+      }else if(a.rsvpEnabled){
+        line += (line ? ' &middot; ' : '') + 'RSVP inside';
+      }
       return `
         <div class="announce-banner-item">
           <div class="announce-banner-title">${escapeHtml(a.title)}</div>
@@ -2016,16 +2136,25 @@
     const listEl = document.getElementById('announceList');
     if(!listEl) return;
     document.getElementById('announceFormPanel').style.display = isAdmin ? 'block' : 'none';
+    const ae = document.activeElement;
+    const keep = (ae && listEl.contains(ae) && ae.dataset && ae.dataset.id && ae.classList.contains('rsvp-note'))
+      ? { cls: 'rsvp-note', id: ae.dataset.id, pos: ae.selectionStart } : null;
     listEl.innerHTML = announcements.length
       ? announcements.map(a => announcementCardHtml(a, isAdmin)).join('')
       : `<p class="empty-state">${isAdmin ? 'No announcements yet — post the first one below.' : 'No announcements yet.'}</p>`;
     document.getElementById('announceBanner').innerHTML = announceBannerHtml(announcements);
+    if(keep){
+      const el = listEl.querySelector(`.${keep.cls}[data-id="${keep.id}"]`);
+      if(el){ el.focus(); try{ if(keep.pos != null) el.setSelectionRange(keep.pos, keep.pos); }catch(_){} }
+    }
   }
 
   function resetAnnouncementForm(){
     editingAnnouncementId = null;
     ['anTitle', 'anDate', 'anTime', 'anPlace', 'anDetails'].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('anHome').checked = true;
+    document.getElementById('anRsvp').checked = false;
+    document.getElementById('anFood').checked = false;
     document.getElementById('announceFormTitle').textContent = 'Post an announcement';
     document.getElementById('anSubmit').textContent = 'Post announcement';
   }
@@ -2039,7 +2168,9 @@
       eventDate: document.getElementById('anDate').value || '',
       eventTime: document.getElementById('anTime').value || '',
       place: document.getElementById('anPlace').value.trim(),
-      showOnHome: document.getElementById('anHome').checked
+      showOnHome: document.getElementById('anHome').checked,
+      rsvpEnabled: document.getElementById('anRsvp').checked,
+      foodEnabled: document.getElementById('anRsvp').checked && document.getElementById('anFood').checked
     };
     try{
       if(editingAnnouncementId){
@@ -2073,6 +2204,8 @@
     document.getElementById('anPlace').value = a.place || '';
     document.getElementById('anDetails').value = a.details || '';
     document.getElementById('anHome').checked = a.showOnHome !== false;
+    document.getElementById('anRsvp').checked = !!a.rsvpEnabled;
+    document.getElementById('anFood').checked = !!a.foodEnabled;
     document.getElementById('announceFormTitle').textContent = 'Edit announcement';
     document.getElementById('anSubmit').textContent = 'Save changes';
     document.getElementById('announceFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2702,6 +2835,7 @@
 
     db.collection('announcements').orderBy('createdAt', 'desc').onSnapshot(snap => {
       announcements = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      syncRsvpListeners();
       renderAnnouncements();
     }, () => {
       if(isAdmin) showToast("Couldn't load announcements — the Firestore rules need the announcements update.");
@@ -2709,7 +2843,18 @@
 
     document.getElementById('anSubmit').addEventListener('click', saveAnnouncement);
     document.getElementById('anCancel').addEventListener('click', resetAnnouncementForm);
+    document.getElementById('announceList').addEventListener('input', (e) => {
+      const t = e.target;
+      if(!t.dataset || !t.dataset.id) return;
+      if(t.classList.contains('rsvp-note')) ensureRsvpDraft(t.dataset.id).note = t.value;
+    });
     document.getElementById('announceList').addEventListener('click', (e) => {
+      const rsvpBtn = e.target.closest('.rsvp-btn');
+      const rsvpSave = e.target.closest('.rsvp-save');
+      const rsvpClr = e.target.closest('.rsvp-clear');
+      if(rsvpBtn){ ensureRsvpDraft(rsvpBtn.dataset.id).status = rsvpBtn.dataset.status; renderAnnouncements(); }
+      if(rsvpSave) saveRsvp(rsvpSave.dataset.id);
+      if(rsvpClr) confirmAction('Remove your RSVP?', () => clearRsvp(rsvpClr.dataset.id), 'Yes, remove it');
       const edit = e.target.closest('.edit-announce');
       const rem = e.target.closest('.remove-announce');
       const tog = e.target.closest('.toggle-home');
