@@ -112,6 +112,7 @@
   .whoami strong{ color:var(--sand); font-weight:600; }
   .owner-tag{ color:var(--accent); font-size:0.78rem; margin-left:6px; }
 
+  .topbar-right{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
   .account-menu{ position:relative; flex:0 0 auto; }
   .account-btn{
     width:36px; height:36px; border-radius:50%; flex:0 0 auto;
@@ -627,6 +628,10 @@
       <a href="#members" data-tab="members">Members</a>
       <a href="#join" data-tab="join" id="joinNavLink" style="display:none;">Join</a>
     </nav>
+    <div class="topbar-right">
+    <button class="account-btn refresh-btn" id="refreshBtn" type="button" aria-label="Refresh the page" title="Refresh">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+    </button>
     <div class="account-menu">
       <button class="account-btn" id="accountMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">
         <span id="accountAvatar">W</span>
@@ -641,6 +646,7 @@
         </div>
         <button class="dropdown-item" id="logoutLink">Log out</button>
       </div>
+    </div>
     </div>
   </div>
 </div>
@@ -858,7 +864,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 12, 2026, 9:43 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 12, 2026, 9:55 PM CT</span></footer>
 
 </div>
 </div>
@@ -2301,6 +2307,12 @@
     }
     btn.disabled = false; btn.textContent = 'Download backup';
   }
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    // Reload with a fresh URL so the phone fetches the newest version instead of a cached one.
+    const u = new URL(window.location.href);
+    u.searchParams.set('r', Date.now());
+    window.location.replace(u.toString());
+  });
   document.getElementById('backupBtn').addEventListener('click', downloadBackup);
 
   // ---- Restore: reads a backup file and writes it back (merge by ID, never deletes) ----
