@@ -844,9 +844,9 @@
     <div id="memberList"></div>
     <div class="form-panel" id="backupPanel" style="display:none;">
       <h3>Back up the site</h3>
-      <p style="color:var(--sand-dim); line-height:1.6; margin:6px 0 12px;">Downloads one file with everything: the schedule, suggestions and votes, reviews and ratings, announcements and RSVPs, and the member list. Keep it somewhere safe (Files, email it to yourself). It includes members' emails and phone numbers, so don't share it.</p>
+      <p style="color:var(--sand-dim); line-height:1.6; margin:6px 0 12px;">Exports one file with everything: the schedule, suggestions and votes, reviews and ratings, announcements and RSVPs, and the member list. On your phone, tap Export, then tap again when it says the backup is ready, and choose Save to Files. It includes members' emails and phone numbers, so don't share it.</p>
       <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
-        <button class="submit-btn" id="backupBtn" type="button">Download backup</button>
+        <button class="submit-btn" id="backupBtn" type="button">Export backup</button>
         <button class="link-btn" id="restoreBtn" type="button">Restore from a backup file</button>
       </div>
       <input type="file" id="restoreFile" accept=".json,application/json" style="display:none;">
@@ -864,7 +864,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 12, 2026, 9:55 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 12, 2026, 10:02 PM CT</span></footer>
 
 </div>
 </div>
@@ -2276,8 +2276,21 @@
     }
     return v;
   }
+  let preparedBackup = null; // File ready to hand to the share sheet (needs a fresh tap on iPhone)
   async function downloadBackup(){
     const btn = document.getElementById('backupBtn');
+    if(preparedBackup){
+      const f = preparedBackup;
+      preparedBackup = null;
+      btn.textContent = 'Export backup';
+      try{
+        await navigator.share({ files: [f], title: 'Riptide Readers backup' });
+        showToast('Backup exported.');
+      }catch(e){
+        if(e && e.name !== 'AbortError') showToast("Couldn't open the share sheet — try again.");
+      }
+      return;
+    }
     btn.disabled = true; btn.textContent = 'Preparing…';
     try{
       const out = { app: 'Riptide Readers', exportedAt: new Date().toISOString(), collections: {} };
@@ -2294,7 +2307,18 @@
           out.collections[name][d.id] = item;
         }
       }
-      const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+      const json = JSON.stringify(out, null, 2);
+      const fname = `riptide-readers-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      try{
+        const file = new File([json], fname, { type: 'application/json' });
+        if(navigator.canShare && navigator.canShare({ files: [file] })){
+          preparedBackup = file;
+          btn.disabled = false;
+          btn.textContent = 'Backup ready — tap to save to Files';
+          return;
+        }
+      }catch(_){}
+      const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       const stamp = new Date().toISOString().slice(0, 10);
@@ -2305,7 +2329,7 @@
     }catch(e){
       showToast("Couldn't make the backup — try again.");
     }
-    btn.disabled = false; btn.textContent = 'Download backup';
+    btn.disabled = false; btn.textContent = 'Export backup';
   }
   document.getElementById('refreshBtn').addEventListener('click', () => {
     // Reload with a fresh URL so the phone fetches the newest version instead of a cached one.
