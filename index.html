@@ -499,7 +499,7 @@
       <div class="field">
         <label for="edTitle">Book title</label>
         <div class="title-lookup-row">
-          <input id="edTitle" type="text" placeholder="Title">
+          <input id="edTitle" type="text" placeholder="Title (or paste an Amazon link)">
           <button class="lookup-btn" id="edLookup" type="button">Find book</button>
         </div>
       </div>
@@ -529,7 +529,7 @@
       <div class="field">
         <label for="erTitle">Book title</label>
         <div class="title-lookup-row">
-          <input id="erTitle" type="text" placeholder="Title">
+          <input id="erTitle" type="text" placeholder="Title (or paste an Amazon link)">
           <button class="lookup-btn" id="erLookup" type="button">Find book</button>
         </div>
       </div>
@@ -706,7 +706,7 @@
         <div class="field">
           <label for="schTitle">Book title</label>
           <div class="title-lookup-row">
-            <input id="schTitle" type="text" placeholder="Title">
+            <input id="schTitle" type="text" placeholder="Title (or paste an Amazon link)">
             <button class="lookup-btn" id="schLookup" type="button">Find book</button>
           </div>
         </div>
@@ -742,7 +742,7 @@
         <div class="field">
           <label for="recTitle">Book title</label>
           <div class="title-lookup-row">
-            <input id="recTitle" type="text" placeholder="Title">
+            <input id="recTitle" type="text" placeholder="Title (or paste an Amazon link)">
             <button class="lookup-btn" id="recLookup" type="button">Find book</button>
           </div>
         </div>
@@ -864,7 +864,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 12, 2026, 10:02 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 14, 2026, 5:53 PM CT</span></footer>
 
 </div>
 </div>
@@ -1636,14 +1636,34 @@
     return t || text; // never return empty — fall back to the original if we stripped it all
   }
 
+  function normBookTitle(x){
+    return (x || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
   async function lookupBookGoogle(titleVal, authorVal){
-    let q = 'intitle:' + encodeURIComponent(titleVal.trim());
-    if(authorVal && authorVal.trim()) q += '+inauthor:' + encodeURIComponent(authorVal.trim());
-    const res = await fetch('https://www.googleapis.com/books/v1/volumes?q=' + q + '&maxResults=5');
-    if(!res.ok) throw new Error('google books search failed');
-    const data = await res.json();
-    const items = data.items || [];
-    if(items.length === 0) return null;
+    const t = titleVal.trim(), a = (authorVal || '').trim();
+    // Strictest search first, then looser ones — small-press and newer books often
+    // don't match the exact title+author fields.
+    const queries = [];
+    queries.push('intitle:' + encodeURIComponent(t) + (a ? '+inauthor:' + encodeURIComponent(a) : ''));
+    if(a) queries.push(encodeURIComponent(t + ' ' + a));
+    queries.push(encodeURIComponent(t));
+    let items = [];
+    let lastErr = null;
+    for(let i = 0; i < queries.length && items.length === 0; i++){
+      try{
+        const res = await fetch('https://www.googleapis.com/books/v1/volumes?q=' + queries[i] + '&maxResults=10');
+        if(!res.ok){ lastErr = new Error('google books search failed'); continue; }
+        const data = await res.json();
+        let found = data.items || [];
+        if(i > 0){
+          // loose searches: only keep results whose title really contains what was typed
+          const want = normBookTitle(t);
+          found = found.filter(it => it.volumeInfo && normBookTitle(it.volumeInfo.title || '').includes(want));
+        }
+        items = found;
+      }catch(e){ lastErr = e; }
+    }
+    if(items.length === 0){ if(lastErr) throw lastErr; return null; }
     // The top-ranked match isn't always the edition with a description attached
     // (could be an audiobook or a leaner catalog entry) — so prefer the first
     // result in the list that actually has one, falling back to the top match.
@@ -1674,10 +1694,19 @@
   async function lookupBookOpenLibrary(titleVal, authorVal){
     let q = 'title=' + encodeURIComponent(titleVal.trim());
     if(authorVal && authorVal.trim()) q += '&author=' + encodeURIComponent(authorVal.trim());
-    const res = await fetch('https://openlibrary.org/search.json?' + q + '&limit=1');
+    let res = await fetch('https://openlibrary.org/search.json?' + q + '&limit=1');
     if(!res.ok) throw new Error('open library search failed');
-    const data = await res.json();
-    const doc = data.docs && data.docs[0];
+    let data = await res.json();
+    let doc = data.docs && data.docs[0];
+    if(!doc){
+      // looser search: everything typed as one query, keep only a real title match
+      res = await fetch('https://openlibrary.org/search.json?q=' + encodeURIComponent((titleVal + ' ' + (authorVal || '')).trim()) + '&limit=5');
+      if(res.ok){
+        data = await res.json();
+        const want = normBookTitle(titleVal);
+        doc = (data.docs || []).find(d => normBookTitle(d.title || '').includes(want));
+      }
+    }
     if(!doc) return null;
     const result = {
       title: doc.title || titleVal,
@@ -1705,7 +1734,15 @@
     const res = await fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(term) + '&entity=ebook&limit=1');
     if(!res.ok) throw new Error('itunes search failed');
     const data = await res.json();
-    const item = data.results && data.results[0];
+    let item = data.results && data.results[0];
+    if(!item && authorVal && authorVal.trim()){
+      const res2 = await fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(titleVal.trim()) + '&entity=ebook&limit=10');
+      if(res2.ok){
+        const d2 = await res2.json();
+        const want = normBookTitle(titleVal);
+        item = (d2.results || []).find(r => normBookTitle(r.trackName || '').includes(want));
+      }
+    }
     if(!item) return null;
     let cover = item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : null;
     let description = item.description || item.shortDescription || '';
@@ -1813,6 +1850,67 @@
     showToast('Message drafted, numbers copied — paste them into "To:" (iPhone group texts need each number added manually).');
   }
 
+  // ---- Amazon: Amazon has no public lookup, but its book link contains the ISBN-10 ----
+  function parseAmazonInput(text){
+    const t = (text || '').trim();
+    if(/(^|\/\/)(a\.co|amzn\.(to|com))\//i.test(t)) return { short: true };
+    const m = t.match(/amazon\.[a-z.]+(?:\/.*?)?(?:\/dp\/|\/gp\/product\/|\/product\/)([A-Z0-9]{10})/i);
+    if(m){
+      const asin = m[1].toUpperCase();
+      return /^\d{9}[\dX]$/.test(asin) ? { isbn: asin } : { kindle: true };
+    }
+    const bare = t.replace(/[-\s]/g, '');
+    if(/^\d{9}[\dX]$/i.test(bare) || /^97[89]\d{10}$/.test(bare)) return { isbn: bare.toUpperCase() };
+    return null;
+  }
+  function imageLoads(url){
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(img.naturalWidth > 10);
+      img.onerror = () => resolve(false);
+      img.src = url;
+    });
+  }
+  async function lookupByIsbn(isbn){
+    const result = { title: '', author: '', coverUrl: null, description: '' };
+    try{
+      const res = await fetch('https://www.googleapis.com/books/v1/volumes?q=isbn:' + isbn);
+      if(res.ok){
+        const data = await res.json();
+        const info = data.items && data.items[0] && data.items[0].volumeInfo;
+        if(info){
+          result.title = info.title || '';
+          result.author = (info.authors && info.authors[0]) || '';
+          const c = info.imageLinks && (info.imageLinks.thumbnail || info.imageLinks.smallThumbnail);
+          if(c) result.coverUrl = c.replace('http://', 'https://');
+          if(info.description) result.description = cleanDescription(stripHtml(info.description)).slice(0, 650);
+        }
+      }
+    }catch(e){ console.error('Google ISBN lookup failed:', e); }
+    if(!result.title){
+      try{
+        const res = await fetch('https://openlibrary.org/api/books?bibkeys=ISBN:' + isbn + '&format=json&jscmd=data');
+        if(res.ok){
+          const d = (await res.json())['ISBN:' + isbn];
+          if(d){
+            result.title = d.title || '';
+            result.author = (d.authors && d.authors[0] && d.authors[0].name) || '';
+            if(!result.coverUrl && d.cover) result.coverUrl = d.cover.medium || d.cover.large || null;
+          }
+        }
+      }catch(e){ console.error('Open Library ISBN lookup failed:', e); }
+    }
+    if(!result.coverUrl){
+      const olc = 'https://covers.openlibrary.org/b/isbn/' + isbn + '-M.jpg?default=false';
+      if(await imageLoads(olc)) result.coverUrl = olc;
+    }
+    if(!result.coverUrl && isbn.length === 10){
+      const amz = 'https://m.media-amazon.com/images/P/' + isbn + '.01._SCLZZZZZZZ_.jpg';
+      if(await imageLoads(amz)) result.coverUrl = amz;
+    }
+    return (result.title || result.coverUrl) ? result : null;
+  }
+
   function wireLookup(btnId, titleId, authorId, previewId, descId, coverSetter){
     const btn = document.getElementById(btnId);
     btn.addEventListener('click', async () => {
@@ -1821,9 +1919,19 @@
       if(!titleVal.trim()){ showToast('Type a title first.'); return; }
       btn.disabled = true; btn.textContent = 'Looking…';
       const authorEl = document.getElementById(authorId);
-      const result = await lookupBook(titleVal, authorEl.value);
-      btn.disabled = false; btn.textContent = 'Find book';
+      const amz = parseAmazonInput(titleVal);
       const preview = document.getElementById(previewId);
+      let result;
+      if(amz && (amz.short || amz.kindle)){
+        btn.disabled = false; btn.textContent = 'Find book';
+        preview.style.display = 'flex';
+        preview.innerHTML = amz.short
+          ? `<span>That's a short Amazon link, which can't be read. Open it, then copy the full address from the browser bar (it contains /dp/ and a code), or just type the title.</span>`
+          : `<span>That looks like a Kindle edition, which doesn't include the book's ISBN. Try the paperback's Amazon link, or type the title.</span>`;
+        return;
+      }
+      result = amz ? await lookupByIsbn(amz.isbn) : await lookupBook(titleVal, authorEl.value);
+      btn.disabled = false; btn.textContent = 'Find book';
       if(!result){
         preview.style.display = 'flex';
         preview.innerHTML = `<span>Couldn't find a match — you can still fill this in by hand.</span>`;
