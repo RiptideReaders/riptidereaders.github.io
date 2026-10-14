@@ -499,7 +499,7 @@
       <div class="field">
         <label for="edTitle">Book title</label>
         <div class="title-lookup-row">
-          <input id="edTitle" type="text" placeholder="Title (or paste an Amazon link)">
+          <input id="edTitle" type="text" placeholder="Title or ISBN">
           <button class="lookup-btn" id="edLookup" type="button">Find book</button>
         </div>
       </div>
@@ -522,14 +522,14 @@
 </div>
 
 <div class="overlay" id="editRecOverlay" style="display:none; background:rgba(11,32,39,0.88);">
-  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); max-width:460px;">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); max-width:460px; max-height:90vh; overflow-y:auto;">
     <button class="text-btn" id="editRecClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
     <h1 style="font-size:1.4rem;">Edit this suggestion</h1>
     <div class="field-row" style="margin-top:20px;">
       <div class="field">
         <label for="erTitle">Book title</label>
         <div class="title-lookup-row">
-          <input id="erTitle" type="text" placeholder="Title (or paste an Amazon link)">
+          <input id="erTitle" type="text" placeholder="Title or ISBN">
           <button class="lookup-btn" id="erLookup" type="button">Find book</button>
         </div>
       </div>
@@ -546,7 +546,24 @@
         <textarea id="erNote" placeholder="Optional — what makes it worth reading"></textarea>
       </div>
     </div>
-    <textarea id="erDescHidden" style="display:none;"></textarea>
+    <div class="field-row">
+      <div class="field">
+        <label for="erDescHidden">Book description</label>
+        <textarea id="erDescHidden" placeholder="Paste the description here (copy it from Amazon or Goodreads)"></textarea>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="erAmazon">Amazon link</label>
+        <input id="erAmazon" type="url" inputmode="url" placeholder="Paste the Amazon page link (optional)">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="erGoodreads">Goodreads link</label>
+        <input id="erGoodreads" type="url" inputmode="url" placeholder="Paste the Goodreads page link (optional)">
+      </div>
+    </div>
     <div class="cover-preview" id="erCoverPreview" style="display:none;"></div>
     <button class="overlay-submit" id="erSubmit" style="margin-top:14px;">Save changes</button>
   </div>
@@ -706,7 +723,7 @@
         <div class="field">
           <label for="schTitle">Book title</label>
           <div class="title-lookup-row">
-            <input id="schTitle" type="text" placeholder="Title (or paste an Amazon link)">
+            <input id="schTitle" type="text" placeholder="Title or ISBN">
             <button class="lookup-btn" id="schLookup" type="button">Find book</button>
           </div>
         </div>
@@ -742,7 +759,7 @@
         <div class="field">
           <label for="recTitle">Book title</label>
           <div class="title-lookup-row">
-            <input id="recTitle" type="text" placeholder="Title (or paste an Amazon link)">
+            <input id="recTitle" type="text" placeholder="Title or ISBN">
             <button class="lookup-btn" id="recLookup" type="button">Find book</button>
           </div>
         </div>
@@ -759,6 +776,21 @@
       </div>
       <textarea id="recDescHidden" style="display:none;"></textarea>
       <div class="cover-preview" id="recCoverPreview" style="display:none;"></div>
+      <div id="recManual" style="display:none; margin-top:12px; padding:14px 16px; background:var(--panel); border:1px solid var(--line); border-radius:4px;">
+        <p style="color:var(--sand-dim); font-size:0.88rem; line-height:1.5; margin-bottom:10px;">We couldn't find details for this book. If you'd like, paste in a description (copy it from Amazon or Goodreads) and add links so people can look it up. Everything here is optional.</p>
+        <div class="field-row"><div class="field">
+          <label for="recDescManual">Book description</label>
+          <textarea id="recDescManual" placeholder="Paste the book's description here"></textarea>
+        </div></div>
+        <div class="field-row"><div class="field">
+          <label for="recAmazon">Amazon link</label>
+          <input id="recAmazon" type="url" inputmode="url" placeholder="Paste the Amazon page link">
+        </div></div>
+        <div class="field-row"><div class="field">
+          <label for="recGoodreads">Goodreads link</label>
+          <input id="recGoodreads" type="url" inputmode="url" placeholder="Paste the Goodreads page link">
+        </div></div>
+      </div>
       <div style="display:flex; gap:16px; align-items:center; margin-top:14px;">
         <button class="submit-btn" id="recSubmit">Suggest this book</button>
         <button class="link-btn" id="recCancel" type="button">Cancel</button>
@@ -864,7 +896,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 14, 2026, 6:05 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 14, 2026, 6:16 PM CT</span></footer>
 
 </div>
 </div>
@@ -917,6 +949,7 @@
   let schCover = null;
   let schSourceRec = null;
   let recCover = null;
+  let recManualOffered = false;
   let edCover = null;
   let edEntryId = null;
   let erCover = null;
@@ -966,8 +999,8 @@
     document.getElementById('bookDetailTitle').textContent = entry.title || '';
     document.getElementById('bookDetailAuthor').textContent = entry.author || '';
     document.getElementById('bookDetailDesc').textContent = desc;
-    document.getElementById('bookDetailGoodreads').href = goodreadsSearchUrl(entry.title, entry.author);
-    document.getElementById('bookDetailAmazon').href = amazonSearchUrl(entry.title, entry.author);
+    document.getElementById('bookDetailGoodreads').href = entry.goodreadsUrl || goodreadsSearchUrl(entry.title, entry.author);
+    document.getElementById('bookDetailAmazon').href = entry.amazonUrl || amazonSearchUrl(entry.title, entry.author);
     document.getElementById('bookDetailSearchA').href = bookSearchUrl(entry.title, entry.author);
     document.getElementById('bookDetailSearchLink').style.display = 'block';
     bookDetailOverlay.style.display = 'flex';
@@ -1014,6 +1047,31 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   });
+  function resetRecManual(){
+    ['recDescManual', 'recAmazon', 'recGoodreads'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    const m = document.getElementById('recManual'); if(m) m.style.display = 'none';
+    recManualOffered = false;
+  }
+  function cleanLink(v){
+    v = (v || '').trim();
+    if(!v) return '';
+    if(!/^https?:\/\//i.test(v)) v = 'https://' + v;
+    try{ new URL(v); }catch(e){ return ''; }
+    return v;
+  }
+  // First couple of sentences, for long notes; the rest is behind "Read more".
+  function shortNote(text, maxSentences = 2, maxChars = 220){
+    text = (text || '').trim();
+    const sentences = text.match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) || [text];
+    let out = '';
+    for(let i = 0; i < sentences.length && i < maxSentences; i++){
+      if(out && (out + sentences[i]).length > maxChars) break;
+      out += sentences[i];
+    }
+    out = out.trim();
+    if(out.length > maxChars) out = out.slice(0, maxChars - 1).trim() + '…';
+    return { text: out, truncated: out.length < text.length };
+  }
   function truncate(str, n){
     if(!str) return '';
     return str.length > n ? str.slice(0, n).trim() + '…' : str;
@@ -1938,7 +1996,7 @@
     return (result.title || result.coverUrl) ? result : null;
   }
 
-  function wireLookup(btnId, titleId, authorId, previewId, descId, coverSetter){
+  function wireLookup(btnId, titleId, authorId, previewId, descId, coverSetter, onDone){
     const btn = document.getElementById(btnId);
     btn.addEventListener('click', async () => {
       const titleEl = document.getElementById(titleId);
@@ -1963,6 +2021,7 @@
         preview.style.display = 'flex';
         preview.innerHTML = `<span>Couldn't find a match — you can still fill this in by hand.</span>`;
         coverSetter(null);
+        if(onDone) onDone(null);
         return;
       }
       if(result.title) titleEl.value = result.title;
@@ -1989,12 +2048,16 @@
         descMsg = ' Details added.';
       }
       preview.innerHTML = (result.coverUrl ? `<img src="${result.coverUrl}" alt="">` : '') + `<span>${coverMsg}${descMsg}</span>`;
+      if(onDone) onDone(result);
     });
   }
   wireLookup('schLookup','schTitle','schAuthor','schCoverPreview','schDesc', (url) => { schCover = url; });
   wireLookup('edLookup','edTitle','edAuthor','edCoverPreview','edDesc', (url) => { edCover = url; });
   wireLookup('erLookup','erTitle','erAuthor','erCoverPreview','erDescHidden', (url) => { erCover = url; });
-  wireLookup('recLookup','recTitle','recAuthor','recCoverPreview', 'recDescHidden', (url) => { recCover = url; });
+  wireLookup('recLookup','recTitle','recAuthor','recCoverPreview', 'recDescHidden', (url) => { recCover = url; }, (result) => {
+    // Nothing found, or found with no summary: offer the paste-your-own box.
+    if(!result || !result.description) document.getElementById('recManual').style.display = 'block';
+  });
 
   // ---------- render: now reading ----------
   function renderNowReading(){
@@ -2389,7 +2452,7 @@
           <h3 class="book-open" data-kind="rec" data-id="${rec.id}" style="cursor:pointer;">${escapeHtml(rec.title)}</h3>
           <div class="byline">${escapeHtml(rec.author)}</div>
           ${rec.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
-          ${rec.note ? `<p class="note">${escapeHtml(rec.note)}</p>` : ''}
+          ${rec.note ? (() => { const sn = shortNote(rec.note); return `<p class="note">${escapeHtml(sn.text)}${sn.truncated ? ` <button class="link-btn book-open" data-kind="rec" data-id="${rec.id}" style="font-size:0.85rem;">Read more</button>` : ''}</p>`; })() : ''}
           <div class="meta">Suggested by ${escapeHtml(rec.submittedBy || 'someone')}${isAdmin ? `<button class="link-btn schedule-rec" data-id="${rec.id}">Schedule this</button><button class="link-btn edit-rec" data-id="${rec.id}">Edit</button>` : ''}${canRemove ? `<button class="link-btn remove-rec" data-id="${rec.id}">Remove</button>` : ''}</div>
           ${voterNames.length ? `<div class="meta">Voted by ${escapeHtml(voterNames.join(', '))}</div>` : ''}
         </div>
@@ -2755,6 +2818,8 @@
     document.getElementById('erAuthor').value = entry.author || '';
     document.getElementById('erNote').value = entry.note || '';
     document.getElementById('erDescHidden').value = entry.description || '';
+    document.getElementById('erAmazon').value = entry.amazonUrl || '';
+    document.getElementById('erGoodreads').value = entry.goodreadsUrl || '';
     const preview = document.getElementById('erCoverPreview');
     if(entry.coverUrl){
       preview.style.display = 'flex';
@@ -2773,7 +2838,9 @@
     const description = document.getElementById('erDescHidden').value.trim();
     if(!title){ showToast('Add a book title first.'); return; }
     try{
-      await db.collection('recommendations').doc(erEntryId).update({ title, author, note, description, coverUrl: erCover });
+      await db.collection('recommendations').doc(erEntryId).update({ title, author, note, description, coverUrl: erCover,
+        amazonUrl: cleanLink(document.getElementById('erAmazon').value),
+        goodreadsUrl: cleanLink(document.getElementById('erGoodreads').value) });
       editRecOverlay.style.display = 'none';
       showToast('Updated.');
     }catch(e){ showToast("Couldn't save — try again."); }
@@ -2810,20 +2877,30 @@
       }catch(e){ /* non-fatal — just save without it */ }
       btn.disabled = false;
       btn.textContent = 'Suggest this book';
+      // Still nothing? Offer the manual box once before saving.
+      if(!recCover && !description && !recManualOffered && !document.getElementById('recDescManual').value.trim()){
+        recManualOffered = true;
+        document.getElementById('recManual').style.display = 'block';
+        showToast("Couldn't find this book. Add a description or links below if you like, then tap Suggest again.");
+        return;
+      }
     }
+    if(!description) description = document.getElementById('recDescManual').value.trim();
+    const amazonUrl = cleanLink(document.getElementById('recAmazon').value);
+    const goodreadsUrl = cleanLink(document.getElementById('recGoodreads').value);
 
     const name = auth.currentUser ? (auth.currentUser.displayName || 'someone') : 'someone';
     const submitterUid = auth.currentUser ? auth.currentUser.uid : null;
     try{
       await db.collection('recommendations').add({
-        title, author, note, description, submittedBy: name, submittedByUid: submitterUid, votes: [], votesDetail: {}, coverUrl: recCover,
+        title, author, note, description, submittedBy: name, submittedByUid: submitterUid, votes: [], votesDetail: {}, coverUrl: recCover, amazonUrl, goodreadsUrl,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }catch(e){ showToast("Couldn't save — try again."); return; }
     document.getElementById('recTitle').value = '';
     document.getElementById('recAuthor').value = '';
     document.getElementById('recNote').value = '';
-    document.getElementById('recDescHidden').value = '';
+    document.getElementById('recDescHidden').value = ''; resetRecManual();
     document.getElementById('recCoverPreview').style.display = 'none';
     recCover = null;
   }
@@ -2888,7 +2965,7 @@
       document.getElementById('recTitle').value = '';
       document.getElementById('recAuthor').value = '';
       document.getElementById('recNote').value = '';
-      document.getElementById('recDescHidden').value = '';
+      document.getElementById('recDescHidden').value = ''; resetRecManual();
       document.getElementById('recCoverPreview').style.display = 'none';
       recCover = null;
     });
@@ -2899,7 +2976,7 @@
       document.getElementById('recTitle').value = '';
       document.getElementById('recAuthor').value = '';
       document.getElementById('recNote').value = '';
-      document.getElementById('recDescHidden').value = '';
+      document.getElementById('recDescHidden').value = ''; resetRecManual();
       document.getElementById('recCoverPreview').style.display = 'none';
       recCover = null;
     });
