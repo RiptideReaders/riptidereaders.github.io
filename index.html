@@ -864,7 +864,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 14, 2026, 5:53 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 14, 2026, 6:05 PM CT</span></footer>
 
 </div>
 </div>
@@ -1908,6 +1908,33 @@
       const amz = 'https://m.media-amazon.com/images/P/' + isbn + '.01._SCLZZZZZZZ_.jpg';
       if(await imageLoads(amz)) result.coverUrl = amz;
     }
+    // No summary yet? Try Open Library's record for this ISBN, then a title+author search.
+    if(!result.description){
+      try{
+        const r = await fetch('https://openlibrary.org/isbn/' + isbn + '.json');
+        if(r.ok){
+          const ed = await r.json();
+          let desc = ed.description;
+          if(desc && typeof desc === 'object') desc = desc.value;
+          if(!desc && ed.works && ed.works[0] && ed.works[0].key){
+            const w = await fetch('https://openlibrary.org' + ed.works[0].key + '.json');
+            if(w.ok){
+              const wd = await w.json();
+              desc = wd.description;
+              if(desc && typeof desc === 'object') desc = desc.value;
+            }
+          }
+          if(typeof desc === 'string') result.description = cleanDescription(desc.split('\n')[0]).slice(0, 650);
+        }
+      }catch(e){ console.error('Open Library description lookup failed:', e); }
+    }
+    if(!result.description && result.title){
+      try{
+        const alt = await lookupBook(result.title, result.author);
+        if(alt && alt.description) result.description = alt.description;
+        if(!result.coverUrl && alt && alt.coverUrl) result.coverUrl = alt.coverUrl;
+      }catch(e){}
+    }
     return (result.title || result.coverUrl) ? result : null;
   }
 
@@ -1927,7 +1954,7 @@
         preview.style.display = 'flex';
         preview.innerHTML = amz.short
           ? `<span>That's a short Amazon link, which can't be read. Open it, then copy the full address from the browser bar (it contains /dp/ and a code), or just type the title.</span>`
-          : `<span>That looks like a Kindle edition, which doesn't include the book's ISBN. Try the paperback's Amazon link, or type the title.</span>`;
+          : `<span>That's a Kindle link. Kindle books use an Amazon code instead of an ISBN, so the link can't be used. On the Amazon page, scroll to Product details (or tap the Paperback option) and find the ISBN-13 or ISBN-10. Type or paste that number into this box instead.</span>`;
         return;
       }
       result = amz ? await lookupByIsbn(amz.isbn) : await lookupBook(titleVal, authorEl.value);
