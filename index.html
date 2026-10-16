@@ -1,0 +1,3333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Riptide Readers</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-512.png">
+<link rel="manifest" href="manifest.json?v=2">
+<meta name="theme-color" content="#0B2027">
+<meta name="apple-mobile-web-app-title" content="Riptide Readers">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --ink:#0B2027;
+    --panel:#12303A;
+    --panel-2:#173B46;
+    --sand:#F1E6C8;
+    --sand-dim:#B9AC8A;
+    --accent:#FF7A45;
+    --accent-deep:#E15A28;
+    --line: rgba(241,230,200,0.16);
+    --line-strong: rgba(241,230,200,0.28);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--sand);
+    font-family:'Work Sans', sans-serif;
+    font-size:16px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{
+    font-family:'Bitter', serif;
+    font-weight:600;
+    margin:0;
+    color:var(--sand);
+  }
+  a{color:var(--accent);}
+  .wrap{
+    max-width:760px;
+    margin:0 auto;
+    padding:0 28px;
+  }
+
+  .overlay{
+    position:fixed; inset:0; z-index:100;
+    background:var(--ink);
+    display:flex; align-items:flex-start; justify-content:center;
+    padding:24px; padding-top:48px; overflow-y:auto;
+    overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
+  }
+  .overlay-card{ max-width:380px; width:100%; position:relative; }
+  .overlay-card .wave svg{ display:block; width:120px; height:16px; margin-bottom:22px; }
+  .overlay-card h1{ font-size:1.9rem; }
+  .overlay-card p{ color:var(--sand-dim); margin-top:10px; font-size:0.96rem; }
+  .overlay-field{ margin-top:22px; display:flex; flex-direction:column; gap:6px; }
+  .overlay-field label{ font-size:0.82rem; color:var(--sand-dim); }
+  .overlay-field input{
+    background:var(--panel); border:1px solid var(--line-strong);
+    color:var(--sand); font-family:'Work Sans',sans-serif; font-size:1rem;
+    padding:11px 13px; border-radius:3px; outline:none; width:100%;
+  }
+  .overlay-field input:focus{ border-color:var(--accent); }
+  .overlay-error{ color:var(--accent); font-size:0.85rem; margin-top:10px; min-height:1.2em; }
+  .overlay-submit{
+    margin-top:16px; width:100%;
+    background:var(--accent); color:var(--ink); border:none;
+    font-family:'Work Sans',sans-serif; font-weight:600; font-size:0.96rem;
+    padding:12px 20px; border-radius:3px; cursor:pointer;
+  }
+  .overlay-submit:hover{ background:var(--accent-deep); }
+  .overlay-submit:disabled{ opacity:0.6; cursor:default; }
+  .overlay-switch{ margin-top:18px; font-size:0.85rem; color:var(--sand-dim); }
+  .overlay-switch button{
+    background:none; border:none; color:var(--accent); cursor:pointer;
+    font-family:'Work Sans',sans-serif; font-size:0.85rem; padding:0;
+    text-decoration:underline; text-underline-offset:3px;
+  }
+
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    background:rgba(11,32,39,0.92);
+    backdrop-filter: blur(6px);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar-inner{
+    max-width:760px; margin:0 auto; padding:14px 28px;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:16px; flex-wrap:wrap;
+  }
+  .brand{ font-family:'Bitter', serif; font-weight:700; font-size:1.05rem; letter-spacing:0.01em; display:flex; align-items:center; gap:8px; }
+  .brand-mark{ flex:0 0 auto; display:block; }
+  .brand{ cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .hero-mark{ margin-bottom:18px; }
+  .hero-mark svg{ display:block; }
+  .topnav{display:flex; align-items:center; gap:22px; font-size:1.05rem; font-weight:600; flex-wrap:wrap;}
+  .topnav a{color:var(--sand-dim); text-decoration:none; padding-bottom:4px; border-bottom:2px solid transparent;}
+  .topnav a:hover{color:var(--accent);}
+  .topnav a.active-tab{ color:var(--accent); border-bottom-color:var(--accent); }
+  .text-btn{ color:var(--sand-dim); font-size:0.85rem; cursor:pointer; text-decoration:underline; text-underline-offset:3px; background:none; border:none; font-family:'Work Sans',sans-serif; padding:0; }
+  .text-btn:hover{ color:var(--accent); }
+  .whoami{ font-size:0.85rem; color:var(--sand-dim); }
+  .whoami strong{ color:var(--sand); font-weight:600; }
+  .owner-tag{ color:var(--accent); font-size:0.78rem; margin-left:6px; }
+
+  .topbar-right{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+  .account-menu{ position:relative; flex:0 0 auto; }
+  .account-btn{
+    width:36px; height:36px; border-radius:50%; flex:0 0 auto;
+    background:var(--panel-2); border:1px solid var(--line-strong); color:var(--sand);
+    font-family:'Bitter',serif; font-weight:700; font-size:0.95rem;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .account-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .account-dropdown{
+    position:absolute; top:calc(100% + 10px); right:0; min-width:220px;
+    background:var(--panel-2); border:1px solid var(--line-strong); border-radius:6px;
+    padding:8px; box-shadow:0 12px 28px rgba(0,0,0,0.4); z-index:30;
+    display:none;
+  }
+  .account-dropdown.open{ display:block; }
+  .account-dropdown-header{
+    padding:8px 10px 10px; font-size:0.82rem; color:var(--sand-dim);
+    border-bottom:1px solid var(--line); margin-bottom:6px;
+  }
+  .account-dropdown-header strong{ color:var(--sand); font-weight:600; }
+  .dropdown-item{
+    display:block; width:100%; text-align:left; background:none; border:none;
+    color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.9rem;
+    padding:9px 10px; border-radius:4px; cursor:pointer;
+  }
+  .dropdown-item:hover{ background:var(--panel); color:var(--accent); }
+
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--panel-2); border:1px solid var(--line-strong); color:var(--sand);
+    padding:12px 18px; border-radius:4px; font-size:0.88rem; z-index:200;
+    display:none; max-width:90%; text-align:center;
+  }
+  .toast.show{ display:block; }
+
+  .hero{ padding:72px 0 36px; }
+  .hero h1{ font-size:3rem; line-height:1.05; }
+  .hero p.subtitle{ color:var(--accent); font-size:0.95rem; font-weight:600; margin-top:8px; letter-spacing:0.02em; }
+  .hero p.tagline{ color:var(--sand-dim); font-size:1.1rem; max-width:34em; margin-top:14px; }
+  .hero p.tagline-note{ color:var(--sand-dim); font-size:0.92rem; font-style:italic; max-width:34em; margin-top:10px; opacity:0.85; }
+  .wave{ margin:30px 0 8px; }
+  .wave svg{ display:block; width:180px; height:20px; }
+
+  .now-reading{ margin-top:38px; border-left:3px solid var(--accent); padding:6px 0 6px 22px; display:flex; gap:20px; }
+  .now-reading .nr-cover img{ width:64px; height:96px; object-fit:cover; border-radius:2px; flex:0 0 auto; cursor:zoom-in; }
+  .now-reading .eyebrow{ color:var(--accent); font-size:0.85rem; font-weight:600; }
+  .now-reading h2{ font-size:1.7rem; margin-top:6px; }
+  .now-reading .byline{ color:var(--sand-dim); margin-top:2px; font-size:0.95rem; }
+  .now-reading .desc{ margin-top:10px; max-width:52em; color:var(--sand); }
+  .now-reading .empty{ color:var(--sand-dim); font-style:italic; }
+  .rating-badge{
+    margin-top:16px; padding:14px 20px; background:var(--panel); border-radius:4px;
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  }
+  .rating-badge .badge-text{ font-size:0.9rem; color:var(--sand); flex:1; min-width:180px; }
+  .rating-badge .badge-text strong{ color:var(--accent); }
+  .deadline-banner{
+    margin-bottom:28px; padding:14px 20px; background:var(--panel); border-radius:4px;
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  }
+  .deadline-banner .deadline-text{ font-size:0.9rem; color:var(--sand); flex:1; min-width:180px; }
+  .deadline-banner .deadline-text strong{ color:var(--accent); }
+  .deadline-edit-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .deadline-edit-row input{
+    background:var(--ink); border:1px solid var(--line-strong); color:var(--sand);
+    font-family:'Work Sans',sans-serif; font-size:0.9rem; padding:8px 10px; border-radius:3px;
+  }
+  .status-widget{
+    margin-top:12px; padding:14px 20px; background:var(--panel); border-radius:4px;
+  }
+  .status-widget .status-prompt{ font-size:0.85rem; color:var(--sand-dim); margin-bottom:10px; }
+  .status-widget .status-buttons{ display:flex; gap:8px; flex-wrap:wrap; }
+  .status-btn{
+    background:transparent; border:1px solid var(--line-strong); color:var(--sand);
+    font-family:'Work Sans',sans-serif; font-size:0.82rem; padding:7px 12px;
+    border-radius:20px; cursor:pointer;
+  }
+  .status-btn.active{ background:var(--accent); border-color:var(--accent); color:var(--ink); font-weight:600; }
+  .status-summary{ margin-top:12px; font-size:0.82rem; color:var(--sand-dim); line-height:1.7; }
+  .status-summary strong{ color:var(--sand); }
+
+  section{ padding:56px 0; border-top:1px solid var(--line); }
+  section .section-head{ margin-bottom:28px; }
+  section .section-head h2{ font-size:1.6rem; }
+  section .section-head p{ color:var(--sand-dim); margin-top:8px; max-width:42em; }
+
+  .log-entry{ display:flex; gap:22px; padding:20px 0; border-bottom:1px solid var(--line); }
+  .log-entry:last-of-type{ border-bottom:none; }
+  .log-month{ flex:0 0 108px; padding-top:3px; color:var(--sand-dim); font-size:0.9rem; }
+  .log-cover{ flex:0 0 auto; }
+  .log-cover img{ width:52px; height:78px; object-fit:cover; border-radius:2px; display:block; cursor:zoom-in; }
+  .log-body{ flex:1; min-width:0; }
+  .log-body h3{ font-size:1.2rem; }
+  .log-body .byline{ color:var(--sand-dim); font-size:0.92rem; margin-top:2px; }
+  .log-body .desc{ margin-top:8px; color:var(--sand); }
+  .log-actions{ margin-top:10px; display:flex; gap:16px; flex-wrap:wrap; align-items:center; }
+  .current-badge{ color:var(--accent); font-size:0.9rem; font-weight:600; }
+  .star-rating{ margin-top:10px; display:flex; align-items:center; gap:10px; }
+  .star-rating .stars{ display:flex; gap:2px; }
+  .star-rating .star-btn{ background:none; border:none; padding:0; cursor:pointer; font-size:1.15rem; line-height:1; color:var(--line-strong); }
+  .star-rating .star-btn.filled{ color:var(--accent); }
+  .star-rating .star-summary{ font-size:0.82rem; color:var(--sand-dim); }
+  .star-rating .star-label{ font-size:0.82rem; color:var(--sand-dim); }
+  .review-box{ margin-top:10px; }
+  .review-box .review-input{
+    width:100%; min-height:56px; background:var(--panel); border:1px solid var(--line-strong);
+    color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.9rem;
+    padding:8px 10px; border-radius:3px; resize:vertical;
+  }
+  .review-list{ margin-top:10px; }
+  .log-entry{ scroll-margin-top:250px; }
+  .announce-card{ padding:20px 0; border-bottom:1px solid var(--line); }
+  .announce-card.past{ opacity:0.6; }
+  .announce-head{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  .announce-head h3{ font-family:'Bitter',serif; font-size:1.25rem; color:var(--sand); }
+  .announce-past{ font-size:0.75rem; color:var(--sand-dim); border:1px solid var(--line-strong); padding:2px 8px; border-radius:10px; }
+  .announce-when{ margin-top:6px; font-size:0.95rem; color:var(--sand); }
+  .announce-when strong{ color:var(--accent); font-weight:600; margin-right:4px; }
+  .announce-details{ margin-top:10px; color:var(--sand-dim); line-height:1.6; white-space:pre-line; }
+  .announce-meta{ margin-top:12px; font-size:0.82rem; color:var(--sand-dim); display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .rsvp-box{ margin-top:14px; padding:14px 16px; background:var(--panel); border:1px solid var(--line); border-radius:4px; }
+  .rsvp-count{ font-size:1rem; color:var(--sand); }
+  .rsvp-count strong{ color:var(--accent); font-size:1.25rem; }
+  .rsvp-btns{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .rsvp-btn{ background:none; border:1px solid var(--line-strong); color:var(--sand); padding:8px 14px; border-radius:20px; cursor:pointer; font-family:'Work Sans',sans-serif; font-size:0.9rem; }
+  .rsvp-btn.active{ background:var(--accent); border-color:var(--accent); color:#0B2027; font-weight:600; }
+  .rsvp-fields{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+  .rsvp-fields label{ font-size:0.82rem; color:var(--sand-dim); display:block; margin-bottom:3px; }
+  .rsvp-fields select, .rsvp-fields textarea{ width:100%; background:var(--bg, #0B2027); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.9rem; padding:8px 10px; border-radius:3px; }
+  .rsvp-fields textarea{ min-height:48px; resize:vertical; }
+  .rsvp-list{ margin-top:12px; }
+  .rsvp-row{ padding:8px 0; border-top:1px solid var(--line); font-size:0.9rem; color:var(--sand); }
+  .rsvp-row .rsvp-state{ color:var(--sand-dim); margin-left:6px; }
+  .rsvp-row .rsvp-food{ display:block; color:var(--sand-dim); margin-top:2px; }
+  .announce-banner{ margin-bottom:28px; padding:16px 20px; background:var(--panel); border-left:4px solid var(--accent); border-radius:4px; }
+  .announce-banner-label{ font-size:0.75rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent); font-weight:700; }
+  .announce-banner-item{ margin-top:10px; }
+  .announce-banner-item + .announce-banner-item{ padding-top:10px; border-top:1px solid var(--line); }
+  .announce-banner-title{ font-family:'Bitter',serif; font-size:1.1rem; color:var(--sand); margin-top:4px; }
+  .announce-banner-item .announce-banner-title{ margin-top:0; }
+  .announce-pin{ font-size:0.75rem; color:var(--accent); border:1px solid var(--accent); padding:2px 8px; border-radius:10px; }
+  .check-row{ display:flex; align-items:center; gap:10px; margin-top:6px; font-size:0.9rem; color:var(--sand-dim); cursor:pointer; }
+  .check-row input{ width:18px; height:18px; accent-color:var(--accent); }
+  .announce-banner-when{ margin-top:4px; font-size:0.92rem; color:var(--sand-dim); }
+  .avg-line{ margin-top:6px; font-size:0.92rem; color:var(--sand-dim); }
+  .avg-line .avg-num{ color:var(--accent); font-weight:700; font-size:1.05rem; margin-right:4px; }
+  .thoughts-list{ margin-top:14px; }
+  .thought-item{ padding:10px 0; border-top:1px solid var(--line); font-size:0.9rem; color:var(--sand); }
+  .thought-head{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .early-review{ margin-top:10px; border-top:1px solid var(--line); padding-top:8px; }
+  .early-review summary{ cursor:pointer; color:var(--accent); font-size:0.88rem; }
+  .early-note{ font-size:0.8rem; color:var(--sand-dim); margin:6px 0 2px; }
+  .edit-review{ background:none; border:0; color:var(--sand-dim); cursor:pointer; padding:4px; line-height:0; border-radius:3px; }
+  .edit-review:hover{ color:var(--accent); }
+  .review-editor{ margin-top:6px; }
+  .review-editor[hidden]{ display:none; }
+  .review-actions{ display:flex; gap:14px; margin-top:6px; }
+  .thought-head strong{ color:var(--sand); font-weight:600; }
+  .thought-stars{ color:var(--accent); letter-spacing:1px; font-size:0.95rem; }
+  .thought-text{ margin-top:4px; color:var(--sand-dim); line-height:1.5; }
+  .thought-empty{ color:var(--sand-dim); font-size:0.85rem; font-style:italic; }
+  .review-item{ padding:8px 0; border-top:1px solid var(--line); font-size:0.88rem; color:var(--sand); }
+  .review-item strong{ color:var(--sand-dim); font-weight:600; }
+  .link-btn{
+    background:none; border:none; color:var(--sand-dim); cursor:pointer;
+    font-family:'Work Sans',sans-serif; font-size:0.85rem; padding:0;
+    text-decoration:underline; text-underline-offset:3px;
+  }
+  .link-btn:hover{ color:var(--accent); }
+  .link-btn.current{ color:var(--accent); font-weight:600; }
+  .empty-state{ color:var(--sand-dim); font-style:italic; padding:8px 0 4px; }
+
+  .form-panel{ margin-top:32px; padding-top:24px; border-top:1px dashed var(--line-strong); }
+  .form-panel h3{ font-size:1.05rem; font-weight:600; color:var(--sand-dim); margin-bottom:16px; }
+  .field-row{ display:flex; gap:16px; flex-wrap:wrap; margin-bottom:14px; align-items:flex-end; }
+  .field{ flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size:0.82rem; color:var(--sand-dim); }
+  .field input, .field textarea{
+    background:var(--panel); border:1px solid var(--line-strong);
+    color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.95rem;
+    padding:10px 12px; border-radius:3px; outline:none; width:100%;
+  }
+  .field input:focus, .field textarea:focus{ border-color:var(--accent); }
+  .field textarea{ resize:vertical; min-height:64px; }
+  .title-lookup-row{ display:flex; gap:8px; align-items:center; }
+  .title-lookup-row input{ flex:1; }
+  .lookup-btn{
+    flex:0 0 auto; background:transparent; border:1px solid var(--line-strong);
+    color:var(--sand-dim); font-family:'Work Sans',sans-serif; font-size:0.82rem;
+    padding:10px 12px; border-radius:3px; cursor:pointer; white-space:nowrap;
+  }
+  .lookup-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .lookup-btn:disabled{ opacity:0.5; cursor:default; }
+  .cover-preview{ margin-top:10px; display:flex; align-items:center; gap:10px; font-size:0.82rem; color:var(--sand-dim); }
+  .cover-preview img{ width:40px; height:60px; object-fit:cover; border-radius:2px; }
+  .submit-btn{
+    background:var(--accent); color:var(--ink); border:none;
+    font-family:'Work Sans',sans-serif; font-weight:600; font-size:0.92rem;
+    padding:10px 20px; border-radius:3px; cursor:pointer;
+  }
+  .submit-btn:hover{ background:var(--accent-deep); }
+
+  .rec{ display:flex; align-items:flex-start; gap:18px; padding:18px 0; border-bottom:1px solid var(--line); }
+  .rec:last-of-type{ border-bottom:none; }
+  .rec-vote{ flex:0 0 56px; text-align:center; }
+  .vote-btn{
+    width:56px; padding:8px 0; border-radius:3px; cursor:pointer;
+    border:1px solid var(--line-strong); background:transparent; color:var(--sand);
+    font-family:'Work Sans',sans-serif;
+  }
+  .vote-btn .count{ display:block; font-size:1.15rem; font-weight:600; font-family:'Bitter',serif; }
+  .vote-btn .label{ display:block; font-size:0.68rem; color:var(--sand-dim); margin-top:2px; }
+  .vote-btn.voted{ background:var(--accent); border-color:var(--accent); color:var(--ink); }
+  .vote-btn.voted .label{ color:var(--ink); opacity:0.75; }
+  .rec-cover{ flex:0 0 auto; }
+  .rec-cover img{ width:44px; height:66px; object-fit:cover; border-radius:2px; display:block; cursor:zoom-in; }
+  .rec-body{ flex:1; min-width:0; }
+  .rec-body h3{ font-size:1.1rem; }
+  .rec-body .byline{ color:var(--sand-dim); font-size:0.9rem; margin-top:2px; }
+  .rec-body .note{ margin-top:8px; color:var(--sand); }
+  .rec-body .meta{ margin-top:8px; font-size:0.8rem; color:var(--sand-dim); }
+  .rec-body .meta button{ margin-left:12px; }
+
+  .member-row{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding:16px 0; border-bottom:1px solid var(--line); }
+  .member-row:last-of-type{ border-bottom:none; }
+  .member-row h3{ font-size:1.05rem; }
+  .member-row .contact{ color:var(--sand-dim); font-size:0.9rem; margin-top:4px; }
+  .member-row .contact span{ margin-right:16px; }
+
+  .admin-row{
+    display:flex; justify-content:space-between; align-items:center; gap:14px;
+    padding:12px 0; border-bottom:1px solid var(--line-strong); font-size:0.92rem;
+  }
+  .admin-row:last-of-type{ border-bottom:none; }
+  .admin-row .owner-note{ color:var(--sand-dim); font-size:0.8rem; }
+
+  .join-box{
+    padding:20px 24px; background:var(--panel); border-radius:4px;
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:space-between;
+  }
+  .join-box p{ margin:0; color:var(--sand-dim); max-width:36em; }
+  .copy-btn{
+    background:transparent; border:1px solid var(--line-strong); color:var(--sand);
+    font-family:'Work Sans',sans-serif; font-size:0.88rem; padding:9px 16px;
+    border-radius:3px; cursor:pointer; white-space:nowrap;
+  }
+  .copy-btn:hover{ border-color:var(--accent); color:var(--accent); }
+
+  footer{ padding:36px 0 60px; color:var(--sand-dim); font-size:0.85rem; }
+
+  @media (max-width:560px){
+    .hero h1{ font-size:2.2rem; }
+    .log-entry{ flex-direction:column; gap:6px; }
+    .log-month{ flex:none; }
+    .topnav{ font-size:0.95rem; gap:16px; width:100%; order:3; margin-top:6px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="overlay" id="gateOverlay">
+  <div class="overlay-card">
+    <div class="wave">
+      <svg viewBox="0 0 120 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 11 C 12 2, 22 2, 32 11 C 42 20, 52 20, 62 11 C 72 2, 82 2, 92 11 C 102 20, 112 20, 118 12" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>Riptide Readers</h1>
+    <p id="gateSubtext">Loading&hellip;</p>
+    <div id="gateFormArea"></div>
+  </div>
+</div>
+
+<div class="overlay" id="profileOverlay" style="display:none;">
+  <div class="overlay-card">
+    <div class="wave">
+      <svg viewBox="0 0 120 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 11 C 12 2, 22 2, 32 11 C 42 20, 52 20, 62 11 C 72 2, 82 2, 92 11 C 102 20, 112 20, 118 12" stroke="#FF7A45" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>One more step</h1>
+    <p>Tell your club a bit about yourself.</p>
+    <div class="field-row" style="margin-top:20px;">
+      <div class="field">
+        <label for="pcFirstName">First name</label>
+        <input id="pcFirstName" type="text" placeholder="First name" autocomplete="given-name">
+      </div>
+      <div class="field">
+        <label for="pcLastName">Last name</label>
+        <input id="pcLastName" type="text" placeholder="Last name" autocomplete="family-name">
+      </div>
+    </div>
+    <div class="overlay-field">
+      <label for="pcPhone">Cell number</label>
+      <input id="pcPhone" type="tel" placeholder="Cell number" autocomplete="tel">
+      <p style="color:var(--sand-dim); font-size:0.82rem; margin-top:4px;">Optional, but recommended — admins can text the group about what's coming up, so add yours to make sure you don't miss updates.</p>
+    </div>
+    <div class="overlay-error" id="pcError"></div>
+    <div id="pcDupSuggestion" style="display:none; margin-top:16px; padding:16px; background:var(--panel); border-radius:4px; border:1px solid var(--line-strong);">
+      <p style="color:var(--sand-dim); font-size:0.88rem;" id="pcDupText"></p>
+      <div class="overlay-field">
+        <label for="pcSuggestedName">Name to use instead</label>
+        <input id="pcSuggestedName" type="text">
+      </div>
+      <button class="overlay-submit" id="pcUseSuggested" type="button">Use this name &amp; continue</button>
+    </div>
+    <button class="overlay-submit" id="pcSubmit">Continue</button>
+  </div>
+</div>
+
+<div class="overlay" id="accountOverlay" style="display:none; background:rgba(11,32,39,0.88);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong);">
+    <button class="text-btn" id="accountClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
+    <h1 style="font-size:1.4rem;">Account settings</h1>
+
+    <p style="margin-top:20px; font-weight:600; color:var(--sand);">Your info</p>
+    <p style="color:var(--sand-dim); font-size:0.9rem; margin-top:4px;">Signed in as <span id="accEmailDisplay" style="color:var(--sand);"></span></p>
+    <div class="field-row" style="margin-top:16px;">
+      <div class="field">
+        <label for="accFirstName">First name</label>
+        <input id="accFirstName" type="text" placeholder="First name">
+      </div>
+      <div class="field">
+        <label for="accLastName">Last name</label>
+        <input id="accLastName" type="text" placeholder="Last name">
+      </div>
+    </div>
+    <div class="overlay-field">
+      <label for="accName">Name shown to your club</label>
+      <input id="accName" type="text" placeholder="e.g. Wendy">
+      <p style="color:var(--sand-dim); font-size:0.82rem; margin-top:-2px;">Just a first name or nickname is fine — this is what shows up on votes and suggestions. If there's already someone with this name in the club, we'll suggest adding an initial.</p>
+    </div>
+    <div class="overlay-field">
+      <label for="accPhone">Cell</label>
+      <input id="accPhone" type="tel" placeholder="Cell number">
+      <p style="color:var(--sand-dim); font-size:0.82rem; margin-top:4px;">Optional, but recommended — admins can text the group about what's coming up, so add yours to make sure you don't miss updates.</p>
+    </div>
+    <div class="overlay-error" id="accNameError"></div>
+    <div class="overlay-error" id="accNameSuccess" style="color:#9BD6A4;"></div>
+    <button class="overlay-submit" id="accNameSubmit">Save</button>
+
+    <p style="margin-top:28px; font-weight:600; color:var(--sand);">Password</p>
+    <div class="overlay-field">
+      <label for="accCurrentPass">Current password</label>
+      <input id="accCurrentPass" type="password" placeholder="Current password">
+    </div>
+    <div class="overlay-field">
+      <label for="accNewPass">New password</label>
+      <input id="accNewPass" type="password" placeholder="New password (6+ characters)">
+    </div>
+    <div class="overlay-field">
+      <label for="accNewPass2">Confirm new password</label>
+      <input id="accNewPass2" type="password" placeholder="Confirm new password">
+    </div>
+    <div class="overlay-error" id="accError"></div>
+    <div class="overlay-error" id="accSuccess" style="color:#9BD6A4;"></div>
+    <button class="overlay-submit" id="accSubmit">Update password</button>
+  </div>
+</div>
+
+<div class="overlay" id="adminOverlay" style="display:none; background:rgba(11,32,39,0.88);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong);">
+    <button class="text-btn" id="adminClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
+    <h1 style="font-size:1.4rem;">Manage admins</h1>
+    <p>Admins can add books to the schedule, mark one as current, and remove entries. Everyone else can view the schedule and still suggest &amp; vote.</p>
+    <div id="adminMemberList" style="margin-top:20px;"></div>
+  </div>
+</div>
+
+<div class="overlay" id="editScheduleOverlay" style="display:none; background:rgba(11,32,39,0.88);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); max-width:460px;">
+    <button class="text-btn" id="editScheduleClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
+    <h1 style="font-size:1.4rem;">Edit this pick</h1>
+    <div class="field-row" style="margin-top:20px;">
+      <div class="field" style="flex:0 0 200px;">
+        <label for="edMonth">Month</label>
+        <div style="display:flex; gap:8px;">
+          <select id="edMonthSelect" style="background:var(--ink); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.95rem; padding:10px 8px; border-radius:3px; flex:1;"></select>
+          <select id="edYearSelect" style="background:var(--ink); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.95rem; padding:10px 8px; border-radius:3px; flex:0 0 90px;"></select>
+        </div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="edTitle">Book title</label>
+        <div class="title-lookup-row">
+          <input id="edTitle" type="text" placeholder="Title or ISBN">
+          <button class="lookup-btn" id="edLookup" type="button">Find book</button>
+        </div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="edAuthor">Author</label>
+        <input id="edAuthor" type="text" placeholder="Author">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="edDesc">Short description</label>
+        <textarea id="edDesc" placeholder="A sentence or two about the book"></textarea>
+      </div>
+    </div>
+    <div class="cover-preview" id="edCoverPreview" style="display:none;"></div>
+    <button class="overlay-submit" id="edSubmit" style="margin-top:14px;">Save changes</button>
+  </div>
+</div>
+
+<div class="overlay" id="editRecOverlay" style="display:none; background:rgba(11,32,39,0.88);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); max-width:460px; max-height:90vh; overflow-y:auto;">
+    <button class="text-btn" id="editRecClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
+    <h1 style="font-size:1.4rem;">Edit this suggestion</h1>
+    <div class="field-row" style="margin-top:20px;">
+      <div class="field">
+        <label for="erTitle">Book title</label>
+        <div class="title-lookup-row">
+          <input id="erTitle" type="text" placeholder="Title or ISBN">
+          <button class="lookup-btn" id="erLookup" type="button">Find book</button>
+        </div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="erAuthor">Author</label>
+        <input id="erAuthor" type="text" placeholder="Author">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="erNote">Why this one?</label>
+        <textarea id="erNote" placeholder="Optional — what makes it worth reading"></textarea>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="erDescHidden">Book description</label>
+        <textarea id="erDescHidden" placeholder="Paste the description here (copy it from Amazon or Goodreads)"></textarea>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="erAmazon">Amazon link</label>
+        <input id="erAmazon" type="url" inputmode="url" placeholder="Paste the Amazon page link (optional)">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="erGoodreads">Goodreads link</label>
+        <input id="erGoodreads" type="url" inputmode="url" placeholder="Paste the Goodreads page link (optional)">
+      </div>
+    </div>
+    <div class="cover-preview" id="erCoverPreview" style="display:none;"></div>
+    <button class="overlay-submit" id="erSubmit" style="margin-top:14px;">Save changes</button>
+  </div>
+</div>
+
+<div class="overlay" id="recDupOverlay" style="display:none; background:rgba(11,32,39,0.9);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); text-align:center;">
+    <h1 style="font-size:1.3rem;">Already suggested</h1>
+    <p id="recDupText" style="margin-top:10px;"></p>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-top:22px;">
+      <button class="overlay-submit" id="recDupVote" style="margin-top:0;">Yes, vote for it instead</button>
+      <button class="link-btn" id="recDupCancel" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="removeMemberOverlay" style="display:none; background:rgba(11,32,39,0.9);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); text-align:center;">
+    <h1 style="font-size:1.3rem;">Remove this member?</h1>
+    <p id="removeMemberText" style="margin-top:10px;"></p>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-top:22px;">
+      <button class="overlay-submit" id="removeMemberYes" style="margin-top:0;">Yes, remove them</button>
+      <button class="link-btn" id="removeMemberCancel" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="genericConfirmOverlay" style="display:none; background:rgba(11,32,39,0.9);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); text-align:center;">
+    <h1 id="genericConfirmTitle" style="font-size:1.3rem;">Are you sure?</h1>
+    <p id="genericConfirmText" style="margin-top:10px;"></p>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-top:22px;">
+      <button class="overlay-submit" id="genericConfirmYes" style="margin-top:0;">Yes</button>
+      <button class="link-btn" id="genericConfirmCancel" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="overlay" id="bookDetailOverlay" style="display:none; background:rgba(11,32,39,0.92); padding:24px;">
+  <div class="overlay-card" style="max-width:520px; background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong); display:flex; gap:20px; align-items:flex-start;">
+    <button class="text-btn" id="bookDetailClose" style="position:absolute; top:8px; right:8px; font-size:1.5rem; text-decoration:none; padding:10px 14px; z-index:5;">&times;</button>
+    <img id="bookDetailCover" src="" alt="" style="width:110px; height:165px; object-fit:cover; border-radius:3px; flex:0 0 auto; display:none;">
+    <div style="min-width:0;">
+      <h2 id="bookDetailTitle" style="font-size:1.3rem;"></h2>
+      <div id="bookDetailAuthor" style="color:var(--sand-dim); margin-top:4px; font-size:0.95rem;"></div>
+      <p id="bookDetailDesc" style="margin-top:14px; color:var(--sand); line-height:1.6; white-space:pre-line;"></p>
+      <p id="bookDetailSearchLink" style="display:none; margin-top:12px; font-size:0.9rem;">
+        <span style="color:var(--sand-dim);">Read more:</span>
+        <a id="bookDetailGoodreads" href="#" target="_blank" style="color:var(--accent); margin-left:6px;">Goodreads</a>
+        <span style="color:var(--sand-dim);">&middot;</span>
+        <a id="bookDetailAmazon" href="#" target="_blank" style="color:var(--accent);">Amazon</a>
+        <span style="color:var(--sand-dim);">&middot;</span>
+        <a id="bookDetailSearchA" href="#" target="_blank" style="color:var(--accent);">Google</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<div id="appRoot" style="display:none;">
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand" id="brandHome" role="link" tabindex="0" title="Back to the schedule">
+      <svg class="brand-mark" width="26" height="22" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="26" cy="5" r="3.3" fill="#FF7A45"/>
+        <path d="M9 4 L21 10 C 23 12, 29 12, 31 10 L43 4" stroke="#FF7A45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M6 17 C 12 13, 18 13, 22 17 C 26 21, 32 21, 38 17 C 42 14, 46 14, 50 17" stroke="#F1E6C8" stroke-opacity="0.55" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+        <path d="M8 26 C 14 23, 18 23, 22 26 L 22 38 C 18 35, 14 35, 8 38 Z" stroke="#F1E6C8" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+        <path d="M36 26 C 30 23, 26 23, 22 26 L 22 38 C 26 35, 30 35, 36 38 Z" stroke="#F1E6C8" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+      </svg>
+      Riptide Readers
+    </div>
+    <nav class="topnav">
+      <a href="#schedule" data-tab="schedule">Schedule</a>
+      <a href="#announcements" data-tab="announcements">Announcements</a>
+      <a href="#suggest" data-tab="suggest">Suggest &amp; vote</a>
+      <a href="#history" data-tab="history">Reviews</a>
+      <a href="#members" data-tab="members">Members</a>
+      <a href="#join" data-tab="join" id="joinNavLink" style="display:none;">Join</a>
+    </nav>
+    <div class="topbar-right">
+    <button class="account-btn refresh-btn" id="refreshBtn" type="button" aria-label="Refresh the page" title="Refresh">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+    </button>
+    <div class="account-menu">
+      <button class="account-btn" id="accountMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">
+        <span id="accountAvatar">W</span>
+      </button>
+      <div class="account-dropdown" id="accountDropdown">
+        <div class="account-dropdown-header whoami">
+          Signed in as <strong id="whoamiName"></strong><span id="ownerTag" class="owner-tag" style="display:none;">Admin</span>
+        </div>
+        <button class="dropdown-item" id="accountLink">Account</button>
+        <div id="adminLinkWrap" style="display:none;">
+          <button class="dropdown-item" id="adminLink">Manage admins</button>
+        </div>
+        <button class="dropdown-item" id="logoutLink">Log out</button>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<div id="claimOwnerBanner" style="display:none; background:var(--accent); color:var(--ink); padding:12px 28px; text-align:center; font-size:0.9rem; font-weight:600;">
+  This club doesn't have a recognized owner right now &mdash;
+  <button id="claimOwnerBtn" style="background:var(--ink); color:var(--sand); border:none; padding:6px 14px; border-radius:3px; font-family:'Work Sans',sans-serif; font-weight:600; cursor:pointer; margin-left:8px;">Claim ownership</button>
+</div>
+
+<div class="wrap">
+
+  <section id="heroSection" class="hero" style="border:none; padding-bottom:0;">
+    <div id="announceBanner"></div>
+    <div class="hero-mark">
+      <svg width="84" height="70" viewBox="0 0 84 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="42" cy="8" r="5.5" fill="#FF7A45"/>
+        <path d="M10 5 L34 16 C 37 19, 47 19, 50 16 L74 5" stroke="#FF7A45" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M10 27 C 19 21, 29 21, 36 27 C 43 33, 53 33, 62 27 C 68 23, 76 23, 82 27" stroke="#F1E6C8" stroke-opacity="0.55" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M14 42 C 23 37, 30 37, 36 42 L 36 63 C 30 58, 23 58, 14 63 Z" stroke="#F1E6C8" stroke-width="2" fill="none" stroke-linejoin="round"/>
+        <path d="M58 42 C 49 37, 42 37, 36 42 L 36 63 C 42 58, 49 58, 58 63 Z" stroke="#F1E6C8" stroke-width="2" fill="none" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h1>Riptide Readers</h1>
+    <p class="subtitle">A book club for Riptide Masters swimmers</p>
+    <p class="tagline">Every month, something new lifts us up. This is where we keep the schedule, throw out ideas, and vote on what's next.</p>
+    <p class="tagline-note">This isn't a traditional book club. No meetings, no discussions to prep for. Just something fun to talk about at practice and in the locker room.</p>
+    <div class="wave">
+      <svg viewBox="0 0 180 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 14 C 17 2, 32 2, 47 14 C 62 26, 77 26, 92 14 C 107 2, 122 2, 137 14 C 152 26, 167 26, 178 16" stroke="#FF7A45" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="now-reading" id="nowReading"></div>
+    <div id="ratingBadge"></div>
+  </section>
+
+  <section id="pageTitleSection" class="hero" style="display:none; border:none; padding:56px 0 0;">
+    <h1 id="pageTitleH1"></h1>
+  </section>
+
+  <section id="schedule" class="tab-section">
+    <div class="section-head">
+      <h2>The schedule</h2>
+      <p>This month's book and what's coming up. Finished books move to Reviews.</p>
+    </div>
+    <div id="scheduleList"></div>
+    <p id="scheduleAddHint" style="display:none; color:var(--sand-dim); font-size:0.9rem; margin-top:24px; padding-top:24px; border-top:1px dashed var(--line-strong);">Books only get added to the schedule from Suggest &amp; vote — head there and tap "Schedule this" on the pick your group's chosen.</p>
+    <div class="form-panel" id="scheduleAddPanel" style="display:none;">
+      <h3>Add to the schedule</h3>
+      <div class="field-row">
+        <div class="field" style="flex:0 0 200px;">
+          <label for="schMonth">Month</label>
+          <div style="display:flex; gap:8px;">
+            <select id="schMonthSelect" style="background:var(--panel); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.95rem; padding:10px 8px; border-radius:3px; flex:1;"></select>
+            <select id="schYearSelect" style="background:var(--panel); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.95rem; padding:10px 8px; border-radius:3px; flex:0 0 90px;"></select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="schTitle">Book title</label>
+          <div class="title-lookup-row">
+            <input id="schTitle" type="text" placeholder="Title or ISBN">
+            <button class="lookup-btn" id="schLookup" type="button">Find book</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="schAuthor">Author</label>
+          <input id="schAuthor" type="text" placeholder="Author">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="schDesc">Short description</label>
+          <textarea id="schDesc" placeholder="A sentence or two about the book"></textarea>
+        </div>
+      </div>
+      <div class="cover-preview" id="schCoverPreview" style="display:none;"></div>
+      <div style="display:flex; gap:16px; align-items:center; margin-top:14px;">
+        <button class="submit-btn" id="schSubmit">Add to schedule</button>
+        <button class="link-btn" id="schCancel" type="button">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="suggest" class="tab-section">
+    <div class="section-head">
+      <p>Anyone can throw a title into the pool. Everyone gets one vote per book.</p>
+    </div>
+    <div id="deadlinesBanner"></div>
+    <div id="recList"></div>
+    <p id="suggestClosedNote" style="display:none; color:var(--sand-dim); font-size:0.9rem; margin-top:32px; padding-top:24px; border-top:1px dashed var(--line-strong);">Suggestions are closed for this round — cast your vote above. Suggesting opens back up once voting wraps up.</p>
+    <div class="form-panel" id="suggestFormPanel">
+      <h3>Suggest a book</h3>
+      <div class="field-row">
+        <div class="field">
+          <label for="recTitle">Book title</label>
+          <div class="title-lookup-row">
+            <input id="recTitle" type="text" placeholder="Title or ISBN">
+            <button class="lookup-btn" id="recLookup" type="button">Find book</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="recAuthor">Author</label>
+          <input id="recAuthor" type="text" placeholder="Author">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="recNote">Why this one?</label>
+          <textarea id="recNote" placeholder="Optional — what makes it worth reading"></textarea>
+        </div>
+      </div>
+      <textarea id="recDescHidden" style="display:none;"></textarea>
+      <div class="cover-preview" id="recCoverPreview" style="display:none;"></div>
+      <div id="recManual" style="display:none; margin-top:12px; padding:14px 16px; background:var(--panel); border:1px solid var(--line); border-radius:4px;">
+        <p style="color:var(--sand-dim); font-size:0.88rem; line-height:1.5; margin-bottom:10px;">We couldn't find details for this book. If you'd like, paste in a description (copy it from Amazon or Goodreads) and add links so people can look it up. Everything here is optional.</p>
+        <div class="field-row"><div class="field">
+          <label for="recDescManual">Book description</label>
+          <textarea id="recDescManual" placeholder="Paste the book's description here"></textarea>
+        </div></div>
+        <div class="field-row"><div class="field">
+          <label for="recAmazon">Amazon link</label>
+          <input id="recAmazon" type="url" inputmode="url" placeholder="Paste the Amazon page link">
+        </div></div>
+        <div class="field-row"><div class="field">
+          <label for="recGoodreads">Goodreads link</label>
+          <input id="recGoodreads" type="url" inputmode="url" placeholder="Paste the Goodreads page link">
+        </div></div>
+      </div>
+      <div style="display:flex; gap:16px; align-items:center; margin-top:14px;">
+        <button class="submit-btn" id="recSubmit">Suggest this book</button>
+        <button class="link-btn" id="recCancel" type="button">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="announcements" class="tab-section">
+    <div class="section-head">
+      <p>Events and things everyone should know about.</p>
+    </div>
+    <div id="announceList"></div>
+    <div class="form-panel" id="announceFormPanel" style="display:none;">
+      <h3 id="announceFormTitle">Post an announcement</h3>
+      <div class="field-row">
+        <div class="field">
+          <label for="anTitle">Title</label>
+          <input id="anTitle" type="text" placeholder="e.g. Book review get-together">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="anDate">Date (optional)</label>
+          <input id="anDate" type="date">
+        </div>
+        <div class="field">
+          <label for="anTime">Time (optional)</label>
+          <input id="anTime" type="time">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="anPlace">Where (optional)</label>
+          <input id="anPlace" type="text" placeholder="Place or address">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="anDetails">Details (optional)</label>
+          <textarea id="anDetails" placeholder="Anything else people should know"></textarea>
+        </div>
+      </div>
+      <label class="check-row">
+        <input type="checkbox" id="anHome" checked>
+        <span>Show a short summary on the main page</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="anRsvp">
+        <span>Ask people to RSVP (shows a headcount)</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="anFood">
+        <span>Also let people say what food they're bringing (only applies when RSVP is on)</span>
+      </label>
+      <div style="display:flex; gap:16px; align-items:center; margin-top:14px;">
+        <button class="submit-btn" id="anSubmit">Post announcement</button>
+        <button class="link-btn" id="anCancel" type="button">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="history" class="tab-section">
+    <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;">
+      <div>
+        <p>Every book once the month's over — ratings, comments, and who finished it live here, and you can update your own any time.</p>
+      </div>
+      <button class="link-btn" id="remindRatingLink" style="white-space:nowrap; display:none;">Remind everyone to rate</button>
+    </div>
+    <div id="historyList"></div>
+  </section>
+
+  <section id="members" class="tab-section">
+    <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;">
+      <div>
+        <p>Everyone who's signed up, built automatically from your club's logins.</p>
+      </div>
+      <div style="display:flex; gap:16px; flex-wrap:wrap;">
+        <button class="link-btn" id="emailEveryoneLink" style="white-space:nowrap; display:none;">Email everyone</button>
+        <button class="link-btn" id="textEveryoneLink" style="white-space:nowrap; display:none;">Text everyone</button>
+        <button class="link-btn" id="memberDetailToggle" style="white-space:nowrap;">Show full details</button>
+      </div>
+    </div>
+    <div id="memberList"></div>
+    <div class="form-panel" id="backupPanel" style="display:none;">
+      <h3>Back up the site</h3>
+      <p style="color:var(--sand-dim); line-height:1.6; margin:6px 0 12px;">Exports one file with everything: the schedule, suggestions and votes, reviews and ratings, announcements and RSVPs, and the member list. On your phone, tap Export, then tap again when it says the backup is ready, and choose Save to Files. It includes members' emails and phone numbers, so don't share it.</p>
+      <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+        <button class="submit-btn" id="backupBtn" type="button">Export backup</button>
+        <button class="link-btn" id="restoreBtn" type="button">Restore from a backup file</button>
+      </div>
+      <input type="file" id="restoreFile" accept=".json,application/json" style="display:none;">
+      <p style="color:var(--sand-dim); font-size:0.82rem; line-height:1.5; margin-top:10px;">Restoring puts everything in the file back, overwriting anything with the same ID. It never deletes things that aren't in the file.</p>
+    </div>
+  </section>
+
+  <section id="join" class="tab-section" style="display:none;">
+    <div class="section-head">
+      <p>Share this page's link. Anyone you send it to creates their own account to get in.</p>
+    </div>
+    <div class="join-box">
+      <p id="pageUrl">Loading link…</p>
+      <button class="copy-btn" id="copyLink">Copy link</button>
+    </div>
+  </section>
+
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 15, 2026, 8:23 PM CT</span></footer>
+
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ================= FIREBASE SETUP =================
+  const firebaseConfig = {
+    apiKey: "AIzaSyBHVvvN1rXwPl_gxgOiMs3T1OoYnyqnaoY",
+    authDomain: "riptide-readers.firebaseapp.com",
+    projectId: "riptide-readers",
+    storageBucket: "riptide-readers.firebasestorage.app",
+    messagingSenderId: "906980752216",
+    appId: "1:906980752216:web:2e757478545a91a065432d"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+</script>
+<script>
+(function(){
+  const gateOverlay = document.getElementById('gateOverlay');
+  const profileOverlay = document.getElementById('profileOverlay');
+  const gateSubtext = document.getElementById('gateSubtext');
+  const gateFormArea = document.getElementById('gateFormArea');
+  const appRoot = document.getElementById('appRoot');
+  const toastEl = document.getElementById('toast');
+  const whoamiName = document.getElementById('whoamiName');
+  const accountAvatar = document.getElementById('accountAvatar');
+  function setWhoamiName(name){
+    whoamiName.textContent = name;
+    accountAvatar.textContent = (name || '?').trim().charAt(0).toUpperCase() || '?';
+  }
+  const ownerTag = document.getElementById('ownerTag');
+  const adminLink = document.getElementById('adminLink');
+  const adminLinkWrap = document.getElementById('adminLinkWrap');
+  const claimOwnerBanner = document.getElementById('claimOwnerBanner');
+
+  const nowReadingEl = document.getElementById('nowReading');
+  const scheduleListEl = document.getElementById('scheduleList');
+  const recListEl = document.getElementById('recList');
+  const memberListEl = document.getElementById('memberList');
+
+  let schedule = [];
+  let recommendations = [];
+  let announcements = [];
+  let editingAnnouncementId = null;
+  let members = [];
+  let schCover = null;
+  let schSourceRec = null;
+  let recCover = null;
+  let recManualOffered = false;
+  let edCover = null;
+  let edEntryId = null;
+  let erCover = null;
+  let erEntryId = null;
+  let ownerId = null;
+  let adminIds = [];
+  let removedUids = [];
+  let suggestDeadline = null;
+  let votingDeadline = null;
+  let isOwner = false;
+  let isAdmin = false;
+  let appInited = false;
+
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 3200);
+  }
+
+  const bookDetailOverlay = document.getElementById('bookDetailOverlay');
+  function openBookDetail(kind, id){
+    let entry = null;
+    let desc = '';
+    let hasRealDesc = false;
+    if(kind === 'schedule'){
+      entry = schedule.find(s => s.id === id);
+      hasRealDesc = !!(entry && entry.description);
+      desc = entry ? (entry.description || 'No description added yet.') : '';
+    }else if(kind === 'rec'){
+      entry = recommendations.find(r => r.id === id);
+      if(entry){
+        hasRealDesc = !!entry.description;
+        const parts = [];
+        if(entry.description) parts.push(entry.description);
+        if(entry.note) parts.push('Why ' + (entry.submittedBy || 'someone') + ' suggested it: ' + entry.note);
+        desc = parts.length ? parts.join('\n\n') : 'No description or notes added yet.';
+      }
+    }
+    if(!entry) return;
+    const coverEl = document.getElementById('bookDetailCover');
+    if(entry.coverUrl){
+      coverEl.src = entry.coverUrl;
+      coverEl.style.display = 'block';
+    }else{
+      coverEl.style.display = 'none';
+    }
+    document.getElementById('bookDetailTitle').textContent = entry.title || '';
+    document.getElementById('bookDetailAuthor').textContent = entry.author || '';
+    document.getElementById('bookDetailDesc').textContent = desc;
+    document.getElementById('bookDetailGoodreads').href = entry.goodreadsUrl || goodreadsSearchUrl(entry.title, entry.author);
+    document.getElementById('bookDetailAmazon').href = entry.amazonUrl || amazonSearchUrl(entry.title, entry.author);
+    document.getElementById('bookDetailSearchA').href = bookSearchUrl(entry.title, entry.author);
+    document.getElementById('bookDetailSearchLink').style.display = 'block';
+    bookDetailOverlay.style.display = 'flex';
+  }
+  document.getElementById('bookDetailClose').addEventListener('click', () => { bookDetailOverlay.style.display = 'none'; });
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.book-open');
+    if(trigger){
+      openBookDetail(trigger.dataset.kind, trigger.dataset.id);
+      return;
+    }
+    const star = e.target.closest('.star-btn');
+    if(star){
+      setRating(star.dataset.id, parseInt(star.dataset.value, 10));
+      return;
+    }
+    if(e.target.closest('#brandHome')){
+      showTab('schedule');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const goAnnounce = e.target.closest('.go-announcements');
+    if(goAnnounce){
+      showTab('announcements');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const goHistory = e.target.closest('.go-history');
+    if(goHistory){
+      showTab('history');
+      const entryEl = document.querySelector('#historyList .log-entry[data-id="' + goHistory.dataset.id + '"]');
+      if(entryEl) entryEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if(e.target === bookDetailOverlay){
+      bookDetailOverlay.style.display = 'none';
+    }
+  });
+  document.getElementById('brandHome').addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      showTab('schedule');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+  function resetRecManual(){
+    ['recDescManual', 'recAmazon', 'recGoodreads'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    const m = document.getElementById('recManual'); if(m) m.style.display = 'none';
+    recManualOffered = false;
+  }
+  function cleanLink(v){
+    v = (v || '').trim();
+    if(!v) return '';
+    if(!/^https?:\/\//i.test(v)) v = 'https://' + v;
+    try{ new URL(v); }catch(e){ return ''; }
+    return v;
+  }
+  // First couple of sentences, for long notes; the rest is behind "Read more".
+  function shortNote(text, maxSentences = 2, maxChars = 220){
+    text = (text || '').trim();
+    const sentences = text.match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) || [text];
+    let out = '';
+    for(let i = 0; i < sentences.length && i < maxSentences; i++){
+      if(out && (out + sentences[i]).length > maxChars) break;
+      out += sentences[i];
+    }
+    out = out.trim();
+    if(out.length > maxChars) out = out.slice(0, maxChars - 1).trim() + '…';
+    return { text: out, truncated: out.length < text.length };
+  }
+  function truncate(str, n){
+    if(!str) return '';
+    return str.length > n ? str.slice(0, n).trim() + '…' : str;
+  }
+
+  const MONTH_INDEX = {January:0,February:1,March:2,April:3,May:4,June:5,July:6,August:7,September:8,October:9,November:10,December:11};
+  function parseEntryDate(monthStr){
+    if(!monthStr) return null;
+    const parts = monthStr.trim().split(' ');
+    if(parts.length < 2) return null;
+    const monthIdx = MONTH_INDEX[parts[0]];
+    const year = parseInt(parts[1], 10);
+    if(monthIdx === undefined || isNaN(year)) return null;
+    return new Date(year, monthIdx, 1);
+  }
+  function isEligibleForRating(entry){
+    if(entry.current) return false;
+    const d = parseEntryDate(entry.month);
+    if(!d) return false;
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return d < thisMonth; // strictly before the current month — that month has to be fully over
+  }
+  function renderStarsOnly(entry, uid, showSummary = true){
+    const ratings = entry.ratings || {};
+    const values = Object.values(ratings);
+    const avg = values.length ? (values.reduce((a,b) => a+b, 0) / values.length) : 0;
+    const myRating = uid ? (ratings[uid] || 0) : 0;
+    const stars = [1,2,3,4,5].map(n => `<button class="star-btn ${n <= myRating ? 'filled' : ''}" data-id="${entry.id}" data-value="${n}">${n <= myRating ? '★' : '☆'}</button>`).join('');
+    const summary = values.length
+      ? `${avg.toFixed(1)} avg (${values.length} rating${values.length===1?'':'s'})`
+      : 'No ratings yet';
+    const label = myRating ? 'Your rating:' : 'Rate it:';
+    return `<div class="star-rating"><span class="star-label">${label}</span><span class="stars">${stars}</span>${showSummary ? `<span class="star-summary">${summary}</span>` : ''}</div>`;
+  }
+
+  function starsText(n){
+    n = Math.max(0, Math.min(5, Math.round(n)));
+    return '★'.repeat(n) + '☆'.repeat(5 - n);
+  }
+
+  // "★ 4.3 average · 6 ratings" shown at the top of a finished book
+  function averageLineHtml(entry){
+    const values = Object.values(entry.ratings || {});
+    if(!values.length) return '';
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    return `<div class="avg-line"><span class="avg-num">★ ${avg.toFixed(1)}</span> average &middot; ${values.length} rating${values.length === 1 ? '' : 's'}</div>`;
+  }
+
+  const earlyOpen = new Set();
+  function revealDateText(entry){
+    const d = parseEntryDate(entry.month);
+    if(!d) return 'the first of next month';
+    const n = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    return n.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  }
+  function renderEarlyReview(entry, uid){
+    if(!uid) return '';
+    const mine = (entry.ratings || {})[uid] || (entry.reviews || {})[uid];
+    return `<details class="early-review" data-id="${entry.id}" ${earlyOpen.has(entry.id) ? 'open' : ''}>
+      <summary>${mine ? 'Your early review' : 'Already read it? Review it early'}</summary>
+      <div class="early-note">Only you can see your rating and comment until ${revealDateText(entry)}, when everyone's show up in Reviews.</div>
+      ${renderStarRating(entry, uid, true)}
+    </details>`;
+  }
+
+  function renderStarRating(entry, uid, early){
+    const reviews = entry.reviews || {};
+    const ratings = entry.ratings || {};
+    const ids = new Set([...Object.keys(ratings), ...Object.keys(reviews)]);
+    if(uid) ids.add(uid);
+    const everyone = Array.from(ids)
+      .filter(u => early ? u === uid : (u === uid || ratings[u] || (reviews[u] && reviews[u].trim())))
+      .map(u => {
+        const m = members.find(mm => mm.id === u);
+        return { uid: u, mine: u === uid, name: m ? m.name : 'someone', rating: ratings[u] || 0, review: (reviews[u] || '').trim() };
+      })
+      .sort((a, b) => (b.mine - a.mine) || a.name.localeCompare(b.name));
+    const pencil = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+    const items = everyone.map(p => `
+      <div class="thought-item" data-id="${entry.id}">
+        <div class="thought-head"><strong>${escapeHtml(p.name)}</strong>${p.rating ? `<span class="thought-stars">${starsText(p.rating)}</span>` : ''}${p.mine ? `<button type="button" class="edit-review" data-id="${entry.id}" aria-label="Edit your review" title="Edit your review">${pencil}</button>` : ''}</div>
+        ${p.review ? `<div class="thought-text">${escapeHtml(p.review)}</div>` : (p.mine ? '<div class="thought-text thought-empty">Tap the pencil to add a comment.</div>' : '')}
+        ${p.mine ? `<div class="review-editor" hidden>
+          <textarea class="review-input" data-id="${entry.id}" placeholder="What did you think?">${escapeHtml(p.review)}</textarea>
+          <div class="review-actions"><button class="link-btn save-review" data-id="${entry.id}">Save</button><button class="link-btn cancel-review" data-id="${entry.id}">Cancel</button></div>
+        </div>` : ''}
+      </div>`).join('');
+
+    return `
+      ${renderStarsOnly(entry, uid, false)}
+      <div class="review-box">
+        <div class="thoughts-list">
+          ${items || '<div class="thought-empty">No ratings or comments yet.</div>'}
+        </div>
+      </div>`;
+  }
+
+  function escapeHtml(str){
+    return (str || '').replace(/[&<>"']/g, c => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    }[c]));
+  }
+  function friendlyAuthError(e){
+    switch(e.code){
+      case 'auth/email-already-in-use': return 'An account with that email already exists — sign in instead.';
+      case 'auth/invalid-email': return "That doesn't look like a valid email address.";
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+      case 'auth/invalid-credential': return 'Wrong email or password.';
+      case 'auth/weak-password': return 'Use a password with at least 6 characters.';
+      default: return e.message || 'Something went wrong — try again.';
+    }
+  }
+
+  // ================= LOGIN / SIGN UP GATE =================
+  function renderSignIn(prefillEmail){
+    gateSubtext.textContent = 'Sign in with your email.';
+    gateFormArea.innerHTML = `
+      <div class="overlay-field">
+        <label for="siEmail">Email</label>
+        <input id="siEmail" type="email" placeholder="you@email.com" value="${escapeHtml(prefillEmail || '')}" autocomplete="email">
+      </div>
+      <div class="overlay-field">
+        <label for="siPass">Password</label>
+        <input id="siPass" type="password" placeholder="Password" autocomplete="current-password">
+      </div>
+      <div class="overlay-error" id="gateError"></div>
+      <div class="overlay-success" id="gateSuccess" style="color:#9BD6A4; font-size:0.85rem; margin-top:4px; min-height:1.2em;"></div>
+      <button class="overlay-submit" id="siSubmit">Sign in</button>
+      <div class="overlay-switch"><button id="forgotPass" type="button">Forgot password?</button></div>
+      <div class="overlay-switch">New here? <button id="toSignUp" type="button">Create an account</button></div>
+    `;
+    document.getElementById('toSignUp').addEventListener('click', () => renderSignUp(document.getElementById('siEmail').value));
+    document.getElementById('forgotPass').addEventListener('click', async () => {
+      const email = document.getElementById('siEmail').value.trim();
+      const errEl = document.getElementById('gateError');
+      const okEl = document.getElementById('gateSuccess');
+      errEl.textContent = ''; okEl.textContent = '';
+      if(!email){ errEl.textContent = 'Enter your email above first, then tap "Forgot password?" again.'; return; }
+      try{
+        await auth.sendPasswordResetEmail(email);
+        okEl.textContent = `Check ${email} for a link to reset your password.`;
+      }catch(e){
+        errEl.textContent = e.code === 'auth/user-not-found' ? 'No account found with that email.' : friendlyAuthError(e);
+      }
+    });
+    const submit = async () => {
+      const email = document.getElementById('siEmail').value.trim();
+      const pass = document.getElementById('siPass').value;
+      const btn = document.getElementById('siSubmit');
+      const errEl = document.getElementById('gateError');
+      if(!email || !pass){ errEl.textContent = 'Enter your email and password.'; return; }
+      btn.disabled = true;
+      try{
+        await auth.signInWithEmailAndPassword(email, pass);
+      }catch(e){
+        errEl.textContent = friendlyAuthError(e);
+        btn.disabled = false;
+      }
+    };
+    document.getElementById('siSubmit').addEventListener('click', submit);
+    document.getElementById('siPass').addEventListener('keydown', (e) => { if(e.key==='Enter') submit(); });
+  }
+
+  function suggestDisambiguation(firstName, lastName){
+    const initial = lastName && lastName.trim() ? (lastName.trim().charAt(0).toUpperCase() + '.') : '2';
+    return (firstName.trim() + ' ' + initial).trim();
+  }
+
+  async function nameIsTaken(nameToCheck, excludeUid){
+    try{
+      const snap = await db.collection('members').get();
+      const lower = nameToCheck.trim().toLowerCase();
+      return snap.docs.some(d => d.id !== excludeUid && (d.data().name || '').trim().toLowerCase() === lower);
+    }catch(e){ return false; }
+  }
+
+  function renderSignUp(prefillEmail){
+    gateSubtext.textContent = "Sign up with your email. Whoever signs up first becomes the site owner.";
+    gateFormArea.innerHTML = `
+      <div class="overlay-field">
+        <label for="suEmail">Email</label>
+        <input id="suEmail" type="email" placeholder="you@email.com" value="${escapeHtml(prefillEmail || '')}" autocomplete="email">
+      </div>
+      <div class="overlay-field">
+        <label for="suPass">Password</label>
+        <input id="suPass" type="password" placeholder="Choose a password (6+ characters)" autocomplete="new-password">
+      </div>
+      <div class="overlay-error" id="gateError"></div>
+      <button class="overlay-submit" id="suSubmit">Create account &amp; enter</button>
+      <div class="overlay-switch">Already have an account? <button id="toSignIn" type="button">Sign in</button></div>
+    `;
+    document.getElementById('toSignIn').addEventListener('click', () => renderSignIn(document.getElementById('suEmail').value));
+    document.getElementById('suSubmit').addEventListener('click', async () => {
+      const email = document.getElementById('suEmail').value.trim();
+      const pass = document.getElementById('suPass').value;
+      const btn = document.getElementById('suSubmit');
+      const errEl = document.getElementById('gateError');
+      errEl.textContent = '';
+      if(!email){ errEl.textContent = 'Enter your email.'; return; }
+      if(!pass || pass.length < 6){ errEl.textContent = 'Use a password with at least 6 characters.'; return; }
+      btn.disabled = true;
+      try{
+        const cred = await auth.createUserWithEmailAndPassword(email, pass);
+        const configRef = db.collection('meta').doc('config');
+        const configDoc = await configRef.get();
+        if(!configDoc.exists){
+          await configRef.set({ ownerId: cred.user.uid });
+        }
+        // onAuthStateChanged picks up from here and shows the profile-completion step.
+      }catch(e){
+        errEl.textContent = friendlyAuthError(e);
+        btn.disabled = false;
+      }
+    });
+  }
+
+  function renderProfileCompletion(){
+    document.getElementById('pcFirstName').value = '';
+    document.getElementById('pcLastName').value = '';
+    document.getElementById('pcPhone').value = '';
+    document.getElementById('pcError').textContent = '';
+    document.getElementById('pcDupSuggestion').style.display = 'none';
+    profileOverlay.style.display = 'flex';
+  }
+
+  async function saveProfile(displayName, firstName, lastName){
+    const phone = document.getElementById('pcPhone').value.trim();
+    const errEl = document.getElementById('pcError');
+    try{
+      await auth.currentUser.updateProfile({ displayName });
+      await db.collection('members').doc(auth.currentUser.uid).set({
+        name: displayName, firstName, lastName, phone,
+        email: auth.currentUser.email || '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      profileOverlay.style.display = 'none';
+      await enterMainApp(auth.currentUser);
+    }catch(e){
+      errEl.textContent = friendlyAuthError(e);
+      document.getElementById('pcSubmit').disabled = false;
+      document.getElementById('pcUseSuggested').disabled = false;
+    }
+  }
+
+  document.getElementById('pcSubmit').addEventListener('click', async () => {
+    const firstName = document.getElementById('pcFirstName').value.trim();
+    const lastName = document.getElementById('pcLastName').value.trim();
+    const btn = document.getElementById('pcSubmit');
+    const errEl = document.getElementById('pcError');
+    errEl.textContent = '';
+    document.getElementById('pcDupSuggestion').style.display = 'none';
+    if(!firstName){ errEl.textContent = 'Enter your first name.'; return; }
+    if(!lastName){ errEl.textContent = 'Enter your last name.'; return; }
+    btn.disabled = true;
+    const taken = await nameIsTaken(firstName);
+    if(taken){
+      btn.disabled = false;
+      document.getElementById('pcDupText').textContent = `There's already a "${firstName}" in the club — try this instead, or edit it:`;
+      document.getElementById('pcSuggestedName').value = suggestDisambiguation(firstName, lastName);
+      document.getElementById('pcDupSuggestion').style.display = 'block';
+      return;
+    }
+    await saveProfile(firstName, firstName, lastName);
+  });
+
+  document.getElementById('pcUseSuggested').addEventListener('click', async () => {
+    const firstName = document.getElementById('pcFirstName').value.trim();
+    const lastName = document.getElementById('pcLastName').value.trim();
+    const suggested = document.getElementById('pcSuggestedName').value.trim();
+    const btn = document.getElementById('pcUseSuggested');
+    const errEl = document.getElementById('pcError');
+    if(!suggested){ errEl.textContent = 'Enter a name to use.'; return; }
+    btn.disabled = true;
+    const stillTaken = await nameIsTaken(suggested);
+    if(stillTaken){
+      btn.disabled = false;
+      errEl.textContent = 'That name is taken too — try being more specific.';
+      return;
+    }
+    await saveProfile(suggested, firstName, lastName);
+  });
+
+  let pendingConfirmAction = null;
+  function confirmAction(message, onYes, yesLabel, title){
+    document.getElementById('genericConfirmTitle').textContent = title || 'Are you sure?';
+    document.getElementById('genericConfirmText').textContent = message;
+    document.getElementById('genericConfirmYes').textContent = yesLabel || 'Yes';
+    pendingConfirmAction = onYes;
+    document.getElementById('genericConfirmOverlay').style.display = 'flex';
+  }
+  document.getElementById('genericConfirmYes').addEventListener('click', () => {
+    document.getElementById('genericConfirmOverlay').style.display = 'none';
+    const fn = pendingConfirmAction;
+    pendingConfirmAction = null;
+    if(fn) fn();
+  });
+  document.getElementById('genericConfirmCancel').addEventListener('click', () => {
+    document.getElementById('genericConfirmOverlay').style.display = 'none';
+    pendingConfirmAction = null;
+  });
+
+  function checkOwnerValidity(){
+    if(isOwner){ claimOwnerBanner.style.display = 'none'; return; }
+    if(members.length === 0) return; // wait until members have loaded
+    const ownerExists = ownerId && members.some(m => m.id === ownerId);
+    claimOwnerBanner.style.display = ownerExists ? 'none' : 'block';
+  }
+
+  function formatDeadline(dateStr){
+    // dateStr is a plain "YYYY-MM-DD" — build the date using local parts so it
+    // doesn't shift a day off due to UTC parsing.
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+
+  function todayStr(){
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  }
+  // A "YYYY-MM-DD" deadline is inclusive — it's the last day that thing is open.
+  function isPastDeadline(dateStr){
+    return !!dateStr && todayStr() > dateStr;
+  }
+
+  function updateSuggestFormVisibility(){
+    const panel = document.getElementById('suggestFormPanel');
+    const note = document.getElementById('suggestClosedNote');
+    if(!panel || !note) return;
+    // Suggestions close once their own deadline passes, but reopen once voting
+    // wraps up too — that's the start of the next round.
+    const suggestingClosed = isPastDeadline(suggestDeadline) && !isPastDeadline(votingDeadline);
+    panel.style.display = suggestingClosed ? 'none' : '';
+    note.style.display = suggestingClosed ? 'block' : 'none';
+  }
+
+  const DEADLINE_KINDS = [
+    { key: 'suggestDeadline', field: 'suggestDeadline', closedLabel: 'Suggestions close', unsetLabel: 'No deadline set for suggestions.', setLabel: 'Set a suggestion deadline' },
+    { key: 'votingDeadline', field: 'votingDeadline', closedLabel: 'Voting closes', unsetLabel: 'No deadline set for voting.', setLabel: 'Set a voting deadline' }
+  ];
+  function getDeadlineValue(key){ return key === 'suggestDeadline' ? suggestDeadline : votingDeadline; }
+  function setDeadlineValue(key, val){ if(key === 'suggestDeadline') suggestDeadline = val; else votingDeadline = val; }
+
+  function renderDeadlines(){
+    const el = document.getElementById('deadlinesBanner');
+    if(!el) return;
+    el.innerHTML = DEADLINE_KINDS.map(kind => {
+      const value = getDeadlineValue(kind.key);
+      if(value){
+        const formatted = formatDeadline(value);
+        return `
+          <div class="deadline-banner">
+            <span class="deadline-text">${kind.closedLabel} <strong>${formatted}</strong></span>
+            ${isAdmin ? `<button class="link-btn edit-deadline-btn" data-kind="${kind.key}" type="button">Change</button>` : ''}
+          </div>`;
+      }else if(isAdmin){
+        return `
+          <div class="deadline-banner">
+            <span class="deadline-text">${kind.unsetLabel}</span>
+            <button class="link-btn edit-deadline-btn" data-kind="${kind.key}" type="button">${kind.setLabel}</button>
+          </div>`;
+      }else{
+        return '';
+      }
+    }).join('');
+
+    el.querySelectorAll('.edit-deadline-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const kind = DEADLINE_KINDS.find(k => k.key === btn.dataset.kind);
+        const current = getDeadlineValue(kind.key);
+        const row = btn.closest('.deadline-banner');
+        row.innerHTML = `
+          <div class="deadline-edit-row">
+            <input type="date" class="deadline-date-input" value="${current || ''}">
+            <button class="submit-btn save-deadline-btn" style="padding:8px 16px;" type="button">Save</button>
+            <button class="link-btn clear-deadline-btn" type="button">${current ? 'Clear deadline' : ''}</button>
+            <button class="link-btn cancel-deadline-btn" type="button">Cancel</button>
+          </div>`;
+        row.querySelector('.save-deadline-btn').addEventListener('click', async () => {
+          const val = row.querySelector('.deadline-date-input').value;
+          if(!val){ showToast('Pick a date first.'); return; }
+          try{
+            await db.collection('meta').doc('config').set({ [kind.field]: val }, { merge: true });
+            setDeadlineValue(kind.key, val);
+            renderDeadlines();
+          }catch(e){ showToast("Couldn't save — try again."); }
+        });
+        row.querySelector('.clear-deadline-btn').addEventListener('click', async () => {
+          try{
+            await db.collection('meta').doc('config').set({ [kind.field]: firebase.firestore.FieldValue.delete() }, { merge: true });
+            setDeadlineValue(kind.key, null);
+            renderDeadlines();
+          }catch(e){ showToast("Couldn't save — try again."); }
+        });
+        row.querySelector('.cancel-deadline-btn').addEventListener('click', () => renderDeadlines());
+      });
+    });
+
+    updateSuggestFormVisibility();
+  }
+
+  async function enterMainApp(user){
+    gateOverlay.style.display = 'none';
+    profileOverlay.style.display = 'none';
+    appRoot.style.display = 'block';
+    setWhoamiName(user.displayName || 'you');
+    try{
+      const configDoc = await db.collection('meta').doc('config').get();
+      const configData = configDoc.exists ? configDoc.data() : {};
+      ownerId = configData.ownerId || null;
+      adminIds = configData.adminIds || [];
+      removedUids = configData.removedUids || [];
+      suggestDeadline = configData.suggestDeadline || null;
+      votingDeadline = configData.votingDeadline || null;
+      isOwner = ownerId === user.uid;
+      isAdmin = isOwner || adminIds.includes(user.uid);
+      ownerTag.style.display = isAdmin ? 'inline' : 'none';
+      adminLinkWrap.style.display = isOwner ? 'block' : 'none';
+      document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('textEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
+      checkOwnerValidity();
+      renderDeadlines();
+      renderAnnouncements();
+    }catch(e){ /* non-fatal */ }
+    if(!appInited){ appInited = true; initApp(); }
+    else { showTab(activeTab); renderSchedule(); renderMembers(); renderDeadlines(); renderAnnouncements(); }
+  }
+
+  auth.onAuthStateChanged(async (user) => {
+    if(user){
+      let removed = false;
+      try{
+        const configDoc = await db.collection('meta').doc('config').get();
+        const removedList = (configDoc.exists && configDoc.data().removedUids) || [];
+        removed = removedList.includes(user.uid);
+      }catch(e){ /* non-fatal */ }
+      if(removed){
+        profileOverlay.style.display = 'none';
+        appRoot.style.display = 'none';
+        gateOverlay.style.display = 'flex';
+        gateSubtext.textContent = "Your access to this club has been removed. Contact an admin if you think that's a mistake.";
+        gateFormArea.innerHTML = `<button class="overlay-submit" id="removedSignOut">Sign out</button>`;
+        document.getElementById('removedSignOut').addEventListener('click', () => auth.signOut());
+        return;
+      }
+      let memberData = null;
+      try{
+        const memberDoc = await db.collection('members').doc(user.uid).get();
+        memberData = memberDoc.exists ? memberDoc.data() : null;
+      }catch(e){ /* non-fatal */ }
+      if(!memberData || !memberData.firstName){
+        gateOverlay.style.display = 'none';
+        appRoot.style.display = 'none';
+        renderProfileCompletion();
+        return;
+      }
+      await enterMainApp(user);
+    }else{
+      profileOverlay.style.display = 'none';
+      gateOverlay.style.display = 'flex';
+      appRoot.style.display = 'none';
+      renderSignIn('');
+    }
+  });
+
+  const accountMenuBtn = document.getElementById('accountMenuBtn');
+  const accountDropdown = document.getElementById('accountDropdown');
+  function closeAccountDropdown(){
+    accountDropdown.classList.remove('open');
+    accountMenuBtn.setAttribute('aria-expanded', 'false');
+  }
+  accountMenuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = accountDropdown.classList.toggle('open');
+    accountMenuBtn.setAttribute('aria-expanded', String(isOpen));
+  });
+  accountDropdown.addEventListener('click', (e) => {
+    if(e.target.closest('.dropdown-item')) closeAccountDropdown();
+  });
+  document.addEventListener('click', (e) => {
+    if(!e.target.closest('.account-menu')) closeAccountDropdown();
+  });
+
+  document.getElementById('logoutLink').addEventListener('click', () => auth.signOut());
+
+  const accountOverlay = document.getElementById('accountOverlay');
+  document.getElementById('accountLink').addEventListener('click', () => {
+    const own = auth.currentUser ? members.find(m => m.id === auth.currentUser.uid) : null;
+    document.getElementById('accEmailDisplay').textContent = auth.currentUser ? (auth.currentUser.email || '') : '';
+    document.getElementById('accName').value = auth.currentUser ? (auth.currentUser.displayName || '') : '';
+    document.getElementById('accFirstName').value = (own && own.firstName) || '';
+    document.getElementById('accLastName').value = (own && own.lastName) || '';
+    document.getElementById('accPhone').value = (own && own.phone) || '';
+    document.getElementById('accNameError').textContent = '';
+    document.getElementById('accNameSuccess').textContent = '';
+    document.getElementById('accCurrentPass').value = '';
+    document.getElementById('accNewPass').value = '';
+    document.getElementById('accNewPass2').value = '';
+    document.getElementById('accError').textContent = '';
+    document.getElementById('accSuccess').textContent = '';
+    accountOverlay.style.display = 'flex';
+  });
+  document.getElementById('accountClose').addEventListener('click', () => { accountOverlay.style.display = 'none'; });
+
+  const adminOverlay = document.getElementById('adminOverlay');
+  function renderAdminList(){
+    const listEl = document.getElementById('adminMemberList');
+    if(members.length === 0){
+      listEl.innerHTML = `<p class="empty-state">No members yet.</p>`;
+      return;
+    }
+    listEl.innerHTML = members.map(m => {
+      const isOwnerRow = m.id === ownerId;
+      const checked = isOwnerRow || adminIds.includes(m.id);
+      return `
+      <div class="admin-row" data-id="${m.id}">
+        <span>${escapeHtml(m.name)}${isOwnerRow ? ' <span class="owner-note">(owner)</span>' : ''}</span>
+        <label style="display:flex; align-items:center; gap:8px; cursor:${isOwnerRow ? 'default' : 'pointer'};">
+          <span style="font-size:0.82rem; color:var(--sand-dim);">Admin</span>
+          <input type="checkbox" class="admin-toggle" data-id="${m.id}" ${checked ? 'checked' : ''} ${isOwnerRow ? 'disabled' : ''}>
+        </label>
+      </div>`;
+    }).join('');
+  }
+  adminLink.addEventListener('click', () => {
+    renderAdminList();
+    adminOverlay.style.display = 'flex';
+  });
+  document.getElementById('adminClose').addEventListener('click', () => { adminOverlay.style.display = 'none'; });
+  document.getElementById('adminMemberList').addEventListener('change', async (e) => {
+    const box = e.target.closest('.admin-toggle');
+    if(!box) return;
+    const uid = box.dataset.id;
+    try{
+      await db.collection('meta').doc('config').update({
+        adminIds: box.checked
+          ? firebase.firestore.FieldValue.arrayUnion(uid)
+          : firebase.firestore.FieldValue.arrayRemove(uid)
+      });
+      adminIds = box.checked ? [...adminIds, uid] : adminIds.filter(id => id !== uid);
+      showToast(box.checked ? 'Admin access granted.' : 'Admin access removed.');
+    }catch(e){
+      box.checked = !box.checked;
+      showToast("Couldn't update — try again.");
+    }
+  });
+  document.getElementById('accNameSubmit').addEventListener('click', async () => {
+    const newName = document.getElementById('accName').value.trim();
+    const firstName = document.getElementById('accFirstName').value.trim();
+    const lastName = document.getElementById('accLastName').value.trim();
+    const phone = document.getElementById('accPhone').value.trim();
+    const errEl = document.getElementById('accNameError');
+    const okEl = document.getElementById('accNameSuccess');
+    errEl.textContent = ''; okEl.textContent = '';
+    if(!newName){ errEl.textContent = 'Enter a name.'; return; }
+    if(!firstName){ errEl.textContent = 'Enter your first name.'; return; }
+    if(!lastName){ errEl.textContent = 'Enter your last name.'; return; }
+    const taken = await nameIsTaken(newName, auth.currentUser.uid);
+    if(taken){ errEl.textContent = `Someone else is already using "${newName}" — try adding an initial.`; return; }
+    try{
+      await auth.currentUser.updateProfile({ displayName: newName });
+      await db.collection('members').doc(auth.currentUser.uid).set({
+        name: newName, firstName, lastName, phone, email: auth.currentUser.email || ''
+      }, { merge: true });
+      setWhoamiName(newName);
+      okEl.textContent = 'Saved.';
+    }catch(e){
+      errEl.textContent = friendlyAuthError(e);
+    }
+  });
+  document.getElementById('accSubmit').addEventListener('click', async () => {
+    const current = document.getElementById('accCurrentPass').value;
+    const next = document.getElementById('accNewPass').value;
+    const next2 = document.getElementById('accNewPass2').value;
+    const errEl = document.getElementById('accError');
+    const okEl = document.getElementById('accSuccess');
+    errEl.textContent = ''; okEl.textContent = '';
+    if(!current){ errEl.textContent = 'Enter your current password.'; return; }
+    if(!next || next.length < 6){ errEl.textContent = 'New password must be at least 6 characters.'; return; }
+    if(next !== next2){ errEl.textContent = "New passwords don't match."; return; }
+    try{
+      const user = auth.currentUser;
+      const cred = firebase.auth.EmailAuthProvider.credential(user.email, current);
+      await user.reauthenticateWithCredential(cred);
+      await user.updatePassword(next);
+      okEl.textContent = 'Password updated.';
+    }catch(e){
+      errEl.textContent = friendlyAuthError(e);
+    }
+  });
+
+  // ================= BOOK LOOKUP =================
+  function stripHtml(text){
+    if(!text) return text;
+    // Replace tags with a space (not empty) so adjacent words don't glue together,
+    // then collapse any resulting double spaces.
+    return text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function cleanDescription(text){
+    if(!text) return text;
+    let t = text.trim();
+    // Strip a leading all-caps badge/marketing line, e.g. "#1 NEW YORK TIMES BESTSELLER • NOW A MAJOR MOTION PICTURE"
+    const badgeRe = /^[#\d][#\dA-Z0-9\s•\-,.]{6,}?(?=[A-Z][a-z]{2,})/;
+    // Strip a leading quoted press blurb like “...”—Source or "..."—Source
+    const quoteBlurb = /^[“"][^”"]{2,400}[”"]\s*[—\-–]\s*[^.]{1,80}?(?=[A-Z][a-z]{2,})/;
+    let prev;
+    let guard = 0;
+    do {
+      prev = t;
+      t = t.replace(badgeRe, '').trim();
+      t = t.replace(quoteBlurb, '').trim();
+      guard++;
+    } while(t !== prev && t.length > 0 && guard < 10);
+    return t || text; // never return empty — fall back to the original if we stripped it all
+  }
+
+  function normBookTitle(x){
+    return (x || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  async function lookupBookGoogle(titleVal, authorVal){
+    const t = titleVal.trim(), a = (authorVal || '').trim();
+    // Strictest search first, then looser ones — small-press and newer books often
+    // don't match the exact title+author fields.
+    const queries = [];
+    queries.push('intitle:' + encodeURIComponent(t) + (a ? '+inauthor:' + encodeURIComponent(a) : ''));
+    if(a) queries.push(encodeURIComponent(t + ' ' + a));
+    queries.push(encodeURIComponent(t));
+    let items = [];
+    let lastErr = null;
+    for(let i = 0; i < queries.length && items.length === 0; i++){
+      try{
+        const res = await fetch('https://www.googleapis.com/books/v1/volumes?q=' + queries[i] + '&maxResults=10');
+        if(!res.ok){ lastErr = new Error('google books search failed'); continue; }
+        const data = await res.json();
+        let found = data.items || [];
+        if(i > 0){
+          // loose searches: only keep results whose title really contains what was typed
+          const want = normBookTitle(t);
+          found = found.filter(it => it.volumeInfo && normBookTitle(it.volumeInfo.title || '').includes(want));
+        }
+        items = found;
+      }catch(e){ lastErr = e; }
+    }
+    if(items.length === 0){ if(lastErr) throw lastErr; return null; }
+    // The top-ranked match isn't always the edition with a description attached
+    // (could be an audiobook or a leaner catalog entry) — so prefer the first
+    // result in the list that actually has one, falling back to the top match.
+    const withDesc = items.find(it => it.volumeInfo && it.volumeInfo.description);
+    const item = withDesc || items[0];
+    const info = item.volumeInfo || {};
+    let cover = info.imageLinks && (info.imageLinks.thumbnail || info.imageLinks.smallThumbnail);
+    if(!cover){
+      // If the description-bearing edition has no cover, borrow one from another result that does.
+      const withCover = items.find(it => it.volumeInfo && it.volumeInfo.imageLinks && (it.volumeInfo.imageLinks.thumbnail || it.volumeInfo.imageLinks.smallThumbnail));
+      if(withCover) cover = withCover.volumeInfo.imageLinks.thumbnail || withCover.volumeInfo.imageLinks.smallThumbnail;
+    }
+    if(cover) cover = cover.replace('http://', 'https://');
+    let description = info.description || '';
+    if(description){
+      description = stripHtml(description);
+      description = cleanDescription(description);
+      if(description.length > 650) description = description.slice(0, 647) + '…';
+    }
+    return {
+      title: info.title || titleVal,
+      author: (info.authors && info.authors[0]) || authorVal || '',
+      coverUrl: cover || null,
+      description
+    };
+  }
+
+  async function lookupBookOpenLibrary(titleVal, authorVal){
+    let q = 'title=' + encodeURIComponent(titleVal.trim());
+    if(authorVal && authorVal.trim()) q += '&author=' + encodeURIComponent(authorVal.trim());
+    let res = await fetch('https://openlibrary.org/search.json?' + q + '&limit=1');
+    if(!res.ok) throw new Error('open library search failed');
+    let data = await res.json();
+    let doc = data.docs && data.docs[0];
+    if(!doc){
+      // looser search: everything typed as one query, keep only a real title match
+      res = await fetch('https://openlibrary.org/search.json?q=' + encodeURIComponent((titleVal + ' ' + (authorVal || '')).trim()) + '&limit=5');
+      if(res.ok){
+        data = await res.json();
+        const want = normBookTitle(titleVal);
+        doc = (data.docs || []).find(d => normBookTitle(d.title || '').includes(want));
+      }
+    }
+    if(!doc) return null;
+    const result = {
+      title: doc.title || titleVal,
+      author: (doc.author_name && doc.author_name[0]) || authorVal || '',
+      coverUrl: doc.cover_i ? ('https://covers.openlibrary.org/b/id/' + doc.cover_i + '-M.jpg') : null,
+      description: ''
+    };
+    if(doc.key){
+      try{
+        const workRes = await fetch('https://openlibrary.org' + doc.key + '.json');
+        if(workRes.ok){
+          const workData = await workRes.json();
+          let desc = workData.description;
+          if(desc && typeof desc === 'object') desc = desc.value;
+          if(typeof desc === 'string') result.description = cleanDescription(desc.split('\n')[0]).slice(0, 650);
+        }
+      }catch(e){}
+    }
+    return result;
+  }
+
+  async function lookupBookItunes(titleVal, authorVal){
+    let term = titleVal.trim();
+    if(authorVal && authorVal.trim()) term += ' ' + authorVal.trim();
+    const res = await fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(term) + '&entity=ebook&limit=1');
+    if(!res.ok) throw new Error('itunes search failed');
+    const data = await res.json();
+    let item = data.results && data.results[0];
+    if(!item && authorVal && authorVal.trim()){
+      const res2 = await fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(titleVal.trim()) + '&entity=ebook&limit=10');
+      if(res2.ok){
+        const d2 = await res2.json();
+        const want = normBookTitle(titleVal);
+        item = (d2.results || []).find(r => normBookTitle(r.trackName || '').includes(want));
+      }
+    }
+    if(!item) return null;
+    let cover = item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : null;
+    let description = item.description || item.shortDescription || '';
+    if(description){
+      description = stripHtml(description);
+      description = cleanDescription(description);
+      if(description.length > 650) description = description.slice(0, 647) + '…';
+    }
+    return {
+      title: item.trackName || titleVal,
+      author: item.artistName || authorVal || '',
+      coverUrl: cover,
+      description
+    };
+  }
+
+  async function lookupBook(titleVal, authorVal){
+    if(!titleVal || !titleVal.trim()) return null;
+    const result = { title: titleVal.trim(), author: (authorVal || '').trim(), coverUrl: null, description: '' };
+    let foundAny = false;
+
+    try{
+      const g = await lookupBookGoogle(titleVal, authorVal);
+      if(g){
+        foundAny = true;
+        if(g.title) result.title = g.title;
+        if(!result.author && g.author) result.author = g.author;
+        if(g.coverUrl) result.coverUrl = g.coverUrl;
+        if(g.description) result.description = g.description;
+      }
+    }catch(e){ console.error('Google Books lookup failed:', e); }
+
+    if(!result.description || !result.coverUrl){
+      try{
+        const it = await lookupBookItunes(titleVal, authorVal);
+        if(it){
+          foundAny = true;
+          if(!result.coverUrl && it.coverUrl) result.coverUrl = it.coverUrl;
+          if(!result.description && it.description) result.description = it.description;
+          if(!result.author && it.author) result.author = it.author;
+        }
+      }catch(e){ console.error('iTunes lookup failed:', e); }
+    }
+
+    if(!result.description || !result.coverUrl){
+      try{
+        const ol = await lookupBookOpenLibrary(titleVal, authorVal);
+        if(ol){
+          foundAny = true;
+          if(!result.coverUrl && ol.coverUrl) result.coverUrl = ol.coverUrl;
+          if(!result.description && ol.description) result.description = ol.description;
+        }
+      }catch(e){ console.error('Open Library lookup failed:', e); }
+    }
+
+    return foundAny ? result : null;
+  }
+
+  function bookSearchUrl(title, author){
+    const q = encodeURIComponent((title || '') + ' ' + (author || '') + ' book');
+    return `https://www.google.com/search?q=${q}`;
+  }
+  function goodreadsSearchUrl(title, author){
+    const q = encodeURIComponent((title || '') + ' ' + (author || ''));
+    return `https://www.goodreads.com/search?q=${q}`;
+  }
+  function amazonSearchUrl(title, author){
+    const q = encodeURIComponent((title || '') + ' ' + (author || '') + ' book');
+    return `https://www.amazon.com/s?k=${q}`;
+  }
+
+  const TAB_IDS = ['schedule', 'announcements', 'suggest', 'history', 'members', 'join'];
+  const TAB_LABELS = { announcements: 'Announcements', suggest: 'Suggest & vote', history: 'Reviews', members: 'Members', join: 'Join us' };
+  let activeTab = 'schedule';
+  function showTab(id){
+    if(!TAB_IDS.includes(id)) id = 'schedule';
+    activeTab = id;
+    TAB_IDS.forEach(t => {
+      const el = document.getElementById(t);
+      if(!el) return;
+      if(t === 'join'){
+        el.style.display = (t === id && isAdmin) ? 'block' : 'none';
+      }else{
+        el.style.display = (t === id) ? 'block' : 'none';
+      }
+    });
+    document.querySelectorAll('.topnav a[data-tab]').forEach(a => {
+      a.classList.toggle('active-tab', a.dataset.tab === id);
+    });
+    document.getElementById('heroSection').style.display = (id === 'schedule') ? '' : 'none';
+    const pageTitleSection = document.getElementById('pageTitleSection');
+    if(id === 'schedule'){
+      pageTitleSection.style.display = 'none';
+    }else{
+      document.getElementById('pageTitleH1').textContent = TAB_LABELS[id] || '';
+      pageTitleSection.style.display = '';
+    }
+  }
+
+  function openGroupText(numbers, body){
+    if(numbers.length === 0){ showToast('No cell numbers on file yet.'); return; }
+    const numberList = numbers.join(', ');
+    navigator.clipboard.writeText(numberList).catch(() => {});
+    window.location.href = `sms:&body=${encodeURIComponent(body)}`;
+    showToast('Message drafted, numbers copied — paste them into "To:" (iPhone group texts need each number added manually).');
+  }
+
+  // ---- Amazon: Amazon has no public lookup, but its book link contains the ISBN-10 ----
+  function parseAmazonInput(text){
+    const t = (text || '').trim();
+    if(/(^|\/\/)(a\.co|amzn\.(to|com))\//i.test(t)) return { short: true };
+    const m = t.match(/amazon\.[a-z.]+(?:\/.*?)?(?:\/dp\/|\/gp\/product\/|\/product\/)([A-Z0-9]{10})/i);
+    if(m){
+      const asin = m[1].toUpperCase();
+      return /^\d{9}[\dX]$/.test(asin) ? { isbn: asin } : { kindle: true };
+    }
+    const bare = t.replace(/[-\s]/g, '');
+    if(/^\d{9}[\dX]$/i.test(bare) || /^97[89]\d{10}$/.test(bare)) return { isbn: bare.toUpperCase() };
+    return null;
+  }
+  function imageLoads(url){
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(img.naturalWidth > 10);
+      img.onerror = () => resolve(false);
+      img.src = url;
+    });
+  }
+  async function lookupByIsbn(isbn){
+    const result = { title: '', author: '', coverUrl: null, description: '' };
+    try{
+      const res = await fetch('https://www.googleapis.com/books/v1/volumes?q=isbn:' + isbn);
+      if(res.ok){
+        const data = await res.json();
+        const info = data.items && data.items[0] && data.items[0].volumeInfo;
+        if(info){
+          result.title = info.title || '';
+          result.author = (info.authors && info.authors[0]) || '';
+          const c = info.imageLinks && (info.imageLinks.thumbnail || info.imageLinks.smallThumbnail);
+          if(c) result.coverUrl = c.replace('http://', 'https://');
+          if(info.description) result.description = cleanDescription(stripHtml(info.description)).slice(0, 650);
+        }
+      }
+    }catch(e){ console.error('Google ISBN lookup failed:', e); }
+    if(!result.title){
+      try{
+        const res = await fetch('https://openlibrary.org/api/books?bibkeys=ISBN:' + isbn + '&format=json&jscmd=data');
+        if(res.ok){
+          const d = (await res.json())['ISBN:' + isbn];
+          if(d){
+            result.title = d.title || '';
+            result.author = (d.authors && d.authors[0] && d.authors[0].name) || '';
+            if(!result.coverUrl && d.cover) result.coverUrl = d.cover.medium || d.cover.large || null;
+          }
+        }
+      }catch(e){ console.error('Open Library ISBN lookup failed:', e); }
+    }
+    if(!result.coverUrl){
+      const olc = 'https://covers.openlibrary.org/b/isbn/' + isbn + '-M.jpg?default=false';
+      if(await imageLoads(olc)) result.coverUrl = olc;
+    }
+    if(!result.coverUrl && isbn.length === 10){
+      const amz = 'https://m.media-amazon.com/images/P/' + isbn + '.01._SCLZZZZZZZ_.jpg';
+      if(await imageLoads(amz)) result.coverUrl = amz;
+    }
+    // No summary yet? Try Open Library's record for this ISBN, then a title+author search.
+    if(!result.description){
+      try{
+        const r = await fetch('https://openlibrary.org/isbn/' + isbn + '.json');
+        if(r.ok){
+          const ed = await r.json();
+          let desc = ed.description;
+          if(desc && typeof desc === 'object') desc = desc.value;
+          if(!desc && ed.works && ed.works[0] && ed.works[0].key){
+            const w = await fetch('https://openlibrary.org' + ed.works[0].key + '.json');
+            if(w.ok){
+              const wd = await w.json();
+              desc = wd.description;
+              if(desc && typeof desc === 'object') desc = desc.value;
+            }
+          }
+          if(typeof desc === 'string') result.description = cleanDescription(desc.split('\n')[0]).slice(0, 650);
+        }
+      }catch(e){ console.error('Open Library description lookup failed:', e); }
+    }
+    if(!result.description && result.title){
+      try{
+        const alt = await lookupBook(result.title, result.author);
+        if(alt && alt.description) result.description = alt.description;
+        if(!result.coverUrl && alt && alt.coverUrl) result.coverUrl = alt.coverUrl;
+      }catch(e){}
+    }
+    return (result.title || result.coverUrl) ? result : null;
+  }
+
+  function wireLookup(btnId, titleId, authorId, previewId, descId, coverSetter, onDone){
+    const btn = document.getElementById(btnId);
+    btn.addEventListener('click', async () => {
+      const titleEl = document.getElementById(titleId);
+      const titleVal = titleEl.value;
+      if(!titleVal.trim()){ showToast('Type a title first.'); return; }
+      btn.disabled = true; btn.textContent = 'Looking…';
+      const authorEl = document.getElementById(authorId);
+      const amz = parseAmazonInput(titleVal);
+      const preview = document.getElementById(previewId);
+      let result;
+      if(amz && (amz.short || amz.kindle)){
+        btn.disabled = false; btn.textContent = 'Find book';
+        preview.style.display = 'flex';
+        preview.innerHTML = amz.short
+          ? `<span>That's a short Amazon link, which can't be read. Open it, then copy the full address from the browser bar (it contains /dp/ and a code), or just type the title.</span>`
+          : `<span>That's a Kindle link. Kindle books use an Amazon code instead of an ISBN, so the link can't be used. On the Amazon page, scroll to Product details (or tap the Paperback option) and find the ISBN-13 or ISBN-10. Type or paste that number into this box instead.</span>`;
+        return;
+      }
+      result = amz ? await lookupByIsbn(amz.isbn) : await lookupBook(titleVal, authorEl.value);
+      btn.disabled = false; btn.textContent = 'Find book';
+      if(!result){
+        preview.style.display = 'flex';
+        preview.innerHTML = `<span>Couldn't find a match — you can still fill this in by hand.</span>`;
+        coverSetter(null);
+        if(onDone) onDone(null);
+        return;
+      }
+      if(result.title) titleEl.value = result.title;
+      if(!authorEl.value.trim() && result.author) authorEl.value = result.author;
+      let descFilled = false;
+      let descVisible = false;
+      if(descId){
+        const descEl = document.getElementById(descId);
+        descVisible = descEl && getComputedStyle(descEl).display !== 'none';
+        if(descEl && !descEl.value.trim() && result.description){
+          descEl.value = result.description;
+          descFilled = true;
+        }
+      }
+      coverSetter(result.coverUrl);
+      preview.style.display = 'flex';
+      const coverMsg = result.coverUrl ? 'Cover updated.' : 'No cover image was available.';
+      let descMsg = '';
+      if(descId && descVisible){
+        descMsg = descFilled
+          ? ' Description filled in.'
+          : ` No description was available from either source — feel free to type your own, or <a href="${bookSearchUrl(result.title, result.author)}" target="_blank" style="color:var(--accent);">search for it online</a>.`;
+      }else if(descId && descFilled){
+        descMsg = ' Details added.';
+      }
+      preview.innerHTML = (result.coverUrl ? `<img src="${result.coverUrl}" alt="">` : '') + `<span>${coverMsg}${descMsg}</span>`;
+      if(onDone) onDone(result);
+    });
+  }
+  wireLookup('schLookup','schTitle','schAuthor','schCoverPreview','schDesc', (url) => { schCover = url; });
+  wireLookup('edLookup','edTitle','edAuthor','edCoverPreview','edDesc', (url) => { edCover = url; });
+  wireLookup('erLookup','erTitle','erAuthor','erCoverPreview','erDescHidden', (url) => { erCover = url; });
+  wireLookup('recLookup','recTitle','recAuthor','recCoverPreview', 'recDescHidden', (url) => { recCover = url; }, (result) => {
+    // Nothing found, or found with no summary: offer the paste-your-own box.
+    if(!result || !result.description) document.getElementById('recManual').style.display = 'block';
+  });
+
+  // ---------- render: now reading ----------
+  function renderNowReading(){
+    const current = schedule.find(s => s.current);
+    if(!current){
+      nowReadingEl.innerHTML = `<div><div class="eyebrow">Now reading</div><p class="empty" style="margin-top:8px;">Nothing's been picked yet. Add a book below and mark it current.</p></div>`;
+      document.getElementById('ratingBadge').innerHTML = '';
+      return;
+    }
+    const snippet = truncate(current.description, 160);
+    const moreLink = current.description && current.description.length > 160
+      ? ` <button class="link-btn book-open" data-kind="schedule" data-id="${current.id}" style="font-size:0.85rem;">Read more</button>` : '';
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    nowReadingEl.innerHTML = `
+      ${current.coverUrl ? `<div class="nr-cover"><img class="book-open" data-kind="schedule" data-id="${current.id}" src="${current.coverUrl}" alt=""></div>` : ''}
+      <div>
+        <div class="eyebrow">Now reading &mdash; ${escapeHtml(current.month)}</div>
+        <h2 class="book-open" data-kind="schedule" data-id="${current.id}" style="cursor:pointer;">${escapeHtml(current.title)}</h2>
+        <div class="byline">${escapeHtml(current.author)}</div>
+        ${current.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
+        ${renderReadStatusHtml(current, uid)}
+      </div>`;
+
+    renderRatingBadge();
+  }
+
+  function renderReadStatusHtml(entry, uid){
+    const statuses = entry.readStatus || {};
+    const myStatus = uid ? statuses[uid] : null;
+    const labels = { 'not-started': "Haven't started", 'reading': 'Reading it', 'finished': 'Finished', 'not-finished': "Didn't finish" };
+    const order = ['not-started', 'reading', 'finished', 'not-finished'];
+    const groups = {}; order.forEach(k => groups[k] = []);
+    Object.keys(statuses).forEach(u => {
+      const s = statuses[u];
+      if(!groups[s]) return;
+      const m = members.find(mm => mm.id === u);
+      groups[s].push(m ? m.name : 'someone');
+    });
+    const summaryParts = order
+      .filter(key => groups[key].length > 0)
+      .map(key => `<strong>${labels[key]}</strong>: ${escapeHtml(groups[key].join(', '))}`);
+    return `
+      <div class="status-widget">
+        <div class="status-prompt">Where are you at with this one?</div>
+        <div class="status-buttons">
+          ${order.map(key => `<button class="status-btn ${myStatus === key ? 'active' : ''}" data-id="${entry.id}" data-status="${key}">${labels[key]}</button>`).join('')}
+        </div>
+        ${summaryParts.length ? `<div class="status-summary">${summaryParts.join(' &middot; ')}</div>` : ''}
+      </div>`;
+  }
+
+  function renderRatingBadge(){
+    const badgeEl = document.getElementById('ratingBadge');
+    const eligible = schedule
+      .filter(isEligibleForRating)
+      .sort((a, b) => (parseEntryDate(b.month) || 0) - (parseEntryDate(a.month) || 0));
+    const mostRecent = eligible[0];
+    if(!mostRecent){
+      badgeEl.innerHTML = '';
+      return;
+    }
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    badgeEl.innerHTML = `
+      <div class="rating-badge">
+        <span class="badge-text">Open for rating: <strong class="book-open" data-kind="schedule" data-id="${mostRecent.id}" style="cursor:pointer;">${escapeHtml(mostRecent.title)}</strong><br><button class="link-btn go-history" type="button" data-id="${mostRecent.id}" style="margin-top:6px;">Leave a review &rarr;</button></span>
+        ${renderStarsOnly(mostRecent, uid)}
+      </div>`;
+  }
+
+  function scheduleEntryHtml(entry, uid){
+    const snippet = truncate(entry.description, 90);
+    const moreLink = entry.description && entry.description.length > 90
+      ? ` <button class="link-btn book-open" data-kind="schedule" data-id="${entry.id}" style="font-size:0.85rem;">Read more</button>` : '';
+    return `
+    <div class="log-entry" data-id="${entry.id}">
+      <div class="log-month">${escapeHtml(entry.month)}</div>
+      ${entry.coverUrl ? `<div class="log-cover"><img class="book-open" data-kind="schedule" data-id="${entry.id}" src="${entry.coverUrl}" alt=""></div>` : ''}
+      <div class="log-body">
+        <h3 class="book-open" data-kind="schedule" data-id="${entry.id}" style="cursor:pointer;">${escapeHtml(entry.title)}</h3>
+        <div class="byline">${escapeHtml(entry.author)}</div>
+        ${isEligibleForRating(entry) ? averageLineHtml(entry) : ''}
+        ${entry.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
+        ${isEligibleForRating(entry) ? renderReadStatusHtml(entry, uid) : ''}
+        ${isEligibleForRating(entry) ? renderStarRating(entry, uid) : renderEarlyReview(entry, uid)}
+        ${isAdmin ? `
+        <div class="log-actions">
+          ${entry.current
+            ? `<span class="current-badge">This is what we're reading</span>`
+            : `<button class="link-btn set-current" data-id="${entry.id}">Mark as current</button>`}
+          <button class="link-btn edit-schedule" data-id="${entry.id}">Edit</button>
+          ${entry.sourceRec ? `<button class="link-btn unschedule-entry" data-id="${entry.id}">Move back to suggestions</button>` : ''}
+          <button class="link-btn remove-schedule" data-id="${entry.id}">Remove</button>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  function renderSchedule(){
+    document.getElementById('scheduleAddPanel').style.display = (isAdmin && schSourceRec) ? 'block' : 'none';
+    document.getElementById('scheduleAddHint').style.display = (isAdmin && !schSourceRec) ? 'block' : 'none';
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+
+    // "The schedule" stays forward-looking: current pick + upcoming ones.
+    const upcoming = schedule.filter(e => e.current || !isEligibleForRating(e));
+    if(upcoming.length === 0){
+      scheduleListEl.innerHTML = isAdmin
+        ? `<p class="empty-state">The log is empty. Add your first pick below.</p>`
+        : `<p class="empty-state">Nothing's on the schedule yet.</p>`;
+    }else{
+      scheduleListEl.innerHTML = upcoming.map(entry => scheduleEntryHtml(entry, uid)).join('');
+    }
+
+    // "Reviews" holds everything once its month has passed — ratings and status live here.
+    const past = schedule
+      .filter(isEligibleForRating)
+      .sort((a, b) => (parseEntryDate(b.month) || 0) - (parseEntryDate(a.month) || 0));
+    const historyListEl = document.getElementById('historyList');
+    if(past.length === 0){
+      historyListEl.innerHTML = `<p class="empty-state">Nothing here yet — finished picks show up once their month wraps up.</p>`;
+    }else{
+      historyListEl.innerHTML = past.map(entry => scheduleEntryHtml(entry, uid)).join('');
+    }
+
+    renderNowReading();
+  }
+
+
+  function formatEventTime(t){
+    if(!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    return ((h % 12) || 12) + ':' + String(m).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+  }
+  function announcementWhen(a){
+    const parts = [];
+    if(a.eventDate) parts.push(formatDeadline(a.eventDate));
+    if(a.eventTime) parts.push(formatEventTime(a.eventTime));
+    return parts.join(' at ');
+  }
+  function announcementIsPast(a){
+    return !!(a.eventDate && a.eventDate < todayStr());
+  }
+  function announcementPostedOn(a){
+    return (a.createdAt && a.createdAt.toDate)
+      ? a.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '';
+  }
+
+  // ---- RSVPs: each person's answer lives at announcements/{id}/rsvps/{uid} ----
+  const rsvpData = {};      // announcement id -> array of answers (null = couldn't load)
+  const rsvpUnsubs = {};
+  const rsvpDraft = {};     // unsaved edits, so a refresh from someone else's RSVP doesn't wipe typing
+  const RSVP_LABELS = { yes: 'Going', maybe: 'Maybe', no: "Can't make it" };
+
+  function syncRsvpListeners(){
+    const want = new Set(announcements.filter(a => a.rsvpEnabled).map(a => a.id));
+    Object.keys(rsvpUnsubs).forEach(id => {
+      if(!want.has(id)){ rsvpUnsubs[id](); delete rsvpUnsubs[id]; delete rsvpData[id]; }
+    });
+    want.forEach(id => {
+      if(rsvpUnsubs[id]) return;
+      rsvpUnsubs[id] = db.collection('announcements').doc(id).collection('rsvps').onSnapshot(snap => {
+        rsvpData[id] = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+        renderAnnouncements();
+      }, () => { rsvpData[id] = null; renderAnnouncements(); });
+    });
+  }
+  function myRsvpBase(id){
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    const mine = (rsvpData[id] || []).find(r => r.uid === uid);
+    return { status: mine ? mine.status : '', guests: mine ? (mine.guests || 0) : 0, note: mine ? (mine.note || '') : '' };
+  }
+  function ensureRsvpDraft(id){
+    if(!rsvpDraft[id]) rsvpDraft[id] = myRsvpBase(id);
+    return rsvpDraft[id];
+  }
+  function rsvpBoxHtml(a, past){
+    const list = rsvpData[a.id];
+    if(list === null){
+      return `<div class="rsvp-box"><div class="early-note">Couldn't load RSVPs — the Firestore rules need the RSVP update.</div></div>`;
+    }
+    const all = list || [];
+    const going = all.filter(r => r.status === 'yes');
+    const heads = going.reduce((n, r) => n + 1 + (r.guests || 0), 0);
+    const maybes = all.filter(r => r.status === 'maybe').reduce((n, r) => n + 1 + (r.guests || 0), 0);
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    const d = rsvpDraft[a.id] || myRsvpBase(a.id);
+    const hasMine = all.some(r => r.uid === uid);
+    const order = { yes: 0, maybe: 1, no: 2 };
+    const rows = [...all].sort((x, y) => (order[x.status] - order[y.status]) || (x.name || '').localeCompare(y.name || '')).map(r => `
+      <div class="rsvp-row"><strong>${escapeHtml(r.name || 'Someone')}</strong><span class="rsvp-state">${RSVP_LABELS[r.status] || ''}</span>
+        ${(r.note && a.foodEnabled) ? `<span class="rsvp-food">${escapeHtml(r.note)}</span>` : ''}</div>`).join('');
+    const form = past ? '' : `
+      <div class="rsvp-btns">
+        ${['yes', 'maybe', 'no'].map(k => `<button type="button" class="rsvp-btn ${d.status === k ? 'active' : ''}" data-id="${a.id}" data-status="${k}">${RSVP_LABELS[k]}</button>`).join('')}
+      </div>
+      ${a.foodEnabled && d.status && d.status !== 'no' ? `
+      <div class="rsvp-fields">
+        <div><label>Bringing food or drinks to share? (optional)</label>
+          <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(d.note)}</textarea></div>
+      </div>` : ''}
+      ${d.status ? `<div style="display:flex; gap:16px; margin-top:10px;"><button type="button" class="submit-btn rsvp-save" data-id="${a.id}">Save RSVP</button>${hasMine ? `<button type="button" class="link-btn rsvp-clear" data-id="${a.id}">Remove my RSVP</button>` : ''}</div>` : ''}`;
+    return `<div class="rsvp-box" data-id="${a.id}">
+      <div class="rsvp-count"><strong>${heads}</strong> ${past ? 'came' : 'coming'}${maybes ? ` &middot; ${maybes} maybe` : ''}</div>
+      ${form}
+      ${rows ? `<div class="rsvp-list">${rows}</div>` : ''}
+    </div>`;
+  }
+  async function saveRsvp(id){
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    const d = rsvpDraft[id];
+    if(!uid || !d || !d.status){ showToast("Pick Going, Maybe, or Can't make it first."); return; }
+    const m = members.find(mm => mm.id === uid);
+    const name = (m && m.name) || (auth.currentUser && auth.currentUser.displayName) || 'Someone';
+    try{
+      await db.collection('announcements').doc(id).collection('rsvps').doc(uid).set({
+        status: d.status,
+        guests: 0,
+        note: (d.status === 'no' || !(announcements.find(x => x.id === id) || {}).foodEnabled) ? '' : (d.note || '').trim().slice(0, 300),
+        name,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      delete rsvpDraft[id];
+      showToast('RSVP saved.');
+      renderAnnouncements();
+    }catch(e){
+      showToast(e && e.code === 'permission-denied' ? "Couldn't save — the Firestore rules need the RSVP update." : "Couldn't save — try again.");
+    }
+  }
+  async function clearRsvp(id){
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    if(!uid) return;
+    try{
+      await db.collection('announcements').doc(id).collection('rsvps').doc(uid).delete();
+      delete rsvpDraft[id];
+      showToast('RSVP removed.');
+    }catch(e){ showToast("Couldn't remove — try again."); }
+  }
+
+  function announcementCardHtml(a, admin){
+    const when = announcementWhen(a);
+    const past = announcementIsPast(a);
+    const posted = announcementPostedOn(a);
+    return `
+      <div class="announce-card ${past ? 'past' : ''}" data-id="${a.id}">
+        <div class="announce-head">
+          <h3>${escapeHtml(a.title)}</h3>
+          ${past ? '<span class="announce-past">Past event</span>' : ''}
+          ${admin && !past && a.showOnHome !== false ? '<span class="announce-pin">On main page</span>' : ''}
+        </div>
+        ${when ? `<div class="announce-when"><strong>When:</strong> ${escapeHtml(when)}</div>` : ''}
+        ${a.place ? `<div class="announce-when"><strong>Where:</strong> ${escapeHtml(a.place)}</div>` : ''}
+        ${a.details ? `<p class="announce-details">${escapeHtml(a.details)}</p>` : ''}
+        ${a.rsvpEnabled ? rsvpBoxHtml(a, past) : ''}
+        <div class="announce-meta">
+          <span>Posted${a.postedBy ? ' by ' + escapeHtml(a.postedBy) : ''}${posted ? ' &middot; ' + posted : ''}</span>
+          ${admin ? `<button class="link-btn toggle-home" data-id="${a.id}">${a.showOnHome !== false ? 'Remove from main page' : 'Show on main page'}</button><button class="link-btn edit-announce" data-id="${a.id}">Edit</button><button class="link-btn remove-announce" data-id="${a.id}">Remove</button>` : ''}
+        </div>
+      </div>`;
+  }
+
+  // Main page: just a short summary (title, when, where) of the announcements an admin
+  // chose to show there. Events that have already happened drop off on their own.
+  function announceBannerHtml(list){
+    const shown = list.filter(a => a.showOnHome !== false && !announcementIsPast(a));
+    if(!shown.length) return '';
+    const items = shown.map(a => {
+      const when = announcementWhen(a);
+      let line = [when, a.place].filter(Boolean).map(escapeHtml).join(' &middot; ');
+      if(a.rsvpEnabled && Array.isArray(rsvpData[a.id])){
+        const n = rsvpData[a.id].filter(r => r.status === 'yes').reduce((t, r) => t + 1 + (r.guests || 0), 0);
+        line += (line ? ' &middot; ' : '') + n + ' going &middot; RSVP inside';
+      }else if(a.rsvpEnabled){
+        line += (line ? ' &middot; ' : '') + 'RSVP inside';
+      }
+      return `
+        <div class="announce-banner-item">
+          <div class="announce-banner-title">${escapeHtml(a.title)}</div>
+          ${line ? `<div class="announce-banner-when">${line}</div>` : ''}
+        </div>`;
+    }).join('');
+    return `
+      <div class="announce-banner">
+        <div class="announce-banner-label">${shown.length > 1 ? 'Announcements' : 'Announcement'}</div>
+        ${items}
+        <button class="link-btn go-announcements" type="button" style="margin-top:10px;">See all announcements &rarr;</button>
+      </div>`;
+  }
+
+  function renderAnnouncements(){
+    const listEl = document.getElementById('announceList');
+    if(!listEl) return;
+    document.getElementById('announceFormPanel').style.display = isAdmin ? 'block' : 'none';
+    const ae = document.activeElement;
+    const keep = (ae && listEl.contains(ae) && ae.dataset && ae.dataset.id && ae.classList.contains('rsvp-note'))
+      ? { cls: 'rsvp-note', id: ae.dataset.id, pos: ae.selectionStart } : null;
+    listEl.innerHTML = announcements.length
+      ? announcements.map(a => announcementCardHtml(a, isAdmin)).join('')
+      : `<p class="empty-state">${isAdmin ? 'No announcements yet — post the first one below.' : 'No announcements yet.'}</p>`;
+    document.getElementById('announceBanner').innerHTML = announceBannerHtml(announcements);
+    if(keep){
+      const el = listEl.querySelector(`.${keep.cls}[data-id="${keep.id}"]`);
+      if(el){ el.focus(); try{ if(keep.pos != null) el.setSelectionRange(keep.pos, keep.pos); }catch(_){} }
+    }
+  }
+
+  function resetAnnouncementForm(){
+    editingAnnouncementId = null;
+    ['anTitle', 'anDate', 'anTime', 'anPlace', 'anDetails'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('anHome').checked = true;
+    document.getElementById('anRsvp').checked = false;
+    document.getElementById('anFood').checked = false;
+    document.getElementById('announceFormTitle').textContent = 'Post an announcement';
+    document.getElementById('anSubmit').textContent = 'Post announcement';
+  }
+
+  async function saveAnnouncement(){
+    const title = document.getElementById('anTitle').value.trim();
+    if(!title){ showToast('Add a title first.'); return; }
+    const data = {
+      title,
+      details: document.getElementById('anDetails').value.trim(),
+      eventDate: document.getElementById('anDate').value || '',
+      eventTime: document.getElementById('anTime').value || '',
+      place: document.getElementById('anPlace').value.trim(),
+      showOnHome: document.getElementById('anHome').checked,
+      rsvpEnabled: document.getElementById('anRsvp').checked,
+      foodEnabled: document.getElementById('anRsvp').checked && document.getElementById('anFood').checked
+    };
+    try{
+      if(editingAnnouncementId){
+        await db.collection('announcements').doc(editingAnnouncementId).update(data);
+        showToast('Updated.');
+      }else{
+        await db.collection('announcements').add({
+          ...data,
+          postedBy: auth.currentUser ? (auth.currentUser.displayName || 'an admin') : 'an admin',
+          postedByUid: auth.currentUser ? auth.currentUser.uid : null,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showToast('Posted.');
+      }
+    }catch(e){
+      showToast(e && e.code === 'permission-denied'
+        ? "Couldn't post — the Firestore rules need the announcements update."
+        : "Couldn't save — try again.");
+      return;
+    }
+    resetAnnouncementForm();
+  }
+
+  function startEditAnnouncement(id){
+    const a = announcements.find(x => x.id === id);
+    if(!a) return;
+    editingAnnouncementId = id;
+    document.getElementById('anTitle').value = a.title || '';
+    document.getElementById('anDate').value = a.eventDate || '';
+    document.getElementById('anTime').value = a.eventTime || '';
+    document.getElementById('anPlace').value = a.place || '';
+    document.getElementById('anDetails').value = a.details || '';
+    document.getElementById('anHome').checked = a.showOnHome !== false;
+    document.getElementById('anRsvp').checked = !!a.rsvpEnabled;
+    document.getElementById('anFood').checked = !!a.foodEnabled;
+    document.getElementById('announceFormTitle').textContent = 'Edit announcement';
+    document.getElementById('anSubmit').textContent = 'Save changes';
+    document.getElementById('announceFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderRecommendations(){
+    if(recommendations.length === 0){
+      recListEl.innerHTML = `<p class="empty-state">No suggestions yet. Be the first to throw one in.</p>`;
+      return;
+    }
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    const sorted = [...recommendations].sort((a,b) => (b.votes.length - a.votes.length));
+    recListEl.innerHTML = sorted.map(rec => {
+      const voted = uid && rec.votes.includes(uid);
+      const voterNames = Object.values(rec.votesDetail || {});
+      const canRemove = isAdmin || (uid && rec.submittedByUid === uid);
+      const snippet = truncate(rec.description, 80);
+      const moreLink = rec.description && rec.description.length > 80
+        ? ` <button class="link-btn book-open" data-kind="rec" data-id="${rec.id}" style="font-size:0.85rem;">Read more</button>` : '';
+      return `
+      <div class="rec" data-id="${rec.id}">
+        <div class="rec-vote">
+          <button class="vote-btn ${voted ? 'voted' : ''}" data-id="${rec.id}">
+            <span class="count">${rec.votes.length}</span>
+            <span class="label">${voted ? 'Voted' : 'Vote'}</span>
+          </button>
+        </div>
+        ${rec.coverUrl ? `<div class="rec-cover"><img class="book-open" data-kind="rec" data-id="${rec.id}" src="${rec.coverUrl}" alt=""></div>` : ''}
+        <div class="rec-body">
+          <h3 class="book-open" data-kind="rec" data-id="${rec.id}" style="cursor:pointer;">${escapeHtml(rec.title)}</h3>
+          <div class="byline">${escapeHtml(rec.author)}</div>
+          ${rec.description ? `<p class="desc">${escapeHtml(snippet)}${moreLink}</p>` : ''}
+          ${rec.note ? (() => { const sn = shortNote(rec.note); return `<p class="note">${escapeHtml(sn.text)}${sn.truncated ? ` <button class="link-btn book-open" data-kind="rec" data-id="${rec.id}" style="font-size:0.85rem;">Read more</button>` : ''}</p>`; })() : ''}
+          <div class="meta">Suggested by ${escapeHtml(rec.submittedBy || 'someone')}${isAdmin ? `<button class="link-btn schedule-rec" data-id="${rec.id}">Schedule this</button><button class="link-btn edit-rec" data-id="${rec.id}">Edit</button>` : ''}${canRemove ? `<button class="link-btn remove-rec" data-id="${rec.id}">Remove</button>` : ''}</div>
+          ${voterNames.length ? `<div class="meta">Voted by ${escapeHtml(voterNames.join(', '))}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  let showFullMemberInfo = false;
+
+  // ---- Backup: reads every collection and downloads it as one JSON file ----
+  function backupSerialize(v){
+    if(v === null || v === undefined) return v;
+    if(typeof v.toDate === 'function') return { __timestamp: v.toDate().toISOString() };
+    if(Array.isArray(v)) return v.map(backupSerialize);
+    if(typeof v === 'object'){
+      const o = {};
+      Object.keys(v).forEach(k => { o[k] = backupSerialize(v[k]); });
+      return o;
+    }
+    return v;
+  }
+  let preparedBackup = null; // File ready to hand to the share sheet (needs a fresh tap on iPhone)
+  async function downloadBackup(){
+    const btn = document.getElementById('backupBtn');
+    if(preparedBackup){
+      const f = preparedBackup;
+      preparedBackup = null;
+      btn.textContent = 'Export backup';
+      try{
+        await navigator.share({ files: [f], title: 'Riptide Readers backup' });
+        showToast('Backup exported.');
+      }catch(e){
+        if(e && e.name !== 'AbortError') showToast("Couldn't open the share sheet — try again.");
+      }
+      return;
+    }
+    btn.disabled = true; btn.textContent = 'Preparing…';
+    try{
+      const out = { app: 'Riptide Readers', exportedAt: new Date().toISOString(), collections: {} };
+      for(const name of ['schedule', 'recommendations', 'members', 'meta', 'announcements']){
+        const snap = await db.collection(name).get();
+        out.collections[name] = {};
+        for(const d of snap.docs){
+          const item = { data: backupSerialize(d.data()) };
+          if(name === 'announcements'){
+            const r = await db.collection('announcements').doc(d.id).collection('rsvps').get();
+            item.rsvps = {};
+            r.docs.forEach(x => { item.rsvps[x.id] = backupSerialize(x.data()); });
+          }
+          out.collections[name][d.id] = item;
+        }
+      }
+      const json = JSON.stringify(out, null, 2);
+      const fname = `riptide-readers-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      try{
+        const file = new File([json], fname, { type: 'application/json' });
+        if(navigator.canShare && navigator.canShare({ files: [file] })){
+          preparedBackup = file;
+          btn.disabled = false;
+          btn.textContent = 'Backup ready — tap to save to Files';
+          return;
+        }
+      }catch(_){}
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const stamp = new Date().toISOString().slice(0, 10);
+      a.href = url; a.download = `riptide-readers-backup-${stamp}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      showToast('Backup downloaded.');
+    }catch(e){
+      showToast("Couldn't make the backup — try again.");
+    }
+    btn.disabled = false; btn.textContent = 'Export backup';
+  }
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    // Reload with a fresh URL so the phone fetches the newest version instead of a cached one.
+    const u = new URL(window.location.href);
+    u.searchParams.set('r', Date.now());
+    window.location.replace(u.toString());
+  });
+  document.getElementById('backupBtn').addEventListener('click', downloadBackup);
+
+  // ---- Restore: reads a backup file and writes it back (merge by ID, never deletes) ----
+  function backupRevive(v){
+    if(v === null || v === undefined) return v;
+    if(Array.isArray(v)) return v.map(backupRevive);
+    if(typeof v === 'object'){
+      const keys = Object.keys(v);
+      if(keys.length === 1 && keys[0] === '__timestamp') return firebase.firestore.Timestamp.fromDate(new Date(v.__timestamp));
+      const o = {};
+      keys.forEach(k => { o[k] = backupRevive(v[k]); });
+      return o;
+    }
+    return v;
+  }
+  async function runRestore(backup){
+    const ops = [];
+    const cols = backup.collections;
+    ['schedule', 'recommendations', 'members', 'meta', 'announcements'].forEach(name => {
+      Object.keys(cols[name] || {}).forEach(id => {
+        const item = cols[name][id];
+        ops.push({ ref: db.collection(name).doc(id), data: backupRevive(item.data || {}) });
+        if(name === 'announcements'){
+          Object.keys(item.rsvps || {}).forEach(uid => {
+            ops.push({ ref: db.collection('announcements').doc(id).collection('rsvps').doc(uid), data: backupRevive(item.rsvps[uid]) });
+          });
+        }
+      });
+    });
+    const btn = document.getElementById('restoreBtn');
+    btn.disabled = true; btn.textContent = 'Restoring…';
+    try{
+      for(let i = 0; i < ops.length; i += 400){
+        const batch = db.batch();
+        ops.slice(i, i + 400).forEach(o => batch.set(o.ref, o.data));
+        await batch.commit();
+      }
+      showToast(`Restored ${ops.length} items.`);
+    }catch(e){
+      showToast(e && e.code === 'permission-denied'
+        ? "Couldn't restore everything — the RSVP rule may need the admin update."
+        : "Couldn't restore — nothing in that batch was changed. Try again.");
+    }
+    btn.disabled = false; btn.textContent = 'Restore from a backup file';
+  }
+  document.getElementById('restoreBtn').addEventListener('click', () => document.getElementById('restoreFile').click());
+  document.getElementById('restoreFile').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    let backup;
+    try{
+      backup = JSON.parse(await file.text());
+      if(!backup || backup.app !== 'Riptide Readers' || !backup.collections) throw new Error('bad');
+    }catch(err){
+      showToast("That doesn't look like a Riptide Readers backup file.");
+      return;
+    }
+    const c = backup.collections;
+    const n = k => Object.keys(c[k] || {}).length;
+    const when = backup.exportedAt ? new Date(backup.exportedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'unknown date';
+    confirmAction(
+      `Restore the backup from ${when}? It contains ${n('schedule')} scheduled books, ${n('recommendations')} suggestions, ${n('members')} members and ${n('announcements')} announcements. Anything with the same ID will be overwritten with the backup's version.`,
+      () => runRestore(backup),
+      'Yes, restore it',
+      'Restore backup'
+    );
+  });
+
+  function renderMembers(){
+    const bp = document.getElementById('backupPanel');
+    if(bp) bp.style.display = isAdmin ? 'block' : 'none';
+    if(members.length === 0){
+      memberListEl.innerHTML = `<p class="empty-state">No members added yet.</p>`;
+      return;
+    }
+    memberListEl.innerHTML = members.map(m => {
+      const badge = (m.id === ownerId || adminIds.includes(m.id))
+        ? '<span class="owner-tag">Admin</span>'
+        : '';
+      const fullName = [m.firstName, m.lastName].filter(Boolean).join(' ') || m.name;
+      const displayLine = showFullMemberInfo ? fullName : m.name;
+      const showsGoesBy = showFullMemberInfo && fullName !== m.name;
+      return `
+      <div class="member-row" data-id="${m.id}">
+        <div>
+          <h3>${escapeHtml(displayLine)}${badge}</h3>
+          ${showsGoesBy ? `<div class="contact" style="margin-top:2px;"><span>Display name: ${escapeHtml(m.name)}</span></div>` : ''}
+          <div class="contact">
+            ${(showFullMemberInfo && m.email) ? `<span>${escapeHtml(m.email)}</span>` : ''}
+            ${(showFullMemberInfo && m.phone) ? `<span>${escapeHtml(m.phone)}</span>` : ''}
+          </div>
+        </div>
+        ${isAdmin ? `<button class="link-btn remove-member" data-id="${m.id}">Remove</button>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  // ---------- actions ----------
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  function populateMonthYearSelects(monthSelId, yearSelId, presetMonth, presetYear){
+    const monthSel = document.getElementById(monthSelId);
+    const yearSel = document.getElementById(yearSelId);
+    monthSel.innerHTML = MONTH_NAMES.map(m => `<option value="${m}">${m}</option>`).join('');
+    const now = new Date();
+    monthSel.value = MONTH_NAMES.includes(presetMonth) ? presetMonth : MONTH_NAMES[now.getMonth()];
+    const startYear = now.getFullYear() - 1;
+    let yearOptions = '';
+    for(let y = startYear; y <= startYear + 4; y++){
+      yearOptions += `<option value="${y}">${y}</option>`;
+    }
+    yearSel.innerHTML = yearOptions;
+    yearSel.value = (presetYear && String(presetYear)) || String(now.getFullYear());
+  }
+
+  async function addScheduleEntry(){
+    if(!schSourceRec){ showToast("Books can only be scheduled from a suggestion — use \"Schedule this\" in Suggest & vote."); return; }
+    const month = document.getElementById('schMonthSelect').value + ' ' + document.getElementById('schYearSelect').value;
+    const title = document.getElementById('schTitle').value.trim();
+    const author = document.getElementById('schAuthor').value.trim();
+    const description = document.getElementById('schDesc').value.trim();
+    if(!title){ showToast('Add a book title first.'); return; }
+    try{
+      const payload = {
+        month, title, author, description, current:false,
+        coverUrl: schCover, meetingDate: null, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if(schSourceRec){
+        // Keep the original suggestion's votes/note/submitter so this can be
+        // restored to Suggest & Vote later without losing that history.
+        payload.sourceRec = {
+          note: schSourceRec.note || '',
+          submittedBy: schSourceRec.submittedBy || 'someone',
+          submittedByUid: schSourceRec.submittedByUid || null,
+          votes: schSourceRec.votes || [],
+          votesDetail: schSourceRec.votesDetail || {}
+        };
+      }
+      await db.collection('schedule').add(payload);
+      if(schSourceRec){
+        try{ await db.collection('recommendations').doc(schSourceRec.id).delete(); }catch(e){ /* non-fatal */ }
+        schSourceRec = null;
+      }
+    }catch(e){ showToast("Couldn't save — try again."); return; }
+    document.getElementById('schTitle').value = '';
+    document.getElementById('schAuthor').value = '';
+    document.getElementById('schDesc').value = '';
+    document.getElementById('schCoverPreview').style.display = 'none';
+    schCover = null;
+  }
+
+  function scheduleFromRec(id){
+    const rec = recommendations.find(r => r.id === id);
+    if(!rec) return;
+    schSourceRec = rec;
+    schCover = rec.coverUrl || null;
+    document.getElementById('schTitle').value = rec.title || '';
+    document.getElementById('schAuthor').value = rec.author || '';
+    document.getElementById('schDesc').value = rec.description || '';
+    const preview = document.getElementById('schCoverPreview');
+    if(rec.coverUrl){
+      preview.style.display = 'flex';
+      preview.innerHTML = `<img src="${rec.coverUrl}" alt=""><span>Carried over from the suggestion.</span>`;
+    }else{
+      preview.style.display = 'none';
+    }
+    showTab('schedule');
+    document.getElementById('scheduleAddPanel').style.display = 'block';
+    document.getElementById('scheduleAddHint').style.display = 'none';
+    showToast('Fill in the month, then tap "Add to schedule" — the suggestion will be removed once it\'s scheduled.');
+    document.getElementById('scheduleAddPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function unscheduleToSuggestion(id){
+    const entry = schedule.find(s => s.id === id);
+    if(!entry) return;
+    if(!entry.sourceRec){
+      // Wasn't originally a suggestion — just remove it outright.
+      removeScheduleEntry(id);
+      return;
+    }
+    try{
+      await db.collection('recommendations').add({
+        title: entry.title, author: entry.author,
+        note: entry.sourceRec.note || '',
+        description: entry.description || '',
+        coverUrl: entry.coverUrl || null,
+        submittedBy: entry.sourceRec.submittedBy || 'someone',
+        submittedByUid: entry.sourceRec.submittedByUid || null,
+        votes: entry.sourceRec.votes || [],
+        votesDetail: entry.sourceRec.votesDetail || {},
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await db.collection('schedule').doc(id).delete();
+      showToast('Moved back to Suggest & vote, votes intact.');
+    }catch(e){ showToast("Couldn't move it back — try again."); }
+  }
+
+  function thisMonthKey(){
+    const n = new Date();
+    return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+  }
+
+  async function setCurrent(id){
+    try{
+      const batch = db.batch();
+      schedule.forEach(s => {
+        const ref = db.collection('schedule').doc(s.id);
+        if(s.id === id) batch.update(ref, { current: !s.current });
+        else if(s.current) batch.update(ref, { current: false });
+      });
+      // A manual switch counts as "this month is handled", so the automatic
+      // switch won't undo it later in the month.
+      batch.set(db.collection('meta').doc('config'), { autoAdvancedMonth: thisMonthKey() }, { merge: true });
+      await batch.commit();
+    }catch(e){ showToast("Couldn't update — try again."); }
+  }
+
+  async function removeScheduleEntry(id){
+    try{ await db.collection('schedule').doc(id).delete(); }
+    catch(e){ showToast("Couldn't remove — try again."); }
+  }
+
+  async function setRating(id, value){
+    if(!auth.currentUser) return;
+    const uid = auth.currentUser.uid;
+    const entry = schedule.find(s => s.id === id);
+    if(!entry) return;
+    const current = (entry.ratings || {})[uid] || 0;
+    const newValue = current === value ? firebase.firestore.FieldValue.delete() : value; // click same star again to clear
+    try{
+      await db.collection('schedule').doc(id).update({ [`ratings.${uid}`]: newValue });
+    }catch(e){ showToast("Couldn't save your rating — try again."); }
+  }
+
+  const editScheduleOverlay = document.getElementById('editScheduleOverlay');
+  function openEditSchedule(id){
+    const entry = schedule.find(s => s.id === id);
+    if(!entry) return;
+    edEntryId = id;
+    edCover = entry.coverUrl || null;
+    const parts = (entry.month || '').split(' ');
+    const presetMonth = parts[0];
+    const presetYear = parts[1];
+    populateMonthYearSelects('edMonthSelect', 'edYearSelect', presetMonth, presetYear);
+    document.getElementById('edTitle').value = entry.title || '';
+    document.getElementById('edAuthor').value = entry.author || '';
+    document.getElementById('edDesc').value = entry.description || '';
+    const preview = document.getElementById('edCoverPreview');
+    if(entry.coverUrl){
+      preview.style.display = 'flex';
+      preview.innerHTML = `<img src="${entry.coverUrl}" alt=""><span>Current cover.</span>`;
+    }else{
+      preview.style.display = 'none';
+    }
+    editScheduleOverlay.style.display = 'flex';
+  }
+  document.getElementById('editScheduleClose').addEventListener('click', () => { editScheduleOverlay.style.display = 'none'; });
+  document.getElementById('edSubmit').addEventListener('click', async () => {
+    if(!edEntryId) return;
+    const month = document.getElementById('edMonthSelect').value + ' ' + document.getElementById('edYearSelect').value;
+    const title = document.getElementById('edTitle').value.trim();
+    const author = document.getElementById('edAuthor').value.trim();
+    const description = document.getElementById('edDesc').value.trim();
+    if(!title){ showToast('Add a book title first.'); return; }
+    try{
+      await db.collection('schedule').doc(edEntryId).update({ month, title, author, description, coverUrl: edCover });
+      editScheduleOverlay.style.display = 'none';
+      showToast('Updated.');
+    }catch(e){ showToast("Couldn't save — try again."); }
+  });
+
+  const editRecOverlay = document.getElementById('editRecOverlay');
+  function openEditRec(id){
+    const entry = recommendations.find(r => r.id === id);
+    if(!entry) return;
+    erEntryId = id;
+    erCover = entry.coverUrl || null;
+    document.getElementById('erTitle').value = entry.title || '';
+    document.getElementById('erAuthor').value = entry.author || '';
+    document.getElementById('erNote').value = entry.note || '';
+    document.getElementById('erDescHidden').value = entry.description || '';
+    document.getElementById('erAmazon').value = entry.amazonUrl || '';
+    document.getElementById('erGoodreads').value = entry.goodreadsUrl || '';
+    const preview = document.getElementById('erCoverPreview');
+    if(entry.coverUrl){
+      preview.style.display = 'flex';
+      preview.innerHTML = `<img src="${entry.coverUrl}" alt=""><span>Current cover.</span>`;
+    }else{
+      preview.style.display = 'none';
+    }
+    editRecOverlay.style.display = 'flex';
+  }
+  document.getElementById('editRecClose').addEventListener('click', () => { editRecOverlay.style.display = 'none'; });
+  document.getElementById('erSubmit').addEventListener('click', async () => {
+    if(!erEntryId) return;
+    const title = document.getElementById('erTitle').value.trim();
+    const author = document.getElementById('erAuthor').value.trim();
+    const note = document.getElementById('erNote').value.trim();
+    const description = document.getElementById('erDescHidden').value.trim();
+    if(!title){ showToast('Add a book title first.'); return; }
+    try{
+      await db.collection('recommendations').doc(erEntryId).update({ title, author, note, description, coverUrl: erCover,
+        amazonUrl: cleanLink(document.getElementById('erAmazon').value),
+        goodreadsUrl: cleanLink(document.getElementById('erGoodreads').value) });
+      editRecOverlay.style.display = 'none';
+      showToast('Updated.');
+    }catch(e){ showToast("Couldn't save — try again."); }
+  });
+
+  async function addRecommendation(){
+    let title = document.getElementById('recTitle').value.trim();
+    let author = document.getElementById('recAuthor').value.trim();
+    const note = document.getElementById('recNote').value.trim();
+    let description = document.getElementById('recDescHidden').value.trim();
+    if(!title){ showToast('Add a book title first.'); return; }
+    const existing = recommendations.find(r => r.title.trim().toLowerCase() === title.toLowerCase());
+    if(existing){
+      document.getElementById('recDupText').textContent = `"${existing.title}" was already suggested — would you like to vote for it instead?`;
+      document.getElementById('recDupVote').dataset.id = existing.id;
+      document.getElementById('recDupOverlay').style.display = 'flex';
+      return;
+    }
+    const btn = document.getElementById('recSubmit');
+
+    // If nobody used "Find book" already, quietly try the lookup ourselves
+    // before saving, so a cover/description isn't just skipped by default.
+    if(!recCover && !description){
+      btn.disabled = true;
+      btn.textContent = 'Looking up book…';
+      try{
+        const result = await lookupBook(title, author);
+        if(result){
+          if(result.title) title = result.title;
+          if(!author && result.author) author = result.author;
+          if(result.description) description = result.description;
+          if(result.coverUrl) recCover = result.coverUrl;
+        }
+      }catch(e){ /* non-fatal — just save without it */ }
+      btn.disabled = false;
+      btn.textContent = 'Suggest this book';
+      // Still nothing? Offer the manual box once before saving.
+      if(!recCover && !description && !recManualOffered && !document.getElementById('recDescManual').value.trim()){
+        recManualOffered = true;
+        document.getElementById('recManual').style.display = 'block';
+        showToast("Couldn't find this book. Add a description or links below if you like, then tap Suggest again.");
+        return;
+      }
+    }
+    if(!description) description = document.getElementById('recDescManual').value.trim();
+    const amazonUrl = cleanLink(document.getElementById('recAmazon').value);
+    const goodreadsUrl = cleanLink(document.getElementById('recGoodreads').value);
+
+    const name = auth.currentUser ? (auth.currentUser.displayName || 'someone') : 'someone';
+    const submitterUid = auth.currentUser ? auth.currentUser.uid : null;
+    try{
+      await db.collection('recommendations').add({
+        title, author, note, description, submittedBy: name, submittedByUid: submitterUid, votes: [], votesDetail: {}, coverUrl: recCover, amazonUrl, goodreadsUrl,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }catch(e){ showToast("Couldn't save — try again."); return; }
+    document.getElementById('recTitle').value = '';
+    document.getElementById('recAuthor').value = '';
+    document.getElementById('recNote').value = '';
+    document.getElementById('recDescHidden').value = ''; resetRecManual();
+    document.getElementById('recCoverPreview').style.display = 'none';
+    recCover = null;
+  }
+
+  async function toggleVote(id){
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    if(!uid) return;
+    const name = auth.currentUser.displayName || 'someone';
+    const rec = recommendations.find(r => r.id === id);
+    if(!rec) return;
+    const has = rec.votes.includes(uid);
+    try{
+      await db.collection('recommendations').doc(id).update({
+        votes: has
+          ? firebase.firestore.FieldValue.arrayRemove(uid)
+          : firebase.firestore.FieldValue.arrayUnion(uid),
+        [`votesDetail.${uid}`]: has
+          ? firebase.firestore.FieldValue.delete()
+          : name
+      });
+    }catch(e){ showToast("Couldn't save your vote — try again."); }
+  }
+
+  async function removeRecommendation(id){
+    try{ await db.collection('recommendations').doc(id).delete(); }
+    catch(e){ showToast("Couldn't remove — try again."); }
+  }
+
+  async function removeMember(id){
+    try{
+      await db.collection('members').doc(id).delete();
+      await db.collection('meta').doc('config').set({
+        removedUids: firebase.firestore.FieldValue.arrayUnion(id),
+        adminIds: firebase.firestore.FieldValue.arrayRemove(id)
+      }, { merge: true });
+    }catch(e){ showToast("Couldn't remove — try again."); }
+  }
+
+  // ---------- init app (post-login, once) ----------
+  function initApp(){
+    document.querySelectorAll('.topnav a[data-tab]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        showTab(a.dataset.tab);
+      });
+    });
+    showTab('schedule');
+    populateMonthYearSelects('schMonthSelect', 'schYearSelect');
+    document.getElementById('schSubmit').addEventListener('click', addScheduleEntry);
+    document.getElementById('schCancel').addEventListener('click', () => {
+      document.getElementById('schTitle').value = '';
+      document.getElementById('schAuthor').value = '';
+      document.getElementById('schDesc').value = '';
+      document.getElementById('schCoverPreview').style.display = 'none';
+      schCover = null;
+      schSourceRec = null;
+      document.getElementById('scheduleAddPanel').style.display = 'none';
+      document.getElementById('scheduleAddHint').style.display = isAdmin ? 'block' : 'none';
+    });
+    document.getElementById('recSubmit').addEventListener('click', addRecommendation);
+    document.getElementById('recCancel').addEventListener('click', () => {
+      document.getElementById('recTitle').value = '';
+      document.getElementById('recAuthor').value = '';
+      document.getElementById('recNote').value = '';
+      document.getElementById('recDescHidden').value = ''; resetRecManual();
+      document.getElementById('recCoverPreview').style.display = 'none';
+      recCover = null;
+    });
+    document.getElementById('recDupVote').addEventListener('click', () => {
+      const id = document.getElementById('recDupVote').dataset.id;
+      if(id) toggleVote(id);
+      document.getElementById('recDupOverlay').style.display = 'none';
+      document.getElementById('recTitle').value = '';
+      document.getElementById('recAuthor').value = '';
+      document.getElementById('recNote').value = '';
+      document.getElementById('recDescHidden').value = ''; resetRecManual();
+      document.getElementById('recCoverPreview').style.display = 'none';
+      recCover = null;
+    });
+    document.getElementById('recDupCancel').addEventListener('click', () => {
+      document.getElementById('recDupOverlay').style.display = 'none';
+    });
+
+    async function handleScheduleAreaClick(e){
+      const cur = e.target.closest('.set-current');
+      const rem = e.target.closest('.remove-schedule');
+      const edit = e.target.closest('.edit-schedule');
+      const unsched = e.target.closest('.unschedule-entry');
+      const statusBtn = e.target.closest('.status-btn');
+      const saveReview = e.target.closest('.save-review');
+      if(cur){
+        const targetEntry = schedule.find(s => s.id === cur.dataset.id);
+        const existingCurrent = schedule.find(s => s.current);
+        if(targetEntry && existingCurrent && existingCurrent.id !== targetEntry.id){
+          confirmAction(
+            `Mark "${targetEntry.title}" as current? This will replace "${existingCurrent.title}" as what you're currently reading.`,
+            () => setCurrent(cur.dataset.id),
+            'Yes, switch the current book'
+          );
+        }else{
+          setCurrent(cur.dataset.id);
+        }
+      }
+      if(rem){
+        const targetEntry = schedule.find(s => s.id === rem.dataset.id);
+        confirmAction(
+          targetEntry ? `Remove "${targetEntry.title}" from the schedule? This can't be undone.` : 'Remove this from the schedule?',
+          () => removeScheduleEntry(rem.dataset.id),
+          'Yes, remove it'
+        );
+      }
+      if(edit) openEditSchedule(edit.dataset.id);
+      if(unsched){
+        const targetEntry = schedule.find(s => s.id === unsched.dataset.id);
+        confirmAction(
+          targetEntry ? `Move "${targetEntry.title}" back to Suggest & vote? It'll leave the schedule, keeping its votes and who suggested it.` : 'Move this back to suggestions?',
+          () => unscheduleToSuggestion(unsched.dataset.id),
+          'Yes, move it back'
+        );
+      }
+      if(statusBtn && auth.currentUser){
+        const uid = auth.currentUser.uid;
+        const status = statusBtn.dataset.status;
+        const entry = schedule.find(s => s.id === statusBtn.dataset.id);
+        if(entry){
+          const already = (entry.readStatus || {})[uid] === status;
+          try{
+            await db.collection('schedule').doc(entry.id).update({
+              [`readStatus.${uid}`]: already ? firebase.firestore.FieldValue.delete() : status
+            });
+          }catch(err){ showToast("Couldn't save — try again."); }
+        }
+      }
+      const editReview = e.target.closest('.edit-review');
+      const cancelReview = e.target.closest('.cancel-review');
+      if(editReview){
+        const item = editReview.closest('.thought-item');
+        const ed = item && item.querySelector('.review-editor');
+        if(ed){
+          ed.hidden = false;
+          const t = item.querySelector('.thought-text'); if(t) t.hidden = true;
+          const ta = ed.querySelector('textarea'); if(ta) ta.focus();
+        }
+      }
+      if(cancelReview){
+        const item = cancelReview.closest('.thought-item');
+        if(item){
+          const ed = item.querySelector('.review-editor'); if(ed) ed.hidden = true;
+          const t = item.querySelector('.thought-text'); if(t) t.hidden = false;
+        }
+      }
+      if(saveReview && auth.currentUser){
+        const id = saveReview.dataset.id;
+        const textarea = document.querySelector(`.review-input[data-id="${id}"]`);
+        if(textarea){
+          const text = textarea.value.trim();
+          const uid = auth.currentUser.uid;
+          try{
+            await db.collection('schedule').doc(id).update({
+              [`reviews.${uid}`]: text || firebase.firestore.FieldValue.delete()
+            });
+            showToast('Comment saved.');
+          }catch(err){ showToast("Couldn't save — try again."); }
+        }
+      }
+    }
+    document.addEventListener('toggle', (e) => {
+      const d = e.target;
+      if(d && d.classList && d.classList.contains('early-review')){
+        if(d.open) earlyOpen.add(d.dataset.id); else earlyOpen.delete(d.dataset.id);
+      }
+    }, true);
+    scheduleListEl.addEventListener('click', handleScheduleAreaClick);
+    document.getElementById('historyList').addEventListener('click', handleScheduleAreaClick);
+    nowReadingEl.addEventListener('click', handleScheduleAreaClick);
+
+    recListEl.addEventListener('click', (e) => {
+      const vote = e.target.closest('.vote-btn');
+      const rem = e.target.closest('.remove-rec');
+      const edit = e.target.closest('.edit-rec');
+      const sched = e.target.closest('.schedule-rec');
+      if(vote) toggleVote(vote.dataset.id);
+      if(rem) removeRecommendation(rem.dataset.id);
+      if(edit) openEditRec(edit.dataset.id);
+      if(sched) scheduleFromRec(sched.dataset.id);
+    });
+
+    memberListEl.addEventListener('click', (e) => {
+      const rem = e.target.closest('.remove-member');
+      if(rem){
+        const m = members.find(mm => mm.id === rem.dataset.id);
+        document.getElementById('removeMemberText').textContent = m
+          ? `Are you sure you want to remove ${m.name}? They'll lose access until someone re-adds them, and this can't be undone automatically.`
+          : 'Are you sure you want to remove this member?';
+        document.getElementById('removeMemberYes').dataset.id = rem.dataset.id;
+        document.getElementById('removeMemberOverlay').style.display = 'flex';
+      }
+    });
+    document.getElementById('removeMemberYes').addEventListener('click', () => {
+      const id = document.getElementById('removeMemberYes').dataset.id;
+      document.getElementById('removeMemberOverlay').style.display = 'none';
+      if(id) removeMember(id);
+    });
+    document.getElementById('removeMemberCancel').addEventListener('click', () => {
+      document.getElementById('removeMemberOverlay').style.display = 'none';
+    });
+
+    document.getElementById('memberDetailToggle').addEventListener('click', () => {
+      showFullMemberInfo = !showFullMemberInfo;
+      document.getElementById('memberDetailToggle').textContent = showFullMemberInfo ? 'Hide full details' : 'Show full details';
+      renderMembers();
+    });
+
+    document.getElementById('emailEveryoneLink').addEventListener('click', () => {
+      const emails = members.map(m => m.email).filter(Boolean);
+      if(emails.length === 0){ showToast('No member emails on file yet.'); return; }
+      const bcc = encodeURIComponent(emails.join(','));
+      window.location.href = `mailto:?bcc=${bcc}&subject=${encodeURIComponent('Riptide Readers')}`;
+    });
+
+    document.getElementById('remindRatingLink').addEventListener('click', () => {
+      const eligible = schedule
+        .filter(isEligibleForRating)
+        .sort((a, b) => (parseEntryDate(b.month) || 0) - (parseEntryDate(a.month) || 0));
+      const mostRecent = eligible[0];
+      if(!mostRecent){ showToast('Nothing open for rating yet.'); return; }
+      const numbers = members.map(m => (m.phone || '').replace(/[^\d+]/g, '')).filter(Boolean);
+      const text = `Riptide Readers: don't forget to rate "${mostRecent.title}" and leave a comment on what you thought!`;
+      openGroupText(numbers, text);
+    });
+
+    document.getElementById('textEveryoneLink').addEventListener('click', () => {
+      const numbers = members.map(m => (m.phone || '').replace(/[^\d+]/g, '')).filter(Boolean);
+      openGroupText(numbers, 'Riptide Readers: ');
+    });
+
+    document.getElementById('copyLink').addEventListener('click', () => {
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        const btn = document.getElementById('copyLink');
+        const original = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = original; }, 1500);
+      }).catch(() => {});
+    });
+
+    document.getElementById('pageUrl').textContent = window.location.href;
+
+    nowReadingEl.innerHTML = `<p class="empty">Loading…</p>`;
+    scheduleListEl.innerHTML = `<p class="empty-state">Loading…</p>`;
+    recListEl.innerHTML = `<p class="empty-state">Loading…</p>`;
+    memberListEl.innerHTML = `<p class="empty-state">Loading…</p>`;
+
+    // When a new month has started, move the "now reading" flag to the book
+    // scheduled for that month. The old book then drops into Reviews on its own,
+    // since its month has passed and it's no longer current. Runs once per page
+    // load, whenever anyone opens the site.
+    let didAutoAdvance = false;
+    async function autoAdvanceCurrentBook(){
+      if(didAutoAdvance) return;
+      didAutoAdvance = true;
+      try{
+        const cfg = await db.collection('meta').doc('config').get();
+        if(cfg.exists && cfg.data().autoAdvancedMonth === thisMonthKey()) return; // already handled this month
+      }catch(e){ return; }
+      const now = new Date();
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      const current = schedule.find(s => s.current);
+      let next = null;
+      if(current){
+        const curDate = parseEntryDate(current.month);
+        if(!curDate || curDate.getTime() >= thisMonthStart) return; // still its month, nothing to do
+        // Newest book whose month has arrived and comes after the current one
+        schedule.forEach(s => {
+          if(s.id === current.id) return;
+          const d = parseEntryDate(s.month);
+          if(!d) return;
+          const t = d.getTime();
+          if(t > curDate.getTime() && t <= thisMonthStart){
+            if(!next || t > parseEntryDate(next.month).getTime()) next = s;
+          }
+        });
+      }else{
+        // Nothing marked current: only pick a book scheduled for this exact month
+        next = schedule.find(s => {
+          const d = parseEntryDate(s.month);
+          return d && d.getTime() === thisMonthStart;
+        }) || null;
+      }
+      if(!next) return; // nothing scheduled for the new month yet, so leave things as they are
+      try{
+        const batch = db.batch();
+        batch.update(db.collection('schedule').doc(next.id), { current: true });
+        if(current) batch.update(db.collection('schedule').doc(current.id), { current: false });
+        batch.set(db.collection('meta').doc('config'), { autoAdvancedMonth: thisMonthKey() }, { merge: true });
+        await batch.commit();
+      }catch(e){ /* non-fatal; an admin can still switch it by hand */ }
+    }
+
+    db.collection('schedule').orderBy('createdAt', 'asc').onSnapshot(snap => {
+      schedule = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderSchedule();
+      if(!snap.metadata.fromCache) autoAdvanceCurrentBook();
+    }, () => showToast("Couldn't load the schedule."));
+
+    db.collection('announcements').orderBy('createdAt', 'desc').onSnapshot(snap => {
+      announcements = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      syncRsvpListeners();
+      renderAnnouncements();
+    }, () => {
+      if(isAdmin) showToast("Couldn't load announcements — the Firestore rules need the announcements update.");
+    });
+
+    document.getElementById('anSubmit').addEventListener('click', saveAnnouncement);
+    document.getElementById('anCancel').addEventListener('click', resetAnnouncementForm);
+    document.getElementById('announceList').addEventListener('input', (e) => {
+      const t = e.target;
+      if(!t.dataset || !t.dataset.id) return;
+      if(t.classList.contains('rsvp-note')) ensureRsvpDraft(t.dataset.id).note = t.value;
+    });
+    document.getElementById('announceList').addEventListener('click', (e) => {
+      const rsvpBtn = e.target.closest('.rsvp-btn');
+      const rsvpSave = e.target.closest('.rsvp-save');
+      const rsvpClr = e.target.closest('.rsvp-clear');
+      if(rsvpBtn){ ensureRsvpDraft(rsvpBtn.dataset.id).status = rsvpBtn.dataset.status; renderAnnouncements(); }
+      if(rsvpSave) saveRsvp(rsvpSave.dataset.id);
+      if(rsvpClr) confirmAction('Remove your RSVP?', () => clearRsvp(rsvpClr.dataset.id), 'Yes, remove it');
+      const edit = e.target.closest('.edit-announce');
+      const rem = e.target.closest('.remove-announce');
+      const tog = e.target.closest('.toggle-home');
+      if(tog){
+        const a = announcements.find(x => x.id === tog.dataset.id);
+        if(a){
+          db.collection('announcements').doc(a.id).update({ showOnHome: a.showOnHome === false })
+            .catch(() => showToast("Couldn't update — try again."));
+        }
+      }
+      if(edit) startEditAnnouncement(edit.dataset.id);
+      if(rem){
+        const a = announcements.find(x => x.id === rem.dataset.id);
+        confirmAction(
+          a ? `Remove "${a.title}"? This can't be undone.` : 'Remove this announcement?',
+          async () => {
+            try{ await db.collection('announcements').doc(rem.dataset.id).delete(); }
+            catch(err){ showToast("Couldn't remove — try again."); }
+          },
+          'Yes, remove it'
+        );
+      }
+    });
+
+    db.collection('recommendations').orderBy('createdAt', 'asc').onSnapshot(snap => {
+      recommendations = snap.docs.map(d => ({ id: d.id, votes: [], ...d.data() }));
+      renderRecommendations();
+    }, () => showToast("Couldn't load suggestions."));
+
+    let didSelfHeal = false;
+    db.collection('members').orderBy('createdAt', 'asc').onSnapshot(async snap => {
+      members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderMembers();
+      checkOwnerValidity();
+
+      // One-time self-heal: make sure the current user has a members record
+      // keyed by their real uid (older accounts may have a mismatched id),
+      // so owner/admin badges and ownership checks can find them.
+      // Skip entirely if an admin has deliberately removed this person —
+      // otherwise a simple page reload would silently bring them back.
+      if(!didSelfHeal && auth.currentUser && !removedUids.includes(auth.currentUser.uid)){
+        didSelfHeal = true;
+        const uid = auth.currentUser.uid;
+        const hasCorrectRecord = members.some(m => m.id === uid);
+        if(!hasCorrectRecord){
+          try{
+            const email = auth.currentUser.email || '';
+            const staleDocs = members.filter(m => m.email && email && m.email === email && m.id !== uid);
+            const existing = staleDocs[0];
+            await db.collection('members').doc(uid).set({
+              name: auth.currentUser.displayName || (existing && existing.name) || '',
+              firstName: (existing && existing.firstName) || auth.currentUser.displayName || '',
+              lastName: (existing && existing.lastName) || '',
+              email,
+              phone: (existing && existing.phone) || '',
+              createdAt: (existing && existing.createdAt) || firebase.firestore.FieldValue.serverTimestamp()
+            });
+            for(const stale of staleDocs){
+              await db.collection('members').doc(stale.id).delete();
+            }
+          }catch(e){ /* non-fatal */ }
+        }
+      }
+    }, () => showToast("Couldn't load members."));
+
+    db.collection('meta').doc('config').onSnapshot(snap => {
+      if(!snap.exists || !auth.currentUser) return;
+      const data = snap.data();
+      ownerId = data.ownerId || null;
+      adminIds = data.adminIds || [];
+      removedUids = data.removedUids || [];
+      suggestDeadline = data.suggestDeadline || null;
+      votingDeadline = data.votingDeadline || null;
+      isOwner = ownerId === auth.currentUser.uid;
+      isAdmin = isOwner || adminIds.includes(auth.currentUser.uid);
+      ownerTag.style.display = isAdmin ? 'inline' : 'none';
+      adminLinkWrap.style.display = isOwner ? 'block' : 'none';
+      document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
+      document.getElementById('textEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
+      checkOwnerValidity();
+      showTab(activeTab);
+      renderSchedule();
+      renderMembers();
+      renderDeadlines();
+      renderAnnouncements();
+    });
+
+    document.getElementById('claimOwnerBtn').addEventListener('click', async () => {
+      if(!auth.currentUser) return;
+      try{
+        await db.collection('meta').doc('config').set({ ownerId: auth.currentUser.uid }, { merge: true });
+        showToast('You are now the site owner.');
+      }catch(e){
+        showToast("Couldn't claim ownership — try again.");
+      }
+    });
+  }
+})();
+</script>
+
+</body>
+</html>
