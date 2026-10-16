@@ -896,7 +896,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 15, 2026, 8:46 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 15, 2026, 8:49 PM CT</span></footer>
 
 </div>
 </div>
@@ -916,6 +916,9 @@
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
+  // iPhone home-screen apps sometimes stall on Firestore's default connection; this lets it
+  // switch to a more reliable one automatically instead of waiting a long time.
+  try{ db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); }catch(e){}
 </script>
 <script>
 (function(){
