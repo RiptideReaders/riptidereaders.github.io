@@ -224,6 +224,23 @@
   }
   .review-list{ margin-top:10px; }
   .log-entry{ scroll-margin-top:250px; }
+  .hist-year{ margin-top:6px; }
+  .hist-year > summary{ list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:12px; padding:14px 0; border-bottom:2px solid var(--line-strong); -webkit-tap-highlight-color:transparent; }
+  .hist-year > summary::-webkit-details-marker{ display:none; }
+  .hist-year > summary::before{ content:'▸'; color:var(--accent); font-size:1.1rem; transition:transform 0.15s; }
+  .hist-year[open] > summary::before{ transform:rotate(90deg); }
+  .hist-year-label{ font-family:'Bitter',serif; font-size:1.5rem; font-weight:700; color:var(--sand); }
+  .hist-year-count{ color:var(--sand-dim); font-size:0.88rem; }
+  .hist-group{ border-bottom:1px solid var(--line); }
+  .hist-group summary{ list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:16px 0; -webkit-tap-highlight-color:transparent; }
+  .hist-group summary::-webkit-details-marker{ display:none; }
+  .hist-group summary::before{ content:'▸'; color:var(--accent); font-size:1rem; flex:0 0 auto; transition:transform 0.15s; }
+  .hist-group[open] > summary::before{ transform:rotate(90deg); }
+  .hist-month{ color:var(--accent); font-weight:600; font-size:0.95rem; }
+  .hist-title{ font-family:'Bitter',serif; font-size:1.15rem; color:var(--sand); flex:1 1 auto; min-width:0; }
+  .hist-avg{ color:var(--sand-dim); font-size:0.9rem; }
+  .hist-group .log-entry{ border-bottom:none; padding-top:4px; }
+  .hist-group .log-month{ display:none; }
   .announce-card{ padding:20px 0; border-bottom:1px solid var(--line); }
   .announce-card.past{ opacity:0.6; }
   .announce-head{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
@@ -896,7 +913,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 15, 2026, 8:49 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 18, 2026, 9:36 PM CT</span></footer>
 
 </div>
 </div>
@@ -1035,7 +1052,13 @@
     if(goHistory){
       showTab('history');
       const entryEl = document.querySelector('#historyList .log-entry[data-id="' + goHistory.dataset.id + '"]');
-      if(entryEl) entryEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if(entryEl){
+        const grp = entryEl.closest('details.hist-group');
+        if(grp){ grp.open = true; histOpenPref[goHistory.dataset.id] = true; }
+        const yr = entryEl.closest('details.hist-year');
+        if(yr){ yr.open = true; histOpenPref[yr.dataset.id] = true; }
+        setTimeout(() => entryEl.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+      }
       else window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -2130,6 +2153,42 @@
       </div>`;
   }
 
+  // Reviews tab: one collapsible group per book. The newest finished book starts open;
+  // older ones start closed. A person's own open/close choice is remembered until reload.
+  const histOpenPref = {};
+  function historyGroupHtml(entry, uid, index){
+    const pref = histOpenPref[entry.id];
+    const open = pref !== undefined ? pref : index === 0;
+    const vals = Object.values(entry.ratings || {});
+    const avg = vals.length ? ` <span class="hist-avg">★ ${(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)}</span>` : '';
+    return `<details class="hist-group" data-id="${entry.id}" ${open ? 'open' : ''}>
+      <summary><span class="hist-month">${escapeHtml(entry.month)}</span><span class="hist-title">${escapeHtml(entry.title)}</span>${avg}</summary>
+      ${scheduleEntryHtml(entry, uid)}
+    </details>`;
+  }
+
+  // Year headers wrap the book groups. The year holding the newest book starts open.
+  function historyYearsHtml(past, uid){
+    const years = [];
+    past.forEach((entry, i) => {
+      const d = parseEntryDate(entry.month);
+      const y = d ? String(d.getFullYear()) : 'Other';
+      let g = years.find(x => x.year === y);
+      if(!g){ g = { year: y, items: [] }; years.push(g); }
+      g.items.push({ entry, i });
+    });
+    return years.map((g, gi) => {
+      const key = 'year-' + g.year;
+      const pref = histOpenPref[key];
+      const open = pref !== undefined ? pref : gi === 0;
+      const n = g.items.length;
+      return `<details class="hist-year" data-id="${key}" ${open ? 'open' : ''}>
+        <summary><span class="hist-year-label">${escapeHtml(g.year)}</span><span class="hist-year-count">${n} book${n === 1 ? '' : 's'}</span></summary>
+        ${g.items.map(x => historyGroupHtml(x.entry, uid, x.i)).join('')}
+      </details>`;
+    }).join('');
+  }
+
   function scheduleEntryHtml(entry, uid){
     const snippet = truncate(entry.description, 90);
     const moreLink = entry.description && entry.description.length > 90
@@ -2181,7 +2240,7 @@
     if(past.length === 0){
       historyListEl.innerHTML = `<p class="empty-state">Nothing here yet — finished picks show up once their month wraps up.</p>`;
     }else{
-      historyListEl.innerHTML = past.map(entry => scheduleEntryHtml(entry, uid)).join('');
+      historyListEl.innerHTML = historyYearsHtml(past, uid);
     }
 
     renderNowReading();
@@ -3076,6 +3135,13 @@
         if(d.open) earlyOpen.add(d.dataset.id); else earlyOpen.delete(d.dataset.id);
       }
     }, true);
+    document.getElementById('historyList').addEventListener('click', (e) => {
+      const sum = e.target.closest('details.hist-group > summary, details.hist-year > summary');
+      if(sum){
+        const d = sum.parentElement;
+        histOpenPref[d.dataset.id] = !d.open; // click fires before the toggle, so flip the current state
+      }
+    });
     scheduleListEl.addEventListener('click', handleScheduleAreaClick);
     document.getElementById('historyList').addEventListener('click', handleScheduleAreaClick);
     nowReadingEl.addEventListener('click', handleScheduleAreaClick);
