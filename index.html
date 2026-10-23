@@ -224,6 +224,11 @@
   }
   .review-list{ margin-top:10px; }
   .log-entry{ scroll-margin-top:250px; }
+  .rec-search{ margin:4px 0 18px; }
+  .rec-search input{ width:100%; background:var(--panel); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:1rem; padding:12px 14px; border-radius:4px; }
+  .rec-search input:focus{ outline:none; border-color:var(--accent); }
+  .rec-search-result{ margin-top:10px; padding:12px 14px; background:var(--panel); border-left:3px solid var(--accent); border-radius:3px; color:var(--sand); font-size:0.92rem; line-height:1.5; }
+  .rec-search-result .link-btn{ margin-top:6px; display:inline-block; }
   .hist-year{ margin-top:6px; }
   .hist-year > summary{ list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:12px; padding:14px 0; border-bottom:2px solid var(--line-strong); -webkit-tap-highlight-color:transparent; }
   .hist-year > summary::-webkit-details-marker{ display:none; }
@@ -768,6 +773,10 @@
       <p>Anyone can throw a title into the pool. Everyone gets one vote per book.</p>
     </div>
     <div id="deadlinesBanner"></div>
+    <div class="rec-search">
+      <input id="recSearch" type="search" placeholder="Search suggested books by title or author" autocomplete="off" autocapitalize="none" enterkeyhint="search">
+      <div id="recSearchResult" class="rec-search-result" style="display:none;"></div>
+    </div>
     <div id="recList"></div>
     <p id="suggestClosedNote" style="display:none; color:var(--sand-dim); font-size:0.9rem; margin-top:32px; padding-top:24px; border-top:1px dashed var(--line-strong);">Suggestions are closed for this round — cast your vote above. Suggesting opens back up once voting wraps up.</p>
     <div class="form-panel" id="suggestFormPanel">
@@ -913,7 +922,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 18, 2026, 9:36 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 23, 2026, 5:12 PM CT</span></footer>
 
 </div>
 </div>
@@ -2487,13 +2496,52 @@
     document.getElementById('announceFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  // ---- Search box on Suggest & vote: is this book already here? ----
+  let recSearchQ = '';
+  function bookMatchesQuery(item, q){
+    const hay = normBookTitle((item.title || '') + ' ' + (item.author || ''));
+    return normBookTitle(q).split(' ').filter(Boolean).every(w => hay.includes(w));
+  }
+  function updateRecSearchResult(matchCount){
+    const box = document.getElementById('recSearchResult');
+    const q = recSearchQ.trim();
+    if(!q){ box.style.display = 'none'; box.innerHTML = ''; return; }
+    const onSchedule = schedule.filter(e => bookMatchesQuery(e, q));
+    let html = '';
+    if(matchCount > 0){
+      html += `<strong>Yes, it's here.</strong> ${matchCount} match${matchCount === 1 ? '' : 'es'} below. You can vote for ${matchCount === 1 ? 'it' : 'the one you want'} there.`;
+    }else{
+      html += `<strong>Not on the suggested list.</strong>`;
+    }
+    if(onSchedule.length){
+      html += `<br>Already on the schedule: ` + onSchedule.map(e => `${escapeHtml(e.title)} (${escapeHtml(e.month || '')})`).join(', ') + '.';
+    }
+    const formOpen = document.getElementById('suggestFormPanel').style.display !== 'none';
+    if(matchCount === 0 && !onSchedule.length && formOpen){
+      html += `<br><button class="link-btn rec-search-suggest" type="button">Suggest "${escapeHtml(q)}"</button>`;
+    }
+    box.innerHTML = html;
+    box.style.display = 'block';
+  }
+
   function renderRecommendations(){
     if(recommendations.length === 0){
       recListEl.innerHTML = `<p class="empty-state">No suggestions yet. Be the first to throw one in.</p>`;
+      updateRecSearchResult(0);
       return;
     }
     const uid = auth.currentUser ? auth.currentUser.uid : null;
-    const sorted = [...recommendations].sort((a,b) => (b.votes.length - a.votes.length));
+    let sorted = [...recommendations].sort((a,b) => (b.votes.length - a.votes.length));
+    if(recSearchQ.trim()){
+      sorted = sorted.filter(r => bookMatchesQuery(r, recSearchQ));
+      updateRecSearchResult(sorted.length);
+      if(sorted.length === 0){
+        recListEl.innerHTML = '';
+        return;
+      }
+    }else{
+      updateRecSearchResult(0);
+    }
     recListEl.innerHTML = sorted.map(rec => {
       const voted = uid && rec.votes.includes(uid);
       const voterNames = Object.values(rec.votesDetail || {});
@@ -3146,6 +3194,17 @@
     document.getElementById('historyList').addEventListener('click', handleScheduleAreaClick);
     nowReadingEl.addEventListener('click', handleScheduleAreaClick);
 
+    document.getElementById('recSearch').addEventListener('input', (e) => {
+      recSearchQ = e.target.value;
+      renderRecommendations();
+    });
+    document.getElementById('recSearchResult').addEventListener('click', (e) => {
+      if(!e.target.closest('.rec-search-suggest')) return;
+      const t = document.getElementById('recTitle');
+      t.value = recSearchQ.trim();
+      document.getElementById('suggestFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => t.focus(), 400);
+    });
     recListEl.addEventListener('click', (e) => {
       const vote = e.target.closest('.vote-btn');
       const rem = e.target.closest('.remove-rec');
