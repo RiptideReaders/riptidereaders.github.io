@@ -944,7 +944,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:22 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:26 AM CT</span></footer>
 
 </div>
 </div>
@@ -2414,12 +2414,12 @@
       <div class="rsvp-btns">
         ${['yes', 'maybe', 'no'].map(k => `<button type="button" class="rsvp-btn ${d.status === k ? 'active' : ''}" data-id="${a.id}" data-status="${k}">${RSVP_LABELS[k]}</button>`).join('')}
       </div>
+      ${hasFoodList(a) ? foodListHtml(a, d, false, all, uid) : ''}
       ${a.foodEnabled && d.status && d.status !== 'no' ? `
-      <div class="rsvp-fields">
-        <div><label>Bringing something else, or food or drinks to share? (optional)</label>
+      <div class="rsvp-fields" style="margin-top:14px;">
+        <div><label>${hasFoodList(a) ? 'Bringing something else? Enter it here (optional)' : 'Bringing food or drinks to share? (optional)'}</label>
           <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(d.note)}</textarea></div>
       </div>` : ''}
-      ${hasFoodList(a) ? foodListHtml(a, d, false, all, uid) : ''}
       ${d.status ? `<div style="display:flex; gap:16px; margin-top:10px;"><button type="button" class="submit-btn rsvp-save" data-id="${a.id}">Save RSVP</button>${hasMine ? `<button type="button" class="link-btn rsvp-clear" data-id="${a.id}">Remove my RSVP</button>` : ''}</div>` : ''}`;
     return `<div class="rsvp-box" data-id="${a.id}">
       <div class="rsvp-count"><strong>${heads}</strong> ${past ? 'came' : 'coming'}${maybes ? ` &middot; ${maybes} maybe` : ''}</div>
