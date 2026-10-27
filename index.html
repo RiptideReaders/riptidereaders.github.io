@@ -924,7 +924,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 26, 2026, 10:36 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 26, 2026, 10:40 PM CT</span></footer>
 
 </div>
 </div>
@@ -2222,7 +2222,7 @@
     const avg = vals.length ? ` <span class="hist-avg">★ ${(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)}</span>` : '';
     return `<details class="hist-group" data-id="${entry.id}" ${open ? 'open' : ''}>
       <summary><span class="hist-month">${escapeHtml(entry.month)}</span><span class="hist-title">${escapeHtml(entry.title)}</span>${avg}</summary>
-      ${scheduleEntryHtml(entry, uid)}
+      ${scheduleEntryHtml(entry, uid, true)}
     </details>`;
   }
 
@@ -2248,7 +2248,7 @@
     }).join('');
   }
 
-  function scheduleEntryHtml(entry, uid){
+  function scheduleEntryHtml(entry, uid, inReviews){
     const snippet = truncate(entry.description, 90);
     const moreLink = entry.description && entry.description.length > 90
       ? ` <button class="link-btn book-open" data-kind="schedule" data-id="${entry.id}" style="font-size:0.85rem;">Read more</button>` : '';
@@ -2267,7 +2267,7 @@
         <div class="log-actions">
           ${entry.current
             ? `<span class="current-badge">This is what we're reading</span>`
-            : `<button class="link-btn set-current" data-id="${entry.id}">Mark as current</button>`}
+            : (inReviews ? '' : `<button class="link-btn set-current" data-id="${entry.id}">Mark as current</button>`)}
           <button class="link-btn edit-schedule" data-id="${entry.id}">Edit</button>
           ${entry.sourceRec ? `<button class="link-btn unschedule-entry" data-id="${entry.id}">Move back to suggestions</button>` : ''}
           <button class="link-btn remove-schedule" data-id="${entry.id}">Remove</button>
