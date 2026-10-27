@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Riptide Readers</title>
@@ -899,6 +900,7 @@
         <button class="link-btn" id="memberDetailToggle" style="white-space:nowrap;">Show full details</button>
       </div>
     </div>
+    <div id="pendingPanel" class="form-panel" style="display:none; border-color:var(--accent);"></div>
     <div id="memberList"></div>
     <div class="form-panel" id="backupPanel" style="display:none;">
       <h3>Back up the site</h3>
@@ -922,7 +924,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 23, 2026, 5:12 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 26, 2026, 10:17 PM CT</span></footer>
 
 </div>
 </div>
@@ -975,6 +977,7 @@
   let announcements = [];
   let editingAnnouncementId = null;
   let members = [];
+  let pendingMembers = [];
   let schCover = null;
   let schSourceRec = null;
   let recCover = null;
@@ -1339,12 +1342,29 @@
     const errEl = document.getElementById('pcError');
     try{
       await auth.currentUser.updateProfile({ displayName });
-      await db.collection('members').doc(auth.currentUser.uid).set({
+      const uid = auth.currentUser.uid;
+      // New sign-ups wait for an admin to approve them. The owner/admins and
+      // people who already have a member record are never held back.
+      let needsApproval = true;
+      try{
+        const cfg = await db.collection('meta').doc('config').get();
+        const c = cfg.exists ? cfg.data() : {};
+        if(c.ownerId === uid || (c.adminIds || []).includes(uid)) needsApproval = false;
+      }catch(e){ /* keep default */ }
+      let existingDoc = null;
+      try{ existingDoc = await db.collection('members').doc(uid).get(); }catch(e){ /* none */ }
+      const isNew = !(existingDoc && existingDoc.exists);
+      const payload = {
         name: displayName, firstName, lastName, phone,
-        email: auth.currentUser.email || '',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+        email: auth.currentUser.email || ''
+      };
+      if(isNew){
+        payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        if(needsApproval) payload.pending = true;
+      }
+      await db.collection('members').doc(uid).set(payload, { merge: true });
       profileOverlay.style.display = 'none';
+      if(isNew && needsApproval){ showPendingGate(auth.currentUser); return; }
       await enterMainApp(auth.currentUser);
     }catch(e){
       errEl.textContent = friendlyAuthError(e);
@@ -1527,7 +1547,7 @@
       isOwner = ownerId === user.uid;
       isAdmin = isOwner || adminIds.includes(user.uid);
       ownerTag.style.display = isAdmin ? 'inline' : 'none';
-      adminLinkWrap.style.display = isOwner ? 'block' : 'none';
+      adminLinkWrap.style.display = isAdmin ? 'block' : 'none';
       document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
@@ -1540,7 +1560,34 @@
     else { showTab(activeTab); renderSchedule(); renderMembers(); renderDeadlines(); renderAnnouncements(); }
   }
 
+  let pendingUnsub = null;
+  function showPendingGate(user){
+    profileOverlay.style.display = 'none';
+    appRoot.style.display = 'none';
+    gateOverlay.style.display = 'flex';
+    gateSubtext.textContent = "Thanks for signing up! An admin needs to approve your request before you can see the club. Check back soon.";
+    gateFormArea.innerHTML = `
+      <button class="overlay-submit" id="pendingCheck">Check again</button>
+      <div class="overlay-switch"><button id="pendingSignOut" type="button">Sign out</button></div>`;
+    document.getElementById('pendingCheck').addEventListener('click', async () => {
+      try{
+        const d = await db.collection('members').doc(user.uid).get();
+        if(d.exists && d.data().pending !== true){ if(pendingUnsub){ pendingUnsub(); pendingUnsub = null; } await enterMainApp(user); }
+        else showToast('Not approved yet.');
+      }catch(e){ showToast("Couldn't check — try again."); }
+    });
+    document.getElementById('pendingSignOut').addEventListener('click', () => auth.signOut());
+    if(pendingUnsub) pendingUnsub();
+    pendingUnsub = db.collection('members').doc(user.uid).onSnapshot(async d => {
+      if(d.exists && d.data().pending !== true){
+        pendingUnsub(); pendingUnsub = null;
+        await enterMainApp(user);
+      }
+    }, () => {});
+  }
+
   auth.onAuthStateChanged(async (user) => {
+    if(!user && pendingUnsub){ pendingUnsub(); pendingUnsub = null; }
     if(user){
       let removed = false;
       try{
@@ -1568,6 +1615,7 @@
         renderProfileCompletion();
         return;
       }
+      if(memberData.pending === true){ showPendingGate(user); return; }
       await enterMainApp(user);
     }else{
       profileOverlay.style.display = 'none';
@@ -2717,6 +2765,24 @@
   function renderMembers(){
     const bp = document.getElementById('backupPanel');
     if(bp) bp.style.display = isAdmin ? 'block' : 'none';
+    const pp = document.getElementById('pendingPanel');
+    if(pp){
+      if(isAdmin && pendingMembers.length){
+        pp.style.display = 'block';
+        pp.innerHTML = `<h3>Waiting for approval (${pendingMembers.length})</h3>` + pendingMembers.map(m => {
+          const full = [m.firstName, m.lastName].filter(Boolean).join(' ') || m.name;
+          return `<div class="member-row" data-id="${m.id}">
+            <div><h3>${escapeHtml(full)}</h3>
+              <div class="contact">${m.email ? `<span>${escapeHtml(m.email)}</span>` : ''}${m.phone ? `<span>${escapeHtml(m.phone)}</span>` : ''}</div></div>
+            <div style="display:flex; gap:14px;">
+              <button class="link-btn approve-member" data-id="${m.id}">Approve</button>
+              <button class="link-btn decline-member" data-id="${m.id}">Decline</button>
+            </div></div>`;
+        }).join('');
+      }else{ pp.style.display = 'none'; pp.innerHTML = ''; }
+    }
+    const navM = document.querySelector('.topnav a[data-tab="members"]');
+    if(navM) navM.textContent = (isAdmin && pendingMembers.length) ? `Members (${pendingMembers.length} new)` : 'Members';
     if(members.length === 0){
       memberListEl.innerHTML = `<p class="empty-state">No members added yet.</p>`;
       return;
@@ -2738,7 +2804,7 @@
             ${(showFullMemberInfo && m.phone) ? `<span>${escapeHtml(m.phone)}</span>` : ''}
           </div>
         </div>
-        ${isAdmin ? `<button class="link-btn remove-member" data-id="${m.id}">Remove</button>` : ''}
+        ${(isAdmin && m.id !== ownerId && !(auth.currentUser && m.id === auth.currentUser.uid)) ? `<button class="link-btn remove-member" data-id="${m.id}">Remove</button>` : ''}
       </div>`;
     }).join('');
   }
@@ -3216,6 +3282,19 @@
       if(sched) scheduleFromRec(sched.dataset.id);
     });
 
+    document.getElementById('pendingPanel').addEventListener('click', (e) => {
+      const ok = e.target.closest('.approve-member');
+      const no = e.target.closest('.decline-member');
+      if(ok){
+        db.collection('members').doc(ok.dataset.id).update({ pending: false })
+          .then(() => showToast('Approved.'))
+          .catch(() => showToast("Couldn't approve — try again."));
+      }
+      if(no){
+        const m = pendingMembers.find(mm => mm.id === no.dataset.id);
+        confirmAction(`Decline ${m ? m.name : 'this request'}? They won't be able to join.`, () => removeMember(no.dataset.id), 'Yes, decline');
+      }
+    });
     memberListEl.addEventListener('click', (e) => {
       const rem = e.target.closest('.remove-member');
       if(rem){
@@ -3386,7 +3465,9 @@
 
     let didSelfHeal = false;
     db.collection('members').orderBy('createdAt', 'asc').onSnapshot(async snap => {
-      members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const allMembers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      members = allMembers.filter(m => m.pending !== true);
+      pendingMembers = allMembers.filter(m => m.pending === true);
       renderMembers();
       checkOwnerValidity();
 
@@ -3431,7 +3512,7 @@
       isOwner = ownerId === auth.currentUser.uid;
       isAdmin = isOwner || adminIds.includes(auth.currentUser.uid);
       ownerTag.style.display = isAdmin ? 'inline' : 'none';
-      adminLinkWrap.style.display = isOwner ? 'block' : 'none';
+      adminLinkWrap.style.display = isAdmin ? 'block' : 'none';
       document.getElementById('emailEveryoneLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('joinNavLink').style.display = isAdmin ? 'inline' : 'none';
       document.getElementById('remindRatingLink').style.display = isAdmin ? 'inline' : 'none';
