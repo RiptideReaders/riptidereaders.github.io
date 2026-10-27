@@ -983,7 +983,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 11:08 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 11:10 AM CT</span></footer>
 
 </div>
 </div>
@@ -2560,7 +2560,7 @@
     const desc = [a.details, 'Riptide Readers: https://riptidereaders.github.io'].filter(Boolean).join('\n\n');
     const lines = [
       'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Riptide Readers//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
-      'BEGIN:VEVENT', `UID:${a.id}@riptidereaders.github.io`, `DTSTAMP:${stamp}`, start, end,
+      'BEGIN:VEVENT', `UID:${a.id}@riptidereaders.github.io`, `DTSTAMP:${stamp}`, `LAST-MODIFIED:${stamp}`, `SEQUENCE:${Math.floor(now.getTime() / 60000)}`, start, end,
       `SUMMARY:${icsEscape(a.title)}`
     ];
     if(a.place) lines.push(`LOCATION:${icsEscape(a.place)}`);
