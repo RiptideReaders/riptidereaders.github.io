@@ -468,7 +468,7 @@
 <div class="overlay" id="commentOverlay" style="display:none; background:rgba(11,32,39,0.9);">
   <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong);">
     <h1 style="font-size:1.3rem;">Add a comment</h1>
-    <p style="margin-top:8px; color:var(--sand-dim);">For the organizers, like "I'll be a little late" or "I'm gluten-free".</p>
+    <p style="margin-top:8px; color:var(--sand-dim);">Everyone in the club can see this, like "I'll be a little late" or "I'm gluten-free".</p>
     <div class="field" style="margin-top:14px;">
       <textarea id="commentText" maxlength="300" placeholder="Type your comment here"></textarea>
     </div>
@@ -983,7 +983,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:52 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:53 AM CT</span></footer>
 
 </div>
 </div>
@@ -2464,7 +2464,7 @@
     const order = { yes: 0, maybe: 1, no: 2 };
     const rows = [...all].sort((x, y) => (order[x.status] - order[y.status]) || (x.name || '').localeCompare(y.name || '')).map(r => `
       <div class="rsvp-row"><strong>${escapeHtml(r.name || 'Someone')}</strong><span class="rsvp-state">${RSVP_LABELS[r.status] || ''}</span>
-        ${(r.comment && (isAdmin || r.uid === uid)) ? `<span class="rsvp-food">Comment: ${escapeHtml(r.comment)}</span>` : ''}
+        ${r.comment ? `<span class="rsvp-food">Comment: ${escapeHtml(r.comment)}</span>` : ''}
         ${(r.note && a.foodEnabled) ? `<span class="rsvp-food">${escapeHtml(r.note)}</span>` : ''}
         ${(hasFoodList(a) && r.status !== 'no' && (r.items || []).length) ? `<span class="rsvp-food">Bringing: ${escapeHtml((r.items || []).map(id => { const it = (a.foodItems || []).find(x => x.id === id); return it ? it.label : ''; }).filter(Boolean).join(', '))}</span>` : ''}</div>`).join('');
     const form = past ? '' : `
