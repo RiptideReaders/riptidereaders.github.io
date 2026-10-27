@@ -983,7 +983,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 11:10 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 11:39 AM CT</span></footer>
 
 </div>
 </div>
@@ -2594,7 +2594,7 @@
         </div>
         ${when ? `<div class="announce-when"><strong>When:</strong> ${escapeHtml(when)}</div>` : ''}
         ${a.place ? `<div class="announce-when"><strong>Where:</strong> ${escapeHtml(a.place)}</div>` : ''}
-        ${a.details ? `<p class="announce-details">${escapeHtml(a.details)}</p>` : ''}
+        ${a.details ? `<div class="announce-when" style="white-space:pre-line;"><strong>Details:</strong> ${escapeHtml(a.details)}</div>` : ''}
         ${(a.eventDate && !past) ? `<div style="margin:8px 0;"><button type="button" class="comment-btn add-cal" data-id="${a.id}">&#128197; Add to calendar</button></div>` : ''}
         ${a.rsvpEnabled ? rsvpBoxHtml(a, past) : ''}
         <div class="announce-meta">
