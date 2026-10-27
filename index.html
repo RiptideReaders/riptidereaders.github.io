@@ -258,6 +258,9 @@
   .hist-group .log-month{ display:none; }
   .announce-card{ padding:20px 0; border-bottom:1px solid var(--line); }
   .announce-card.past{ opacity:0.6; }
+  .hist-group .announce-head{ display:none; }
+  .hist-group .announce-card{ border-bottom:none; padding-top:4px; }
+  .hist-group .announce-card.past{ opacity:0.9; }
   .announce-head{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
   .announce-head h3{ font-family:'Bitter',serif; font-size:1.25rem; color:var(--sand); }
   .announce-past{ font-size:0.75rem; color:var(--sand-dim); border:1px solid var(--line-strong); padding:2px 8px; border-radius:10px; }
@@ -986,7 +989,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 12:39 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 1:12 PM CT</span></footer>
 
 </div>
 </div>
@@ -2593,6 +2596,22 @@
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
 
+  // Past events: one collapsed "Past events" section; each event inside collapses to its title.
+  function pastAnnouncementsHtml(past){
+    if(!past.length) return '';
+    const open = histOpenPref['ann-past'] === true;
+    return `<details class="hist-year" data-id="ann-past" style="margin-top:28px;" ${open ? 'open' : ''}>
+      <summary><span class="hist-year-label">Past events</span><span class="hist-year-count">${past.length}</span></summary>
+      ${past.map(a => {
+        const key = 'ann-' + a.id;
+        return `<details class="hist-group" data-id="${key}" ${histOpenPref[key] === true ? 'open' : ''}>
+          <summary><span class="hist-month">${escapeHtml(a.eventDate ? a.eventDate.slice(5).replace('-', '/') + '/' + a.eventDate.slice(2, 4) : '')}</span><span class="hist-title">${escapeHtml(a.title)}</span></summary>
+          ${announcementCardHtml(a, isAdmin)}
+        </details>`;
+      }).join('')}
+    </details>`;
+  }
+
   function announcementCardHtml(a, admin){
     const when = announcementWhen(a);
     const past = announcementIsPast(a);
@@ -2656,8 +2675,12 @@
     }
     const keep = (ae && listEl.contains(ae) && ae.dataset && ae.dataset.id && (ae.classList.contains('rsvp-note') || ae.classList.contains('rsvp-comment')))
       ? { cls: ae.classList.contains('rsvp-note') ? 'rsvp-note' : 'rsvp-comment', id: ae.dataset.id, pos: ae.selectionStart } : null;
+    const upcomingAnn = announcements.filter(a => !announcementIsPast(a));
+    const pastAnn = announcements.filter(a => announcementIsPast(a))
+      .sort((x, y) => (y.eventDate || '').localeCompare(x.eventDate || ''));
     listEl.innerHTML = announcements.length
-      ? announcements.map(a => announcementCardHtml(a, isAdmin)).join('')
+      ? (upcomingAnn.length ? upcomingAnn.map(a => announcementCardHtml(a, isAdmin)).join('') : '<p class="empty-state">No upcoming announcements.</p>')
+        + pastAnnouncementsHtml(pastAnn)
       : `<p class="empty-state">${isAdmin ? 'No announcements yet — tap New announcement to post the first one.' : 'No announcements yet.'}</p>`;
     document.getElementById('announceBanner').innerHTML = announceBannerHtml(announcements);
     if(keep){
@@ -3496,6 +3519,13 @@
       if(sum){
         const d = sum.parentElement;
         histOpenPref[d.dataset.id] = !d.open; // click fires before the toggle, so flip the current state
+      }
+    });
+    document.getElementById('announceList').addEventListener('click', (e) => {
+      const sum = e.target.closest('details.hist-group > summary, details.hist-year > summary');
+      if(sum){
+        const d = sum.parentElement;
+        histOpenPref[d.dataset.id] = !d.open;
       }
     });
     scheduleListEl.addEventListener('click', handleScheduleAreaClick);
