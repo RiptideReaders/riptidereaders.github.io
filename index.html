@@ -965,7 +965,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:48 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:51 AM CT</span></footer>
 
 </div>
 </div>
@@ -2569,6 +2569,10 @@
     if(!listEl) return;
     setAnnouncementFormOpen(anFormOpen);
     const ae = document.activeElement;
+    if(ae && listEl.contains(ae) && ae.classList && (ae.classList.contains('rsvp-note') || ae.classList.contains('rsvp-comment'))){
+      rsvpRenderDeferred = true;
+      return;
+    }
     const keep = (ae && listEl.contains(ae) && ae.dataset && ae.dataset.id && (ae.classList.contains('rsvp-note') || ae.classList.contains('rsvp-comment')))
       ? { cls: ae.classList.contains('rsvp-note') ? 'rsvp-note' : 'rsvp-comment', id: ae.dataset.id, pos: ae.selectionStart } : null;
     listEl.innerHTML = announcements.length
@@ -2581,6 +2585,7 @@
     }
   }
 
+  let rsvpRenderDeferred = false;
   let anFormOpen = false;
   function setAnnouncementFormOpen(open){
     anFormOpen = !!open && isAdmin;
@@ -3599,7 +3604,15 @@
       const t = e.target;
       if(!t.classList || !(t.classList.contains('rsvp-note') || t.classList.contains('rsvp-comment'))) return;
       const d = rsvpDraft[t.dataset.id];
-      if(d && d.status) saveRsvp(t.dataset.id);
+      if(!d || !d.status) return;
+      const base = myRsvpBase(t.dataset.id);
+      // Only save (and show the popup) when the text actually changed.
+      if((d.comment || '').trim() === (base.comment || '').trim() && (d.note || '').trim() === (base.note || '').trim()) return;
+      saveRsvp(t.dataset.id);
+    });
+    // Don't redraw the list under someone who is typing; catch up when they leave the box.
+    document.getElementById('announceList').addEventListener('focusout', (e) => {
+      if(rsvpRenderDeferred){ rsvpRenderDeferred = false; setTimeout(renderAnnouncements, 0); }
     });
     document.getElementById('anCancel').addEventListener('click', resetAnnouncementForm);
     document.getElementById('announceList').addEventListener('input', (e) => {
