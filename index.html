@@ -278,6 +278,10 @@
   .rsvp-list{ margin-top:12px; }
   .rsvp-row{ padding:8px 0; border-top:1px solid var(--line); font-size:0.9rem; color:var(--sand); }
   .rsvp-row .rsvp-state{ color:var(--sand-dim); margin-left:6px; }
+  .comment-btn{ background:none; border:1px dashed var(--line-strong); color:var(--sand); padding:8px 14px; border-radius:20px; cursor:pointer; font-family:'Work Sans',sans-serif; font-size:0.9rem; }
+  .comment-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .my-comment{ color:var(--sand); font-size:0.9rem; margin-bottom:8px; white-space:pre-wrap; }
+  .my-comment span{ color:var(--sand-dim); }
   .food-list{ margin-top:12px; }
   .food-list h4{ margin:0 0 4px; font-size:0.85rem; color:var(--sand-dim); font-weight:600; }
   .food-item{ display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--line); font-size:0.9rem; color:var(--sand); }
@@ -458,6 +462,20 @@
       <button class="overlay-submit" id="pcUseSuggested" type="button">Use this name &amp; continue</button>
     </div>
     <button class="overlay-submit" id="pcSubmit">Continue</button>
+  </div>
+</div>
+
+<div class="overlay" id="commentOverlay" style="display:none; background:rgba(11,32,39,0.9);">
+  <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong);">
+    <h1 style="font-size:1.3rem;">Add a comment</h1>
+    <p style="margin-top:8px; color:var(--sand-dim);">For the organizers, like "I'll be a little late" or "I'm gluten-free".</p>
+    <div class="field" style="margin-top:14px;">
+      <textarea id="commentText" maxlength="300" placeholder="Type your comment here"></textarea>
+    </div>
+    <div style="display:flex; gap:16px; align-items:center; margin-top:18px;">
+      <button class="submit-btn" id="commentSave" type="button">Save</button>
+      <button class="link-btn" id="commentCancel" type="button">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -965,7 +983,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:51 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:52 AM CT</span></footer>
 
 </div>
 </div>
@@ -2460,11 +2478,12 @@
           <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(d.note)}</textarea></div>
       </div>` : ''}
       ${d.status ? `
-      <div class="rsvp-fields" style="margin-top:14px;">
-        <div><label>Comments for the organizers (optional)</label>
-          <textarea class="rsvp-comment" data-id="${a.id}" maxlength="300" placeholder="e.g. I'm gluten-free, or I'll be a little late">${escapeHtml(d.comment)}</textarea></div>
+      <div style="margin-top:14px;">
+        ${d.comment ? `<div class="my-comment"><span>Your comment:</span> ${escapeHtml(d.comment)}</div>` : ''}
+        <button type="button" class="comment-btn rsvp-comment-open" data-id="${a.id}">${d.comment ? 'Edit comment' : 'Add a comment'}</button>
+        ${d.comment ? '' : '<span style="color:var(--sand-dim); font-size:0.82rem; margin-left:8px;">e.g. I\'ll be late, I\'m gluten-free</span>'}
       </div>` : ''}
-      ${d.status ? `<div style="display:flex; gap:16px; margin-top:10px;"><button type="button" class="submit-btn rsvp-save" data-id="${a.id}">Save</button>${hasMine ? `<button type="button" class="link-btn rsvp-clear" data-id="${a.id}">Remove my RSVP</button>` : ''}</div>` : ''}`;
+      ${d.status ? `<div style="display:flex; gap:16px; margin-top:10px;">${(a.foodEnabled && d.status !== 'no') ? `<button type="button" class="submit-btn rsvp-save" data-id="${a.id}">Save</button>` : ''}${hasMine ? `<button type="button" class="link-btn rsvp-clear" data-id="${a.id}">Remove my RSVP</button>` : ''}</div>` : ''}`;
     return `<div class="rsvp-box" data-id="${a.id}">
       <div class="rsvp-count"><strong>${heads}</strong> ${past ? 'came' : 'coming'}${maybes ? ` &middot; ${maybes} maybe` : ''}</div>
       ${form}
@@ -3610,6 +3629,19 @@
       if((d.comment || '').trim() === (base.comment || '').trim() && (d.note || '').trim() === (base.note || '').trim()) return;
       saveRsvp(t.dataset.id);
     });
+    let commentForId = null;
+    document.getElementById('commentCancel').addEventListener('click', () => {
+      document.getElementById('commentOverlay').style.display = 'none';
+      commentForId = null;
+    });
+    document.getElementById('commentSave').addEventListener('click', () => {
+      if(!commentForId) return;
+      const id = commentForId;
+      commentForId = null;
+      document.getElementById('commentOverlay').style.display = 'none';
+      ensureRsvpDraft(id).comment = document.getElementById('commentText').value;
+      saveRsvp(id);
+    });
     // Don't redraw the list under someone who is typing; catch up when they leave the box.
     document.getElementById('announceList').addEventListener('focusout', (e) => {
       if(rsvpRenderDeferred){ rsvpRenderDeferred = false; setTimeout(renderAnnouncements, 0); }
@@ -3638,6 +3670,13 @@
           d.status = next;
           saveRsvp(rid);
         }
+      }
+      const cmtOpen = e.target.closest('.rsvp-comment-open');
+      if(cmtOpen){
+        commentForId = cmtOpen.dataset.id;
+        document.getElementById('commentText').value = ensureRsvpDraft(commentForId).comment || '';
+        document.getElementById('commentOverlay').style.display = 'flex';
+        setTimeout(() => document.getElementById('commentText').focus(), 50);
       }
       if(rsvpSave) saveRsvp(rsvpSave.dataset.id);
       if(rsvpClr) confirmAction('Remove your RSVP?', () => clearRsvp(rsvpClr.dataset.id), 'Yes, remove it');
