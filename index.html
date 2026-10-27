@@ -924,7 +924,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 26, 2026, 10:17 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 26, 2026, 10:36 PM CT</span></footer>
 
 </div>
 </div>
@@ -1334,6 +1334,8 @@
     document.getElementById('pcPhone').value = '';
     document.getElementById('pcError').textContent = '';
     document.getElementById('pcDupSuggestion').style.display = 'none';
+    document.getElementById('pcSubmit').style.display = '';
+    profileOverlay.querySelector('h1').textContent = 'One more step';
     profileOverlay.style.display = 'flex';
   }
 
@@ -3463,6 +3465,35 @@
       renderRecommendations();
     }, () => showToast("Couldn't load suggestions."));
 
+    // If someone else with the same display name joined before you, ask the
+    // newer member to pick a more specific name (e.g. add an initial).
+    let didDupCheck = false;
+    function checkDuplicateOwnName(){
+      if(didDupCheck || !auth.currentUser) return;
+      const uid = auth.currentUser.uid;
+      const own = members.find(m => m.id === uid);
+      if(!own || !own.name) return;
+      didDupCheck = true;
+      const ms = (m) => (m.createdAt && m.createdAt.toMillis) ? m.createdAt.toMillis() : null;
+      const ownT = ms(own);
+      if(ownT === null) return;
+      const lower = own.name.trim().toLowerCase();
+      const clash = members.some(m => m.id !== uid && (m.name || '').trim().toLowerCase() === lower
+        && ms(m) !== null && (ms(m) < ownT || (ms(m) === ownT && m.id < uid)));
+      if(!clash) return;
+      const first = own.firstName || own.name;
+      renderProfileCompletion();
+      document.getElementById('pcFirstName').value = own.firstName || '';
+      document.getElementById('pcLastName').value = own.lastName || '';
+      document.getElementById('pcPhone').value = own.phone || '';
+      const card = profileOverlay.querySelector('.overlay-card');
+      card.querySelector('h1').textContent = 'Pick a name';
+      document.getElementById('pcDupText').textContent = `There's already a "${own.name}" in the club — add an initial or change it so people can tell you apart:`;
+      document.getElementById('pcSuggestedName').value = suggestDisambiguation(first, own.lastName || '');
+      document.getElementById('pcDupSuggestion').style.display = 'block';
+      document.getElementById('pcSubmit').style.display = 'none';
+    }
+
     let didSelfHeal = false;
     db.collection('members').orderBy('createdAt', 'asc').onSnapshot(async snap => {
       const allMembers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -3470,6 +3501,7 @@
       pendingMembers = allMembers.filter(m => m.pending === true);
       renderMembers();
       checkOwnerValidity();
+      checkDuplicateOwnName();
 
       // One-time self-heal: make sure the current user has a members record
       // keyed by their real uid (older accounts may have a mismatched id),
