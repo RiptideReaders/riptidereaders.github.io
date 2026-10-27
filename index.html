@@ -835,6 +835,7 @@
     <div class="section-head">
       <p>Events and things everyone should know about.</p>
     </div>
+    <div id="anOpenWrap" style="display:none; margin-bottom:8px;"><button class="submit-btn" id="anOpenBtn" type="button">+ New announcement</button></div>
     <div class="form-panel" id="announceFormPanel" style="display:none; scroll-margin-top:170px; margin-bottom:24px;">
       <h3 id="announceFormTitle">Post an announcement</h3>
       <div class="field-row">
@@ -943,7 +944,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:19 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:22 AM CT</span></footer>
 
 </div>
 </div>
@@ -2520,18 +2521,25 @@
   function renderAnnouncements(){
     const listEl = document.getElementById('announceList');
     if(!listEl) return;
-    document.getElementById('announceFormPanel').style.display = isAdmin ? 'block' : 'none';
+    setAnnouncementFormOpen(anFormOpen);
     const ae = document.activeElement;
     const keep = (ae && listEl.contains(ae) && ae.dataset && ae.dataset.id && ae.classList.contains('rsvp-note'))
       ? { cls: 'rsvp-note', id: ae.dataset.id, pos: ae.selectionStart } : null;
     listEl.innerHTML = announcements.length
       ? announcements.map(a => announcementCardHtml(a, isAdmin)).join('')
-      : `<p class="empty-state">${isAdmin ? 'No announcements yet — post the first one above.' : 'No announcements yet.'}</p>`;
+      : `<p class="empty-state">${isAdmin ? 'No announcements yet — tap New announcement to post the first one.' : 'No announcements yet.'}</p>`;
     document.getElementById('announceBanner').innerHTML = announceBannerHtml(announcements);
     if(keep){
       const el = listEl.querySelector(`.${keep.cls}[data-id="${keep.id}"]`);
       if(el){ el.focus(); try{ if(keep.pos != null) el.setSelectionRange(keep.pos, keep.pos); }catch(_){} }
     }
+  }
+
+  let anFormOpen = false;
+  function setAnnouncementFormOpen(open){
+    anFormOpen = !!open && isAdmin;
+    document.getElementById('announceFormPanel').style.display = anFormOpen ? 'block' : 'none';
+    document.getElementById('anOpenWrap').style.display = (isAdmin && !anFormOpen) ? 'block' : 'none';
   }
 
   function syncFoodForm(){
@@ -2550,6 +2558,7 @@
     syncFoodForm();
     document.getElementById('announceFormTitle').textContent = 'Post an announcement';
     document.getElementById('anSubmit').textContent = 'Post announcement';
+    setAnnouncementFormOpen(false);
   }
 
   async function saveAnnouncement(){
@@ -2626,6 +2635,7 @@
     document.getElementById('anFoodMode').value = foodModeOf(a);
     document.getElementById('anFoodItems').value = (a.foodItems || []).map(x => x.label).join('\n');
     syncFoodForm();
+    setAnnouncementFormOpen(true);
     document.getElementById('announceFormTitle').textContent = 'Edit announcement';
     document.getElementById('anSubmit').textContent = 'Save changes';
     document.getElementById('announceFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3508,6 +3518,11 @@
     });
 
     document.getElementById('anSubmit').addEventListener('click', saveAnnouncement);
+    document.getElementById('anOpenBtn').addEventListener('click', () => {
+      resetAnnouncementForm();
+      setAnnouncementFormOpen(true);
+      document.getElementById('announceFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
     document.getElementById('anRsvp').addEventListener('change', syncFoodForm);
     document.getElementById('anFoodMode').addEventListener('change', syncFoodForm);
     document.getElementById('announceList').addEventListener('change', (e) => {
