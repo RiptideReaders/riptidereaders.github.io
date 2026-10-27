@@ -996,7 +996,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 3:59 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 4:03 PM CT</span></footer>
 
 </div>
 </div>
@@ -2542,7 +2542,7 @@
       ${rows ? `<div class="rsvp-list">${rows}</div>` : ''}
     </div>`;
   }
-  async function saveRsvp(id){
+  async function saveRsvp(id, showPopup){
     const uid = auth.currentUser ? auth.currentUser.uid : null;
     const d = rsvpDraft[id] || myRsvpBase(id);
     if(!uid || !d || !d.status){ showToast("Pick Going, Maybe, or Can't make it first."); return; }
@@ -2577,7 +2577,8 @@
       });
       rsvpDraft[id] = { status: d.status, guests: 0, note: d.note || '', comment: d.comment || '', items, itemNotes };
       if(droppedItems) showToast('RSVP saved — someone else just took one of your items.');
-      else showSavedPopup('Saved — ' + (RSVP_LABELS[d.status] || 'RSVP'));
+      else if(showPopup) showSavedPopup('Saved — ' + (RSVP_LABELS[d.status] || 'RSVP'));
+      else showToast('Saved.');
       renderAnnouncements();
     }catch(e){
       showToast(e && e.code === 'permission-denied' ? "Couldn't save — the Firestore rules need the RSVP update." : "Couldn't save — try again.");
@@ -3828,10 +3829,10 @@
         const d = ensureRsvpDraft(rid);
         if(saved === next && d.status === next){ /* already selected */ }
         else if(saved && saved !== next){
-          confirmAction(`Change your RSVP from "${RSVP_LABELS[saved]}" to "${RSVP_LABELS[next]}"?`, () => { d.status = next; saveRsvp(rid); }, 'Yes, change it', 'Change RSVP');
+          confirmAction(`Change your RSVP from "${RSVP_LABELS[saved]}" to "${RSVP_LABELS[next]}"?`, () => { d.status = next; saveRsvp(rid, true); }, 'Yes, change it', 'Change RSVP');
         }else{
           d.status = next;
-          saveRsvp(rid);
+          saveRsvp(rid, true);
         }
       }
       const calBtn = e.target.closest('.add-cal');
