@@ -956,7 +956,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:32 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:39 AM CT</span></footer>
 
 </div>
 </div>
@@ -3578,7 +3578,16 @@
       const rsvpSave = e.target.closest('.rsvp-save');
       const rsvpClr = e.target.closest('.rsvp-clear');
       if(rsvpBtn){ ensureRsvpDraft(rsvpBtn.dataset.id).status = rsvpBtn.dataset.status; renderAnnouncements(); }
-      if(rsvpSave) saveRsvp(rsvpSave.dataset.id);
+      if(rsvpSave){
+        const rid = rsvpSave.dataset.id;
+        const saved = myRsvpBase(rid).status;
+        const draft = rsvpDraft[rid];
+        if(saved && draft && draft.status && draft.status !== saved){
+          confirmAction(`Change your RSVP from "${RSVP_LABELS[saved]}" to "${RSVP_LABELS[draft.status]}"?`, () => saveRsvp(rid), 'Yes, change it', 'Change RSVP');
+        }else{
+          saveRsvp(rid);
+        }
+      }
       if(rsvpClr) confirmAction('Remove your RSVP?', () => clearRsvp(rsvpClr.dataset.id), 'Yes, remove it');
       const edit = e.target.closest('.edit-announce');
       const rem = e.target.closest('.remove-announce');
