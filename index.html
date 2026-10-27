@@ -996,7 +996,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 4:03 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 4:04 PM CT</span></footer>
 
 </div>
 </div>
@@ -2465,6 +2465,16 @@
     renderFoodRows(false);
   }
   function hasFoodList(a){ const m = foodModeOf(a); return m === 'list' || m === 'both'; }
+  // "Fruit (bananas), Bagels" for one person's RSVP; items that were deleted from the list are skipped.
+  function bringingText(a, r){
+    if(!hasFoodList(a) || r.status === 'no') return '';
+    return (r.items || []).map(id => {
+      const it = (a.foodItems || []).find(x => x.id === id);
+      if(!it) return '';
+      const n = it.note && r.itemNotes && r.itemNotes[id];
+      return it.label + (n ? ' (' + n + ')' : '');
+    }).filter(Boolean).join(', ');
+  }
   function foodModeOf(a){ return a.foodMode || (a.foodEnabled ? 'box' : 'none'); }
   function foodListHtml(a, d, past, all, uid){
     const items = a.foodItems || [];
@@ -2525,7 +2535,7 @@
       <div class="rsvp-row"><strong>${escapeHtml(r.name || 'Someone')}</strong><span class="rsvp-state">${RSVP_LABELS[r.status] || ''}</span>
         ${r.comment ? `<span class="rsvp-food">Comment: ${escapeHtml(r.comment)}</span>` : ''}
         ${(r.note && a.foodEnabled) ? `<span class="rsvp-food">${escapeHtml(r.note)}</span>` : ''}
-        ${(hasFoodList(a) && r.status !== 'no' && (r.items || []).length) ? `<span class="rsvp-food">Bringing: ${escapeHtml((r.items || []).map(id => { const it = (a.foodItems || []).find(x => x.id === id); const n = it && it.note && r.itemNotes && r.itemNotes[id]; return it ? it.label + (n ? ' (' + n + ')' : '') : ''; }).filter(Boolean).join(', '))}</span>` : ''}</div>`).join('');
+        ${bringingText(a, r) ? `<span class="rsvp-food">Bringing: ${escapeHtml(bringingText(a, r))}</span>` : ''}</div>`).join('');
     const form = past ? '' : `
       <div class="rsvp-btns">
         ${['yes', 'maybe', 'no'].map(k => `<button type="button" class="rsvp-btn ${d.status === k ? 'active' : ''}" data-id="${a.id}" data-status="${k}">${RSVP_LABELS[k]}</button>`).join('')}
