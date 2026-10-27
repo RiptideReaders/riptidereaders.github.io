@@ -885,6 +885,18 @@
           </select>
         </div>
       </div>
+      <div class="field-row" id="anBoxLabelWrap" style="display:none;">
+        <div class="field">
+          <label for="anBoxLabel">Heading for the open box (optional)</label>
+          <input id="anBoxLabel" type="text" maxlength="80" placeholder="e.g. Bringing something else? Enter it here">
+        </div>
+      </div>
+      <div class="field-row" id="anListLabelWrap" style="display:none;">
+        <div class="field">
+          <label for="anListLabel">Heading for the list (optional)</label>
+          <input id="anListLabel" type="text" maxlength="80" placeholder="What to bring">
+        </div>
+      </div>
       <div class="field-row" id="anFoodItemsWrap" style="display:none;">
         <div class="field">
           <label for="anFoodItems">Items to sign up for (one per line)</label>
@@ -944,7 +956,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:26 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:28 AM CT</span></footer>
 
 </div>
 </div>
@@ -2368,7 +2380,7 @@
   function myRsvpBase(id){
     const uid = auth.currentUser ? auth.currentUser.uid : null;
     const mine = (rsvpData[id] || []).find(r => r.uid === uid);
-    return { status: mine ? mine.status : '', guests: mine ? (mine.guests || 0) : 0, note: mine ? (mine.note || '') : '', items: mine ? [...(mine.items || [])] : [] };
+    return { status: mine ? mine.status : '', guests: mine ? (mine.guests || 0) : 0, note: mine ? (mine.note || '') : '', comment: mine ? (mine.comment || '') : '', items: mine ? [...(mine.items || [])] : [] };
   }
   function ensureRsvpDraft(id){
     if(!rsvpDraft[id]) rsvpDraft[id] = myRsvpBase(id);
@@ -2391,7 +2403,7 @@
       }
       return `<div class="food-item"><span>${escapeHtml(it.label)}</span><span class="who">${mine ? 'You' : 'Needed'}</span></div>`;
     }).join('');
-    return `<div class="food-list"><h4>What to bring${interactive ? ' &mdash; tick what you\'ll bring, then Save RSVP' : (past ? '' : ' &mdash; RSVP Going or Maybe to pick something')}</h4>${rows}</div>`;
+    return `<div class="food-list"><h4>${escapeHtml(a.listLabel || 'What to bring')}${interactive ? ' &mdash; tick what you\'ll bring, then Save RSVP' : (past ? '' : ' &mdash; RSVP Going or Maybe to pick something')}</h4>${rows}</div>`;
   }
   function rsvpBoxHtml(a, past){
     const list = rsvpData[a.id];
@@ -2408,6 +2420,7 @@
     const order = { yes: 0, maybe: 1, no: 2 };
     const rows = [...all].sort((x, y) => (order[x.status] - order[y.status]) || (x.name || '').localeCompare(y.name || '')).map(r => `
       <div class="rsvp-row"><strong>${escapeHtml(r.name || 'Someone')}</strong><span class="rsvp-state">${RSVP_LABELS[r.status] || ''}</span>
+        ${(r.comment && (isAdmin || r.uid === uid)) ? `<span class="rsvp-food">Comment: ${escapeHtml(r.comment)}</span>` : ''}
         ${(r.note && a.foodEnabled) ? `<span class="rsvp-food">${escapeHtml(r.note)}</span>` : ''}
         ${(hasFoodList(a) && r.status !== 'no' && (r.items || []).length) ? `<span class="rsvp-food">Bringing: ${escapeHtml((r.items || []).map(id => { const it = (a.foodItems || []).find(x => x.id === id); return it ? it.label : ''; }).filter(Boolean).join(', '))}</span>` : ''}</div>`).join('');
     const form = past ? '' : `
@@ -2417,8 +2430,13 @@
       ${hasFoodList(a) ? foodListHtml(a, d, false, all, uid) : ''}
       ${a.foodEnabled && d.status && d.status !== 'no' ? `
       <div class="rsvp-fields" style="margin-top:14px;">
-        <div><label>${hasFoodList(a) ? 'Bringing something else? Enter it here (optional)' : 'Bringing food or drinks to share? (optional)'}</label>
+        <div><label>${escapeHtml(a.foodLabel || (hasFoodList(a) ? 'Bringing something else? Enter it here (optional)' : 'Bringing food or drinks to share? (optional)'))}</label>
           <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(d.note)}</textarea></div>
+      </div>` : ''}
+      ${d.status ? `
+      <div class="rsvp-fields" style="margin-top:14px;">
+        <div><label>Comments for the organizers (optional)</label>
+          <textarea class="rsvp-comment" data-id="${a.id}" maxlength="300" placeholder="e.g. I'm gluten-free, or I'll be a little late">${escapeHtml(d.comment)}</textarea></div>
       </div>` : ''}
       ${d.status ? `<div style="display:flex; gap:16px; margin-top:10px;"><button type="button" class="submit-btn rsvp-save" data-id="${a.id}">Save RSVP</button>${hasMine ? `<button type="button" class="link-btn rsvp-clear" data-id="${a.id}">Remove my RSVP</button>` : ''}</div>` : ''}`;
     return `<div class="rsvp-box" data-id="${a.id}">
@@ -2447,6 +2465,7 @@
         status: d.status,
         guests: 0,
         items,
+        comment: (d.comment || '').trim().slice(0, 300),
         note: (d.status === 'no' || !(announcements.find(x => x.id === id) || {}).foodEnabled) ? '' : (d.note || '').trim().slice(0, 300),
         name,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -2523,8 +2542,8 @@
     if(!listEl) return;
     setAnnouncementFormOpen(anFormOpen);
     const ae = document.activeElement;
-    const keep = (ae && listEl.contains(ae) && ae.dataset && ae.dataset.id && ae.classList.contains('rsvp-note'))
-      ? { cls: 'rsvp-note', id: ae.dataset.id, pos: ae.selectionStart } : null;
+    const keep = (ae && listEl.contains(ae) && ae.dataset && ae.dataset.id && (ae.classList.contains('rsvp-note') || ae.classList.contains('rsvp-comment')))
+      ? { cls: ae.classList.contains('rsvp-note') ? 'rsvp-note' : 'rsvp-comment', id: ae.dataset.id, pos: ae.selectionStart } : null;
     listEl.innerHTML = announcements.length
       ? announcements.map(a => announcementCardHtml(a, isAdmin)).join('')
       : `<p class="empty-state">${isAdmin ? 'No announcements yet — tap New announcement to post the first one.' : 'No announcements yet.'}</p>`;
@@ -2545,7 +2564,12 @@
   function syncFoodForm(){
     const rsvpOn = document.getElementById('anRsvp').checked;
     document.getElementById('anFoodWrap').style.display = rsvpOn ? 'flex' : 'none';
-    document.getElementById('anFoodItemsWrap').style.display = (rsvpOn && ['list', 'both'].includes(document.getElementById('anFoodMode').value)) ? 'flex' : 'none';
+    const mode = document.getElementById('anFoodMode').value;
+    const hasList = rsvpOn && ['list', 'both'].includes(mode);
+    const hasBox = rsvpOn && ['box', 'both'].includes(mode);
+    document.getElementById('anFoodItemsWrap').style.display = hasList ? 'flex' : 'none';
+    document.getElementById('anListLabelWrap').style.display = hasList ? 'flex' : 'none';
+    document.getElementById('anBoxLabelWrap').style.display = hasBox ? 'flex' : 'none';
   }
 
   function resetAnnouncementForm(){
@@ -2555,6 +2579,8 @@
     document.getElementById('anRsvp').checked = false;
     document.getElementById('anFoodMode').value = 'none';
     document.getElementById('anFoodItems').value = '';
+    document.getElementById('anBoxLabel').value = '';
+    document.getElementById('anListLabel').value = '';
     syncFoodForm();
     document.getElementById('announceFormTitle').textContent = 'Post an announcement';
     document.getElementById('anSubmit').textContent = 'Post announcement';
@@ -2574,11 +2600,15 @@
       rsvpEnabled: document.getElementById('anRsvp').checked,
       foodEnabled: false,
       foodMode: 'none',
-      foodItems: []
+      foodItems: [],
+      foodLabel: '',
+      listLabel: ''
     };
     if(document.getElementById('anRsvp').checked){
       const mode = document.getElementById('anFoodMode').value;
       data.foodMode = mode;
+      data.foodLabel = document.getElementById('anBoxLabel').value.trim().slice(0, 80);
+      data.listLabel = document.getElementById('anListLabel').value.trim().slice(0, 80);
       data.foodEnabled = mode === 'box' || mode === 'both';
       if(mode === 'list' || mode === 'both'){
         const old = ((announcements.find(x => x.id === editingAnnouncementId) || {}).foodItems) || [];
@@ -2634,6 +2664,8 @@
     document.getElementById('anRsvp').checked = !!a.rsvpEnabled;
     document.getElementById('anFoodMode').value = foodModeOf(a);
     document.getElementById('anFoodItems').value = (a.foodItems || []).map(x => x.label).join('\n');
+    document.getElementById('anBoxLabel').value = a.foodLabel || '';
+    document.getElementById('anListLabel').value = a.listLabel || '';
     syncFoodForm();
     setAnnouncementFormOpen(true);
     document.getElementById('announceFormTitle').textContent = 'Edit announcement';
@@ -3539,6 +3571,7 @@
       const t = e.target;
       if(!t.dataset || !t.dataset.id) return;
       if(t.classList.contains('rsvp-note')) ensureRsvpDraft(t.dataset.id).note = t.value;
+      if(t.classList.contains('rsvp-comment')) ensureRsvpDraft(t.dataset.id).comment = t.value;
     });
     document.getElementById('announceList').addEventListener('click', (e) => {
       const rsvpBtn = e.target.closest('.rsvp-btn');
