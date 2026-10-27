@@ -983,7 +983,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:53 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 11:08 AM CT</span></footer>
 
 </div>
 </div>
@@ -2533,6 +2533,54 @@
     }catch(e){ showToast("Couldn't remove — try again."); }
   }
 
+  function icsEscape(t){ return String(t || '').replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;'); }
+  function icsFold(line){
+    let out = '';
+    while(line.length > 74){ out += line.slice(0, 74) + '\r\n '; line = line.slice(74); }
+    return out + line;
+  }
+  function buildIcs(a){
+    const pad = n => String(n).padStart(2, '0');
+    const [y, m, d] = a.eventDate.split('-').map(Number);
+    const now = new Date();
+    const stamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
+    let start, end;
+    if(a.eventTime){
+      const [hh, mm] = a.eventTime.split(':').map(Number);
+      const s = new Date(y, m - 1, d, hh, mm);
+      const e = new Date(s.getTime() + 2 * 60 * 60 * 1000);
+      const fmt = dt => `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`;
+      start = 'DTSTART:' + fmt(s);
+      end = 'DTEND:' + fmt(e);
+    }else{
+      const next = new Date(y, m - 1, d + 1);
+      start = `DTSTART;VALUE=DATE:${y}${pad(m)}${pad(d)}`;
+      end = `DTEND;VALUE=DATE:${next.getFullYear()}${pad(next.getMonth() + 1)}${pad(next.getDate())}`;
+    }
+    const desc = [a.details, 'Riptide Readers: https://riptidereaders.github.io'].filter(Boolean).join('\n\n');
+    const lines = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Riptide Readers//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+      'BEGIN:VEVENT', `UID:${a.id}@riptidereaders.github.io`, `DTSTAMP:${stamp}`, start, end,
+      `SUMMARY:${icsEscape(a.title)}`
+    ];
+    if(a.place) lines.push(`LOCATION:${icsEscape(a.place)}`);
+    lines.push(`DESCRIPTION:${icsEscape(desc)}`, 'END:VEVENT', 'END:VCALENDAR');
+    return lines.map(icsFold).join('\r\n') + '\r\n';
+  }
+  function addToCalendar(id){
+    const a = announcements.find(x => x.id === id);
+    if(!a || !a.eventDate) return;
+    const blob = new Blob([buildIcs(a)], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = (a.title || 'event').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() + '.ics';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+
   function announcementCardHtml(a, admin){
     const when = announcementWhen(a);
     const past = announcementIsPast(a);
@@ -2547,6 +2595,7 @@
         ${when ? `<div class="announce-when"><strong>When:</strong> ${escapeHtml(when)}</div>` : ''}
         ${a.place ? `<div class="announce-when"><strong>Where:</strong> ${escapeHtml(a.place)}</div>` : ''}
         ${a.details ? `<p class="announce-details">${escapeHtml(a.details)}</p>` : ''}
+        ${(a.eventDate && !past) ? `<div style="margin:8px 0;"><button type="button" class="comment-btn add-cal" data-id="${a.id}">&#128197; Add to calendar</button></div>` : ''}
         ${a.rsvpEnabled ? rsvpBoxHtml(a, past) : ''}
         <div class="announce-meta">
           <span>Posted${a.postedBy ? ' by ' + escapeHtml(a.postedBy) : ''}${posted ? ' &middot; ' + posted : ''}</span>
@@ -3671,6 +3720,8 @@
           saveRsvp(rid);
         }
       }
+      const calBtn = e.target.closest('.add-cal');
+      if(calBtn) addToCalendar(calBtn.dataset.id);
       const cmtOpen = e.target.closest('.rsvp-comment-open');
       if(cmtOpen){
         commentForId = cmtOpen.dataset.id;
