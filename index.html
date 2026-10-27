@@ -286,6 +286,7 @@
   .food-list h4{ margin:0 0 4px; font-size:0.95rem; color:var(--accent); font-weight:600; }
   .food-item{ display:flex; align-items:center; gap:10px; padding:5px 0; font-size:0.95rem; color:var(--sand); }
   div.food-item{ padding-left:28px; }
+  .food-list textarea{ width:100%; background:var(--bg, #0B2027); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.9rem; padding:8px 10px; border-radius:3px; min-height:48px; resize:vertical; }
   .food-item input{ width:18px; height:18px; accent-color:var(--accent); flex:none; }
   .food-item .who{ color:var(--sand-dim); }
   .food-item.taken{ opacity:0.85; }
@@ -984,7 +985,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 12:24 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 12:27 PM CT</span></footer>
 
 </div>
 </div>
@@ -2452,13 +2453,20 @@
   }
   // The sign-up list sits under Details, outside the RSVP box.
   function foodSectionHtml(a, past){
-    if(!a.rsvpEnabled || !hasFoodList(a)) return '';
+    if(!a.rsvpEnabled || foodModeOf(a) === 'none') return '';
     const list = rsvpData[a.id];
     if(list === null) return '';
     const all = list || [];
     const uid = auth.currentUser ? auth.currentUser.uid : null;
     const d = rsvpDraft[a.id] || myRsvpBase(a.id);
-    return foodListHtml(a, d, past, all, uid);
+    const listHtml = hasFoodList(a) ? foodListHtml(a, d, past, all, uid) : '';
+    const boxHtml = (a.foodEnabled && !past && d.status && d.status !== 'no') ? `
+      <div class="food-list">
+        <h4>${escapeHtml(a.foodLabel || (hasFoodList(a) ? 'Bringing something else? Enter it here (optional)' : 'Bringing food or drinks to share? (optional)'))}</h4>
+        <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(d.note)}</textarea>
+        <div style="margin-top:8px;"><button type="button" class="submit-btn rsvp-save" data-id="${a.id}">Save</button></div>
+      </div>` : '';
+    return listHtml + boxHtml;
   }
   function rsvpBoxHtml(a, past){
     const list = rsvpData[a.id];
@@ -2482,18 +2490,13 @@
       <div class="rsvp-btns">
         ${['yes', 'maybe', 'no'].map(k => `<button type="button" class="rsvp-btn ${d.status === k ? 'active' : ''}" data-id="${a.id}" data-status="${k}">${RSVP_LABELS[k]}</button>`).join('')}
       </div>
-      ${a.foodEnabled && d.status && d.status !== 'no' ? `
-      <div class="rsvp-fields" style="margin-top:14px;">
-        <div><label>${escapeHtml(a.foodLabel || (hasFoodList(a) ? 'Bringing something else? Enter it here (optional)' : 'Bringing food or drinks to share? (optional)'))}</label>
-          <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(d.note)}</textarea></div>
-      </div>` : ''}
       ${d.status ? `
       <div style="margin-top:14px;">
         ${d.comment ? `<div class="my-comment"><span>Your comment:</span> ${escapeHtml(d.comment)}</div>` : ''}
         <button type="button" class="comment-btn rsvp-comment-open" data-id="${a.id}">${d.comment ? 'Edit comment' : 'Add a comment'}</button>
         ${d.comment ? '' : '<span style="color:var(--sand-dim); font-size:0.82rem; margin-left:8px;">e.g. I\'ll be late, I\'m gluten-free</span>'}
       </div>` : ''}
-      ${d.status ? `<div style="display:flex; gap:16px; margin-top:10px;">${(a.foodEnabled && d.status !== 'no') ? `<button type="button" class="submit-btn rsvp-save" data-id="${a.id}">Save</button>` : ''}${hasMine ? `<button type="button" class="link-btn rsvp-clear" data-id="${a.id}">Remove my RSVP</button>` : ''}</div>` : ''}`;
+      ${d.status ? `<div style="display:flex; gap:16px; margin-top:10px;">${hasMine ? `<button type="button" class="link-btn rsvp-clear" data-id="${a.id}">Remove my RSVP</button>` : ''}</div>` : ''}`;
     return `<div class="rsvp-box" data-id="${a.id}">
       <div class="rsvp-count"><strong>${heads}</strong> ${past ? 'came' : 'coming'}${maybes ? ` &middot; ${maybes} maybe` : ''}</div>
       ${form}
