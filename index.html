@@ -956,7 +956,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:39 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:43 AM CT</span></footer>
 
 </div>
 </div>
@@ -2403,7 +2403,7 @@
       }
       return `<div class="food-item"><span>${escapeHtml(it.label)}</span><span class="who">${mine ? 'You' : 'Needed'}</span></div>`;
     }).join('');
-    return `<div class="food-list"><h4>${escapeHtml(a.listLabel || 'What to bring')}${interactive ? ' &mdash; tick the box, then Save RSVP' : (past ? '' : ' &mdash; RSVP Going or Maybe to pick something')}</h4>${rows}</div>`;
+    return `<div class="food-list"><h4>${escapeHtml(a.listLabel || 'What to bring')}${interactive ? ' &mdash; tick the box' : (past ? '' : ' &mdash; RSVP Going or Maybe to pick something')}</h4>${rows}</div>`;
   }
   function rsvpBoxHtml(a, past){
     const list = rsvpData[a.id];
@@ -2438,7 +2438,7 @@
         <div><label>Comments for the organizers (optional)</label>
           <textarea class="rsvp-comment" data-id="${a.id}" maxlength="300" placeholder="e.g. I'm gluten-free, or I'll be a little late">${escapeHtml(d.comment)}</textarea></div>
       </div>` : ''}
-      ${d.status ? `<div style="display:flex; gap:16px; margin-top:10px;"><button type="button" class="submit-btn rsvp-save" data-id="${a.id}">Save RSVP</button>${hasMine ? `<button type="button" class="link-btn rsvp-clear" data-id="${a.id}">Remove my RSVP</button>` : ''}</div>` : ''}`;
+      ${d.status ? `<div style="display:flex; gap:16px; margin-top:10px;"><button type="button" class="submit-btn rsvp-save" data-id="${a.id}">Save</button>${hasMine ? `<button type="button" class="link-btn rsvp-clear" data-id="${a.id}">Remove my RSVP</button>` : ''}</div>` : ''}`;
     return `<div class="rsvp-box" data-id="${a.id}">
       <div class="rsvp-count"><strong>${heads}</strong> ${past ? 'came' : 'coming'}${maybes ? ` &middot; ${maybes} maybe` : ''}</div>
       ${form}
@@ -3565,6 +3565,14 @@
       if(box.checked) set.add(box.dataset.item); else set.delete(box.dataset.item);
       d.items = [...set];
       renderAnnouncements();
+      saveRsvp(box.dataset.id);
+    });
+    // Comments and notes save when you tap out of the box, too.
+    document.getElementById('announceList').addEventListener('change', (e) => {
+      const t = e.target;
+      if(!t.classList || !(t.classList.contains('rsvp-note') || t.classList.contains('rsvp-comment'))) return;
+      const d = rsvpDraft[t.dataset.id];
+      if(d && d.status) saveRsvp(t.dataset.id);
     });
     document.getElementById('anCancel').addEventListener('click', resetAnnouncementForm);
     document.getElementById('announceList').addEventListener('input', (e) => {
@@ -3577,16 +3585,21 @@
       const rsvpBtn = e.target.closest('.rsvp-btn');
       const rsvpSave = e.target.closest('.rsvp-save');
       const rsvpClr = e.target.closest('.rsvp-clear');
-      if(rsvpBtn){ ensureRsvpDraft(rsvpBtn.dataset.id).status = rsvpBtn.dataset.status; renderAnnouncements(); }
-      if(rsvpSave){
-        const rid = rsvpSave.dataset.id;
+      if(rsvpBtn){
+        // Picking an answer saves it right away, so nobody has to find a Save button.
+        const rid = rsvpBtn.dataset.id;
+        const next = rsvpBtn.dataset.status;
         const saved = myRsvpBase(rid).status;
-        const draft = rsvpDraft[rid];
-        if(saved && draft && draft.status && draft.status !== saved){
-          confirmAction(`Change your RSVP from "${RSVP_LABELS[saved]}" to "${RSVP_LABELS[draft.status]}"?`, () => saveRsvp(rid), 'Yes, change it', 'Change RSVP');
+        const d = ensureRsvpDraft(rid);
+        if(saved === next && d.status === next){ /* already selected */ }
+        else if(saved && saved !== next){
+          confirmAction(`Change your RSVP from "${RSVP_LABELS[saved]}" to "${RSVP_LABELS[next]}"?`, () => { d.status = next; saveRsvp(rid); }, 'Yes, change it', 'Change RSVP');
         }else{
+          d.status = next;
           saveRsvp(rid);
         }
+      }
+      if(rsvpSave) saveRsvp(rsvpSave.dataset.id);
       }
       if(rsvpClr) confirmAction('Remove your RSVP?', () => clearRsvp(rsvpClr.dataset.id), 'Yes, remove it');
       const edit = e.target.closest('.edit-announce');
