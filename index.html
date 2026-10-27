@@ -880,6 +880,7 @@
             <option value="none">No food sign-up</option>
             <option value="box">Open box &mdash; people type what they're bringing</option>
             <option value="list">Sign-up list &mdash; I list the items, people pick</option>
+            <option value="both">Both &mdash; pick from my list or type their own</option>
           </select>
         </div>
       </div>
@@ -942,7 +943,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:17 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 10:19 AM CT</span></footer>
 
 </div>
 </div>
@@ -2372,6 +2373,7 @@
     if(!rsvpDraft[id]) rsvpDraft[id] = myRsvpBase(id);
     return rsvpDraft[id];
   }
+  function hasFoodList(a){ const m = foodModeOf(a); return m === 'list' || m === 'both'; }
   function foodModeOf(a){ return a.foodMode || (a.foodEnabled ? 'box' : 'none'); }
   function foodListHtml(a, d, past, all, uid){
     const items = a.foodItems || [];
@@ -2406,22 +2408,22 @@
     const rows = [...all].sort((x, y) => (order[x.status] - order[y.status]) || (x.name || '').localeCompare(y.name || '')).map(r => `
       <div class="rsvp-row"><strong>${escapeHtml(r.name || 'Someone')}</strong><span class="rsvp-state">${RSVP_LABELS[r.status] || ''}</span>
         ${(r.note && a.foodEnabled) ? `<span class="rsvp-food">${escapeHtml(r.note)}</span>` : ''}
-        ${(foodModeOf(a) === 'list' && r.status !== 'no' && (r.items || []).length) ? `<span class="rsvp-food">Bringing: ${escapeHtml((r.items || []).map(id => { const it = (a.foodItems || []).find(x => x.id === id); return it ? it.label : ''; }).filter(Boolean).join(', '))}</span>` : ''}</div>`).join('');
+        ${(hasFoodList(a) && r.status !== 'no' && (r.items || []).length) ? `<span class="rsvp-food">Bringing: ${escapeHtml((r.items || []).map(id => { const it = (a.foodItems || []).find(x => x.id === id); return it ? it.label : ''; }).filter(Boolean).join(', '))}</span>` : ''}</div>`).join('');
     const form = past ? '' : `
       <div class="rsvp-btns">
         ${['yes', 'maybe', 'no'].map(k => `<button type="button" class="rsvp-btn ${d.status === k ? 'active' : ''}" data-id="${a.id}" data-status="${k}">${RSVP_LABELS[k]}</button>`).join('')}
       </div>
       ${a.foodEnabled && d.status && d.status !== 'no' ? `
       <div class="rsvp-fields">
-        <div><label>Bringing food or drinks to share? (optional)</label>
+        <div><label>Bringing something else, or food or drinks to share? (optional)</label>
           <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(d.note)}</textarea></div>
       </div>` : ''}
-      ${foodModeOf(a) === 'list' ? foodListHtml(a, d, false, all, uid) : ''}
+      ${hasFoodList(a) ? foodListHtml(a, d, false, all, uid) : ''}
       ${d.status ? `<div style="display:flex; gap:16px; margin-top:10px;"><button type="button" class="submit-btn rsvp-save" data-id="${a.id}">Save RSVP</button>${hasMine ? `<button type="button" class="link-btn rsvp-clear" data-id="${a.id}">Remove my RSVP</button>` : ''}</div>` : ''}`;
     return `<div class="rsvp-box" data-id="${a.id}">
       <div class="rsvp-count"><strong>${heads}</strong> ${past ? 'came' : 'coming'}${maybes ? ` &middot; ${maybes} maybe` : ''}</div>
       ${form}
-      ${past && foodModeOf(a) === 'list' ? foodListHtml(a, d, true, all, uid) : ''}
+      ${past && hasFoodList(a) ? foodListHtml(a, d, true, all, uid) : ''}
       ${rows ? `<div class="rsvp-list">${rows}</div>` : ''}
     </div>`;
   }
@@ -2434,7 +2436,7 @@
     const ann = announcements.find(x => x.id === id) || {};
     let items = [];
     let droppedItems = false;
-    if(foodModeOf(ann) === 'list' && d.status !== 'no'){
+    if(hasFoodList(ann) && d.status !== 'no'){
       const taken = new Set((rsvpData[id] || []).filter(r => r.uid !== uid && r.status !== 'no').flatMap(r => r.items || []));
       const valid = new Set((ann.foodItems || []).map(x => x.id));
       (d.items || []).forEach(x => { if(valid.has(x)){ if(taken.has(x)) droppedItems = true; else items.push(x); } });
@@ -2535,7 +2537,7 @@
   function syncFoodForm(){
     const rsvpOn = document.getElementById('anRsvp').checked;
     document.getElementById('anFoodWrap').style.display = rsvpOn ? 'flex' : 'none';
-    document.getElementById('anFoodItemsWrap').style.display = (rsvpOn && document.getElementById('anFoodMode').value === 'list') ? 'flex' : 'none';
+    document.getElementById('anFoodItemsWrap').style.display = (rsvpOn && ['list', 'both'].includes(document.getElementById('anFoodMode').value)) ? 'flex' : 'none';
   }
 
   function resetAnnouncementForm(){
@@ -2568,8 +2570,8 @@
     if(document.getElementById('anRsvp').checked){
       const mode = document.getElementById('anFoodMode').value;
       data.foodMode = mode;
-      data.foodEnabled = mode === 'box';
-      if(mode === 'list'){
+      data.foodEnabled = mode === 'box' || mode === 'both';
+      if(mode === 'list' || mode === 'both'){
         const old = ((announcements.find(x => x.id === editingAnnouncementId) || {}).foodItems) || [];
         const used = new Set();
         const labels = document.getElementById('anFoodItems').value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 40);
@@ -2578,7 +2580,7 @@
           if(hit){ used.add(hit.id); return { id: hit.id, label }; }
           return { id: 'i' + Date.now().toString(36) + i, label };
         });
-        if(!data.foodItems.length){ data.foodMode = 'none'; }
+        if(!data.foodItems.length){ data.foodMode = mode === 'both' ? 'box' : 'none'; }
       }
     }
     try{
