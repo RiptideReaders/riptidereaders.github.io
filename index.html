@@ -291,6 +291,10 @@
   .food-item{ display:flex; align-items:center; gap:10px; padding:5px 0; font-size:0.95rem; color:var(--sand); }
   div.food-item{ padding-left:28px; }
   .food-list textarea{ width:100%; background:var(--bg, #0B2027); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.9rem; padding:8px 10px; border-radius:3px; min-height:48px; resize:vertical; }
+  .food-row{ display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; padding:12px 0; border-bottom:1px solid var(--line); }
+  .food-row .fr-label{ flex:1 1 100%; }
+  .food-row label.opt{ display:flex; align-items:center; gap:6px; font-size:0.85rem; color:var(--sand-dim); cursor:pointer; }
+  .food-row input[type=checkbox]{ width:18px; height:18px; padding:0; accent-color:var(--accent); flex:none; }
   .food-note{ padding:0 0 6px 28px; }
   .food-note input{ width:100%; background:var(--bg, #0B2027); border:1px solid var(--line-strong); color:var(--sand); font-family:'Work Sans',sans-serif; font-size:0.9rem; padding:6px 10px; border-radius:3px; }
   .food-item input{ width:18px; height:18px; accent-color:var(--accent); flex:none; }
@@ -934,9 +938,9 @@
       </div>
       <div class="field-row" id="anFoodItemsWrap" style="display:none;">
         <div class="field">
-          <label for="anFoodItems">Items to sign up for (one per line)</label>
-          <textarea id="anFoodItems" placeholder="Coffee&#10;Bagels&#10;Fruit [several] [note]"></textarea>
-          <p style="color:var(--sand-dim); font-size:0.82rem; line-height:1.5; margin-top:4px;">Optional tags at the end of a line: <strong>[note]</strong> asks the person for details (what kind, how much). <strong>[several]</strong> lets more than one person sign up. Lines with no tag are one person, no note, like "Bagels".</p>
+          <label>Items to sign up for</label>
+          <div id="anFoodRows"></div>
+          <div style="margin-top:10px;"><button type="button" class="comment-btn" id="anAddFoodRow">+ Add item</button></div>
         </div>
       </div>
       <div style="display:flex; gap:16px; align-items:center; margin-top:14px;">
@@ -992,7 +996,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 3:56 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 3:59 PM CT</span></footer>
 
 </div>
 </div>
@@ -2439,18 +2443,27 @@
     if(!rsvpDraft[id]) rsvpDraft[id] = myRsvpBase(id);
     return rsvpDraft[id];
   }
-  function parseFoodLine(line){
-    let note = false, multi = false;
-    const label = line.replace(/\[([^\]]*)\]/g, (m, inner) => {
-      inner.toLowerCase().split(/[\s,]+/).forEach(w => {
-        if(w === 'note' || w === 'notes' || w === 'details') note = true;
-        if(w === 'several' || w === 'multiple' || w === 'many') multi = true;
-      });
-      return '';
-    }).replace(/\s+/g, ' ').trim();
-    return { label, note, multi };
+  // Item builder in the announcement form: one row per item with "several" and "note" choices.
+  let anFoodRows = [];
+  function renderFoodRows(focusLast){
+    const box = document.getElementById('anFoodRows');
+    box.innerHTML = anFoodRows.map((r, i) => `
+      <div class="food-row" data-i="${i}">
+        <input type="text" class="fr-label" maxlength="80" placeholder="Item, like Bagels" value="${escapeHtml(r.label)}">
+        <label class="opt"><input type="checkbox" class="fr-multi" ${r.multi ? 'checked' : ''}> Several can sign up</label>
+        <label class="opt"><input type="checkbox" class="fr-note" ${r.note ? 'checked' : ''}> Ask for a note</label>
+        <button type="button" class="link-btn fr-remove" style="margin-left:auto;">Remove</button>
+      </div>`).join('');
+    if(focusLast){
+      const inputs = box.querySelectorAll('.fr-label');
+      if(inputs.length) inputs[inputs.length - 1].focus();
+    }
   }
-  function foodLineText(it){ return it.label + (it.multi ? ' [several]' : '') + (it.note ? ' [note]' : ''); }
+  function setFoodRows(items){
+    anFoodRows = (items || []).map(it => ({ id: it.id || null, label: it.label || '', note: !!it.note, multi: !!it.multi }));
+    if(!anFoodRows.length) anFoodRows = [{ id: null, label: '', note: false, multi: false }];
+    renderFoodRows(false);
+  }
   function hasFoodList(a){ const m = foodModeOf(a); return m === 'list' || m === 'both'; }
   function foodModeOf(a){ return a.foodMode || (a.foodEnabled ? 'box' : 'none'); }
   function foodListHtml(a, d, past, all, uid){
@@ -2746,7 +2759,7 @@
     document.getElementById('anHome').checked = true;
     document.getElementById('anRsvp').checked = false;
     document.getElementById('anFoodMode').value = 'none';
-    document.getElementById('anFoodItems').value = '';
+    setFoodRows([]);
     document.getElementById('anBoxLabel').value = '';
     document.getElementById('anListLabel').value = '';
     syncFoodForm();
@@ -2779,14 +2792,11 @@
       data.listLabel = document.getElementById('anListLabel').value.trim().slice(0, 80);
       data.foodEnabled = mode === 'box' || mode === 'both';
       if(mode === 'list' || mode === 'both'){
-        const old = ((announcements.find(x => x.id === editingAnnouncementId) || {}).foodItems) || [];
-        const used = new Set();
-        const parsed = document.getElementById('anFoodItems').value.split('\n').map(x => x.trim()).filter(Boolean).map(parseFoodLine).filter(x => x.label).slice(0, 40);
-        data.foodItems = parsed.map((it, i) => {
-          const hit = old.find(o => o.label === it.label && !used.has(o.id));
-          if(hit){ used.add(hit.id); return { id: hit.id, label: it.label, note: it.note, multi: it.multi }; }
-          return { id: 'i' + Date.now().toString(36) + i, label: it.label, note: it.note, multi: it.multi };
-        });
+        let n = 0;
+        data.foodItems = anFoodRows
+          .filter(r => r.label.trim())
+          .slice(0, 40)
+          .map(r => ({ id: r.id || ('i' + Date.now().toString(36) + (n++)), label: r.label.trim(), note: !!r.note, multi: !!r.multi }));
         if(!data.foodItems.length){ data.foodMode = mode === 'both' ? 'box' : 'none'; }
       }
     }
@@ -2831,7 +2841,7 @@
     document.getElementById('anHome').checked = a.showOnHome !== false;
     document.getElementById('anRsvp').checked = !!a.rsvpEnabled;
     document.getElementById('anFoodMode').value = foodModeOf(a);
-    document.getElementById('anFoodItems').value = (a.foodItems || []).map(foodLineText).join('\n');
+    setFoodRows(a.foodItems || []);
     document.getElementById('anBoxLabel').value = a.foodLabel || '';
     document.getElementById('anListLabel').value = a.listLabel || '';
     syncFoodForm();
@@ -3729,6 +3739,29 @@
       resetAnnouncementForm();
       setAnnouncementFormOpen(true);
       document.getElementById('announceFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    const foodRowsEl = document.getElementById('anFoodRows');
+    foodRowsEl.addEventListener('input', (e) => {
+      const row = e.target.closest('.food-row');
+      if(row && e.target.classList.contains('fr-label')) anFoodRows[+row.dataset.i].label = e.target.value;
+    });
+    foodRowsEl.addEventListener('change', (e) => {
+      const row = e.target.closest('.food-row');
+      if(!row) return;
+      const r = anFoodRows[+row.dataset.i];
+      if(e.target.classList.contains('fr-multi')) r.multi = e.target.checked;
+      if(e.target.classList.contains('fr-note')) r.note = e.target.checked;
+    });
+    foodRowsEl.addEventListener('click', (e) => {
+      const rm = e.target.closest('.fr-remove');
+      if(!rm) return;
+      anFoodRows.splice(+rm.closest('.food-row').dataset.i, 1);
+      if(!anFoodRows.length) anFoodRows.push({ id: null, label: '', note: false, multi: false });
+      renderFoodRows(false);
+    });
+    document.getElementById('anAddFoodRow').addEventListener('click', () => {
+      anFoodRows.push({ id: null, label: '', note: false, multi: false });
+      renderFoodRows(true);
     });
     document.getElementById('anRsvp').addEventListener('change', syncFoodForm);
     document.getElementById('anFoodMode').addEventListener('change', syncFoodForm);
