@@ -3600,7 +3600,6 @@
         }
       }
       if(rsvpSave) saveRsvp(rsvpSave.dataset.id);
-      }
       if(rsvpClr) confirmAction('Remove your RSVP?', () => clearRsvp(rsvpClr.dataset.id), 'Yes, remove it');
       const edit = e.target.closest('.edit-announce');
       const rem = e.target.closest('.remove-announce');
