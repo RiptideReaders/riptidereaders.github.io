@@ -1014,9 +1014,23 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 28, 2026, 7:56 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 28, 2026, 8:01 AM CT</span></footer>
 
 </div>
+</div>
+
+<div class="overlay" id="cropOverlay" style="display:none; background:rgba(11,32,39,0.95);">
+  <div class="overlay-card" style="background:var(--panel); padding:24px; border-radius:6px; border:1px solid var(--line-strong); text-align:center;">
+    <h1 style="font-size:1.3rem;">Center your photo</h1>
+    <p style="margin-top:6px; color:var(--sand-dim); font-size:0.9rem;">Drag to move it, and use the slider to zoom.</p>
+    <canvas id="cropCanvas" width="260" height="260" style="width:260px; height:260px; border-radius:50%; margin:16px auto 8px; display:block; touch-action:none; cursor:grab; background:#0B2027; border:2px solid var(--accent);"></canvas>
+    <input type="range" id="cropZoom" min="1" max="3" step="0.01" value="1" style="width:240px; accent-color:var(--accent);">
+    <div class="overlay-error" id="cropMsg"></div>
+    <div style="display:flex; gap:16px; align-items:center; justify-content:center; margin-top:14px;">
+      <button class="submit-btn" id="cropSave" type="button">Save photo</button>
+      <button class="link-btn" id="cropCancel" type="button">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1825,20 +1839,92 @@
     document.getElementById('accPhotoMsg').textContent = '';
   }
   document.getElementById('accPhotoBtn').addEventListener('click', () => document.getElementById('accPhotoFile').click());
-  document.getElementById('accPhotoFile').addEventListener('change', async (e) => {
+  // ---- Crop editor: drag to center your face, slider to zoom, then save a 240px square ----
+  const crop = { img: null, z: 1, ox: 0, oy: 0, drag: null };
+  const CROP_VIEW = 260;
+  function cropBase(){ return CROP_VIEW / Math.min(crop.img.naturalWidth, crop.img.naturalHeight); }
+  function cropClamp(){
+    const sc = cropBase() * crop.z;
+    const maxX = Math.max(0, (crop.img.naturalWidth * sc - CROP_VIEW) / 2);
+    const maxY = Math.max(0, (crop.img.naturalHeight * sc - CROP_VIEW) / 2);
+    crop.ox = Math.min(maxX, Math.max(-maxX, crop.ox));
+    crop.oy = Math.min(maxY, Math.max(-maxY, crop.oy));
+  }
+  function cropDraw(ctx, size){
+    const k = size / CROP_VIEW;
+    const sc = cropBase() * crop.z * k;
+    const w = crop.img.naturalWidth * sc, h = crop.img.naturalHeight * sc;
+    ctx.fillStyle = '#0B2027';
+    ctx.fillRect(0, 0, size, size);
+    ctx.drawImage(crop.img, size / 2 - w / 2 + crop.ox * k, size / 2 - h / 2 + crop.oy * k, w, h);
+  }
+  function cropRender(){
+    cropClamp();
+    cropDraw(document.getElementById('cropCanvas').getContext('2d'), CROP_VIEW);
+  }
+  function closeCrop(){
+    document.getElementById('cropOverlay').style.display = 'none';
+    if(crop.img && crop.img.src.startsWith('blob:')) URL.revokeObjectURL(crop.img.src);
+    crop.img = null;
+  }
+  document.getElementById('accPhotoFile').addEventListener('change', (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
     if(!file || !auth.currentUser) return;
     const msg = document.getElementById('accPhotoMsg');
     msg.textContent = '';
+    const img = new Image();
+    img.onload = () => {
+      crop.img = img; crop.z = 1; crop.ox = 0; crop.oy = 0;
+      document.getElementById('cropZoom').value = 1;
+      document.getElementById('cropMsg').textContent = '';
+      document.getElementById('cropOverlay').style.display = 'flex';
+      cropRender();
+    };
+    img.onerror = () => { msg.textContent = "Couldn't use that photo — try a different one."; };
+    img.src = URL.createObjectURL(file);
+  });
+  const cropCanvas = document.getElementById('cropCanvas');
+  cropCanvas.addEventListener('pointerdown', (e) => {
+    if(!crop.img) return;
+    crop.drag = { x: e.clientX, y: e.clientY, ox: crop.ox, oy: crop.oy };
+    cropCanvas.setPointerCapture(e.pointerId);
+    cropCanvas.style.cursor = 'grabbing';
+  });
+  cropCanvas.addEventListener('pointermove', (e) => {
+    if(!crop.drag) return;
+    const rect = cropCanvas.getBoundingClientRect();
+    const k = CROP_VIEW / rect.width;
+    crop.ox = crop.drag.ox + (e.clientX - crop.drag.x) * k;
+    crop.oy = crop.drag.oy + (e.clientY - crop.drag.y) * k;
+    cropRender();
+  });
+  const endDrag = () => { crop.drag = null; cropCanvas.style.cursor = 'grab'; };
+  cropCanvas.addEventListener('pointerup', endDrag);
+  cropCanvas.addEventListener('pointercancel', endDrag);
+  document.getElementById('cropZoom').addEventListener('input', (e) => {
+    if(!crop.img) return;
+    crop.z = parseFloat(e.target.value);
+    cropRender();
+  });
+  document.getElementById('cropCancel').addEventListener('click', closeCrop);
+  document.getElementById('cropSave').addEventListener('click', async () => {
+    if(!crop.img || !auth.currentUser) return;
+    const btn = document.getElementById('cropSave');
+    btn.disabled = true;
     try{
-      const dataUrl = await photoToDataUrl(file, 200);
+      const out = document.createElement('canvas');
+      out.width = 240; out.height = 240;
+      cropDraw(out.getContext('2d'), 240);
+      const dataUrl = out.toDataURL('image/jpeg', 0.85);
       await db.collection('members').doc(auth.currentUser.uid).update({ photo: dataUrl });
+      closeCrop();
       showSavedPopup('Photo saved');
       setTimeout(refreshAccPhoto, 300);
     }catch(err){
-      msg.textContent = "Couldn't use that photo — try a different one.";
+      document.getElementById('cropMsg').textContent = "Couldn't save — try again.";
     }
+    btn.disabled = false;
   });
   document.getElementById('accPhotoRemove').addEventListener('click', async () => {
     if(!auth.currentUser) return;
