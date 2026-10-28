@@ -998,7 +998,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 4:08 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 27, 2026, 9:57 PM CT</span></footer>
 
 </div>
 </div>
@@ -2530,6 +2530,9 @@
     const heads = going.reduce((n, r) => n + 1 + (r.guests || 0), 0);
     const maybes = all.filter(r => r.status === 'maybe').reduce((n, r) => n + 1 + (r.guests || 0), 0);
     const uid = auth.currentUser ? auth.currentUser.uid : null;
+    const cantCount = all.filter(r => r.status === 'no').length;
+    const answered = new Set(all.map(r => r.uid));
+    const noReply = members.filter(m => !answered.has(m.id)).length;
     const d = rsvpDraft[a.id] || myRsvpBase(a.id);
     const hasMine = all.some(r => r.uid === uid);
     const order = { yes: 0, maybe: 1, no: 2 };
@@ -2549,7 +2552,7 @@
       </div>` : ''}
       ${d.status ? `<div style="display:flex; gap:16px; margin-top:10px;">${hasMine ? `<button type="button" class="link-btn rsvp-clear" data-id="${a.id}">Remove my RSVP</button>` : ''}</div>` : ''}`;
     return `<div class="rsvp-box" data-id="${a.id}">
-      <div class="rsvp-count"><strong>${heads}</strong> ${past ? 'came' : 'coming'}${maybes ? ` &middot; ${maybes} maybe` : ''}</div>
+      <div class="rsvp-count"><strong>${heads}</strong> ${past ? 'came' : 'coming'}${maybes ? ` &middot; ${maybes} maybe` : ''}${cantCount ? ` &middot; ${cantCount} can't make it` : ''}${(!past && noReply) ? ` &middot; ${noReply} haven't responded` : ''}</div>
       ${form}
       ${rows ? `<div class="rsvp-list">${rows}</div>` : ''}
     </div>`;
