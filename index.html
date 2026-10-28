@@ -505,9 +505,10 @@
 
     <div style="display:flex; align-items:center; gap:16px; margin-top:20px;">
       <div id="accPhotoPreview"></div>
-      <div>
+      <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px;">
         <button class="comment-btn" id="accPhotoBtn" type="button">Add a photo</button>
-        <button class="link-btn" id="accPhotoRemove" type="button" style="display:none; margin-left:10px;">Remove</button>
+        <button class="link-btn" id="accPhotoEdit" type="button" style="display:none;">Edit</button>
+        <button class="link-btn" id="accPhotoRemove" type="button" style="display:none;">Remove</button>
       </div>
       <input type="file" id="accPhotoFile" accept="image/*" style="display:none;">
     </div>
@@ -1014,7 +1015,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 28, 2026, 8:01 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 28, 2026, 8:09 AM CT</span></footer>
 
 </div>
 </div>
@@ -1023,6 +1024,7 @@
   <div class="overlay-card" style="background:var(--panel); padding:24px; border-radius:6px; border:1px solid var(--line-strong); text-align:center;">
     <h1 style="font-size:1.3rem;">Center your photo</h1>
     <p style="margin-top:6px; color:var(--sand-dim); font-size:0.9rem;">Drag to move it, and use the slider to zoom.</p>
+    <p id="cropNote" style="margin-top:4px; color:var(--sand-dim); font-size:0.82rem;"></p>
     <canvas id="cropCanvas" width="260" height="260" style="width:260px; height:260px; border-radius:50%; margin:16px auto 8px; display:block; touch-action:none; cursor:grab; background:#0B2027; border:2px solid var(--accent);"></canvas>
     <input type="range" id="cropZoom" min="1" max="3" step="0.01" value="1" style="width:240px; accent-color:var(--accent);">
     <div class="overlay-error" id="cropMsg"></div>
@@ -1836,11 +1838,28 @@
     const has = !!photoOf(own);
     document.getElementById('accPhotoBtn').textContent = has ? 'Change photo' : 'Add a photo';
     document.getElementById('accPhotoRemove').style.display = has ? 'inline' : 'none';
+    document.getElementById('accPhotoEdit').style.display = has ? 'inline' : 'none';
     document.getElementById('accPhotoMsg').textContent = '';
   }
   document.getElementById('accPhotoBtn').addEventListener('click', () => document.getElementById('accPhotoFile').click());
   // ---- Crop editor: drag to center your face, slider to zoom, then save a 240px square ----
-  const crop = { img: null, z: 1, ox: 0, oy: 0, drag: null };
+  const crop = { img: null, z: 1, ox: 0, oy: 0, drag: null, srcData: null, storeSource: false };
+  const photoSrcKey = () => 'rr_photo_src_' + (auth.currentUser ? auth.currentUser.uid : '');
+  function downscaleToDataUrl(img, max){
+    const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.8);
+  }
+  function openCrop(img, note){
+    crop.img = img; crop.z = 1; crop.ox = 0; crop.oy = 0;
+    document.getElementById('cropZoom').value = 1;
+    document.getElementById('cropMsg').textContent = '';
+    document.getElementById('cropNote').textContent = note || '';
+    document.getElementById('cropOverlay').style.display = 'flex';
+    cropRender();
+  }
   const CROP_VIEW = 260;
   function cropBase(){ return CROP_VIEW / Math.min(crop.img.naturalWidth, crop.img.naturalHeight); }
   function cropClamp(){
@@ -1875,11 +1894,9 @@
     msg.textContent = '';
     const img = new Image();
     img.onload = () => {
-      crop.img = img; crop.z = 1; crop.ox = 0; crop.oy = 0;
-      document.getElementById('cropZoom').value = 1;
-      document.getElementById('cropMsg').textContent = '';
-      document.getElementById('cropOverlay').style.display = 'flex';
-      cropRender();
+      try{ crop.srcData = downscaleToDataUrl(img, 800); }catch(_){ crop.srcData = null; }
+      crop.storeSource = true;
+      openCrop(img, '');
     };
     img.onerror = () => { msg.textContent = "Couldn't use that photo — try a different one."; };
     img.src = URL.createObjectURL(file);
@@ -1918,6 +1935,7 @@
       cropDraw(out.getContext('2d'), 240);
       const dataUrl = out.toDataURL('image/jpeg', 0.85);
       await db.collection('members').doc(auth.currentUser.uid).update({ photo: dataUrl });
+      if(crop.storeSource && crop.srcData){ try{ localStorage.setItem(photoSrcKey(), crop.srcData); }catch(_){} }
       closeCrop();
       showSavedPopup('Photo saved');
       setTimeout(refreshAccPhoto, 300);
@@ -1926,10 +1944,26 @@
     }
     btn.disabled = false;
   });
+  document.getElementById('accPhotoEdit').addEventListener('click', () => {
+    if(!auth.currentUser) return;
+    let src = null;
+    try{ src = localStorage.getItem(photoSrcKey()); }catch(_){}
+    const fromOriginal = !!src;
+    if(!src) src = photoOf(members.find(m => m.id === auth.currentUser.uid));
+    if(!src) return;
+    const img = new Image();
+    img.onload = () => {
+      crop.srcData = null; crop.storeSource = false;
+      openCrop(img, fromOriginal ? '' : "The original isn't saved on this device, so you can zoom in and move your saved photo. To start over, tap Change photo.");
+    };
+    img.onerror = () => { document.getElementById('accPhotoMsg').textContent = "Couldn't open the photo — try Change photo."; };
+    img.src = src;
+  });
   document.getElementById('accPhotoRemove').addEventListener('click', async () => {
     if(!auth.currentUser) return;
     try{
       await db.collection('members').doc(auth.currentUser.uid).update({ photo: '' });
+      try{ localStorage.removeItem(photoSrcKey()); }catch(_){}
       showSavedPopup('Photo removed');
       setTimeout(refreshAccPhoto, 300);
     }catch(err){ document.getElementById('accPhotoMsg').textContent = "Couldn't remove — try again."; }
