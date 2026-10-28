@@ -119,7 +119,7 @@
     width:36px; height:36px; border-radius:50%; flex:0 0 auto;
     background:var(--panel-2); border:1px solid var(--line-strong); color:var(--sand);
     font-family:'Bitter',serif; font-weight:700; font-size:0.95rem;
-    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden; padding:0;
   }
   .account-btn:hover{ border-color:var(--accent); color:var(--accent); }
   .account-dropdown{
@@ -318,6 +318,7 @@
   .thoughts-list{ margin-top:14px; }
   .thought-item{ padding:10px 0; border-top:1px solid var(--line); font-size:0.9rem; color:var(--sand); }
   .thought-head{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .thought-head .avatar{ margin-right:0; }
   .early-review{ margin-top:10px; border-top:1px solid var(--line); padding-top:8px; }
   .early-review summary{ cursor:pointer; color:var(--accent); font-size:0.88rem; }
   .early-note{ font-size:0.8rem; color:var(--sand-dim); margin:6px 0 2px; }
@@ -392,6 +393,10 @@
   .rec-body .meta{ margin-top:8px; font-size:0.8rem; color:var(--sand-dim); }
   .rec-body .meta button{ margin-left:12px; }
 
+  .avatar{ border-radius:50%; object-fit:cover; display:inline-block; vertical-align:middle; margin-right:8px; flex:none; }
+  .avatar-ph{ display:inline-flex; align-items:center; justify-content:center; color:var(--sand); font-weight:600; background:var(--panel-2); border:1px solid var(--line-strong); box-sizing:border-box; }
+  .member-who{ display:flex; align-items:center; gap:12px; }
+  .member-who .avatar{ margin-right:0; }
   .member-row{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding:16px 0; border-bottom:1px solid var(--line); }
   .member-row:last-of-type{ border-bottom:none; }
   .member-row h3{ font-size:1.05rem; }
@@ -497,6 +502,17 @@
   <div class="overlay-card" style="background:var(--panel); padding:28px; border-radius:6px; border:1px solid var(--line-strong);">
     <button class="text-btn" id="accountClose" style="position:absolute; top:16px; right:16px; font-size:1.3rem; text-decoration:none;">&times;</button>
     <h1 style="font-size:1.4rem;">Account settings</h1>
+
+    <div style="display:flex; align-items:center; gap:16px; margin-top:20px;">
+      <div id="accPhotoPreview"></div>
+      <div>
+        <button class="comment-btn" id="accPhotoBtn" type="button">Add a photo</button>
+        <button class="link-btn" id="accPhotoRemove" type="button" style="display:none; margin-left:10px;">Remove</button>
+      </div>
+      <input type="file" id="accPhotoFile" accept="image/*" style="display:none;">
+    </div>
+    <p style="color:var(--sand-dim); font-size:0.82rem; margin-top:6px;">Optional. Only signed-in club members can see it.</p>
+    <div class="overlay-error" id="accPhotoMsg"></div>
 
     <p style="margin-top:20px; font-weight:600; color:var(--sand);">Your info</p>
     <p style="color:var(--sand-dim); font-size:0.9rem; margin-top:4px;">Signed in as <span id="accEmailDisplay" style="color:var(--sand);"></span></p>
@@ -998,7 +1014,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 28, 2026, 7:52 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 28, 2026, 7:56 AM CT</span></footer>
 
 </div>
 </div>
@@ -1282,7 +1298,7 @@
     const pencil = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
     const items = everyone.map(p => `
       <div class="thought-item" data-id="${entry.id}">
-        <div class="thought-head"><strong>${escapeHtml(p.name)}</strong>${p.rating ? `<span class="thought-stars">${starsText(p.rating)}</span>` : ''}${p.mine ? `<button type="button" class="edit-review" data-id="${entry.id}" aria-label="Edit your review" title="Edit your review">${pencil}</button>` : ''}</div>
+        <div class="thought-head">${avatarHtml(p.uid, 28)}<strong>${escapeHtml(p.name)}</strong>${p.rating ? `<span class="thought-stars">${starsText(p.rating)}</span>` : ''}${p.mine ? `<button type="button" class="edit-review" data-id="${entry.id}" aria-label="Edit your review" title="Edit your review">${pencil}</button>` : ''}</div>
         ${p.review ? `<div class="thought-text">${escapeHtml(p.review)}</div>` : (p.mine ? '<div class="thought-text thought-empty">Tap the pencil to add a comment.</div>' : '')}
         ${p.mine ? `<div class="review-editor" hidden>
           <textarea class="review-input" data-id="${entry.id}" placeholder="What did you think?">${escapeHtml(p.review)}</textarea>
@@ -1297,6 +1313,49 @@
           ${items || '<div class="thought-empty">No ratings or comments yet.</div>'}
         </div>
       </div>`;
+  }
+
+  // ---- Profile photos: a small square JPEG kept on each member's record ----
+  const PHOTO_OK = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/;
+  function photoOf(m){ return (m && typeof m.photo === 'string' && PHOTO_OK.test(m.photo)) ? m.photo : ''; }
+  function avatarHtml(uid, size){
+    const m = members.find(mm => mm.id === uid);
+    const ph = photoOf(m);
+    const st = `width:${size}px;height:${size}px;`;
+    if(ph) return `<img class="avatar" style="${st}" src="${ph}" alt="">`;
+    const initial = ((m && m.name) || '?').trim().charAt(0).toUpperCase() || '?';
+    return `<span class="avatar avatar-ph" style="${st}font-size:${Math.round(size * 0.46)}px;" aria-hidden="true">${escapeHtml(initial)}</span>`;
+  }
+  function photoToDataUrl(file, size){
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try{
+          const side = Math.min(img.naturalWidth, img.naturalHeight);
+          const sx = (img.naturalWidth - side) / 2;
+          const sy = (img.naturalHeight - side) / 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = size; canvas.height = size;
+          canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, size, size);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        }catch(e){ reject(e); }
+        finally{ URL.revokeObjectURL(url); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+      img.src = url;
+    });
+  }
+  function updateAccountAvatar(){
+    const own = auth.currentUser ? members.find(m => m.id === auth.currentUser.uid) : null;
+    const ph = photoOf(own);
+    if(ph){
+      accountAvatar.textContent = '';
+      accountAvatar.style.cssText = `display:block;width:100%;height:100%;border-radius:50%;background:url(${ph}) center/cover no-repeat;`;
+    }else{
+      accountAvatar.style.cssText = '';
+      accountAvatar.textContent = ((auth.currentUser && auth.currentUser.displayName) || '?').trim().charAt(0).toUpperCase() || '?';
+    }
   }
 
   function escapeHtml(str){
@@ -1753,7 +1812,41 @@
     document.getElementById('accNewPass2').value = '';
     document.getElementById('accError').textContent = '';
     document.getElementById('accSuccess').textContent = '';
+    refreshAccPhoto();
     accountOverlay.style.display = 'flex';
+  });
+  function refreshAccPhoto(){
+    const uid = auth.currentUser ? auth.currentUser.uid : null;
+    const own = members.find(m => m.id === uid);
+    document.getElementById('accPhotoPreview').innerHTML = avatarHtml(uid, 64);
+    const has = !!photoOf(own);
+    document.getElementById('accPhotoBtn').textContent = has ? 'Change photo' : 'Add a photo';
+    document.getElementById('accPhotoRemove').style.display = has ? 'inline' : 'none';
+    document.getElementById('accPhotoMsg').textContent = '';
+  }
+  document.getElementById('accPhotoBtn').addEventListener('click', () => document.getElementById('accPhotoFile').click());
+  document.getElementById('accPhotoFile').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(!file || !auth.currentUser) return;
+    const msg = document.getElementById('accPhotoMsg');
+    msg.textContent = '';
+    try{
+      const dataUrl = await photoToDataUrl(file, 200);
+      await db.collection('members').doc(auth.currentUser.uid).update({ photo: dataUrl });
+      showSavedPopup('Photo saved');
+      setTimeout(refreshAccPhoto, 300);
+    }catch(err){
+      msg.textContent = "Couldn't use that photo — try a different one.";
+    }
+  });
+  document.getElementById('accPhotoRemove').addEventListener('click', async () => {
+    if(!auth.currentUser) return;
+    try{
+      await db.collection('members').doc(auth.currentUser.uid).update({ photo: '' });
+      showSavedPopup('Photo removed');
+      setTimeout(refreshAccPhoto, 300);
+    }catch(err){ document.getElementById('accPhotoMsg').textContent = "Couldn't remove — try again."; }
   });
   document.getElementById('accountClose').addEventListener('click', () => { accountOverlay.style.display = 'none'; });
 
@@ -2541,7 +2634,7 @@
     const hasMine = all.some(r => r.uid === uid);
     const order = { yes: 0, maybe: 1, no: 2 };
     const rows = [...all].sort((x, y) => (order[x.status] - order[y.status]) || (x.name || '').localeCompare(y.name || '')).map(r => `
-      <div class="rsvp-row"><strong>${escapeHtml(r.name || 'Someone')}</strong><span class="rsvp-state">${RSVP_LABELS[r.status] || ''}</span>
+      <div class="rsvp-row">${avatarHtml(r.uid, 28)}<strong>${escapeHtml(r.name || 'Someone')}</strong><span class="rsvp-state">${RSVP_LABELS[r.status] || ''}</span>
         ${r.comment ? `<span class="rsvp-food">Comment: ${escapeHtml(r.comment)}</span>` : ''}
         ${(r.note && a.foodEnabled) ? `<span class="rsvp-food">${escapeHtml(r.note)}</span>` : ''}
         ${bringingText(a, r) ? `<span class="rsvp-food">Bringing: ${escapeHtml(bringingText(a, r))}</span>` : ''}</div>`).join('');
@@ -3123,6 +3216,8 @@
       const showsGoesBy = showFullMemberInfo && fullName !== m.name;
       return `
       <div class="member-row" data-id="${m.id}">
+        <div class="member-who">
+        ${avatarHtml(m.id, 48)}
         <div>
           <h3>${escapeHtml(displayLine)}${badge}</h3>
           ${showsGoesBy ? `<div class="contact" style="margin-top:2px;"><span>Display name: ${escapeHtml(m.name)}</span></div>` : ''}
@@ -3130,6 +3225,8 @@
             ${(showFullMemberInfo && m.email) ? `<span>${escapeHtml(m.email)}</span>` : ''}
             ${(showFullMemberInfo && m.phone) ? `<span>${escapeHtml(m.phone)}</span>` : ''}
           </div>
+          ${(isAdmin && photoOf(m) && !(auth.currentUser && m.id === auth.currentUser.uid)) ? `<button class="link-btn remove-photo" data-id="${m.id}" style="font-size:0.82rem; margin-top:4px;">Remove photo</button>` : ''}
+        </div>
         </div>
         ${(isAdmin && m.id !== ownerId && !(auth.currentUser && m.id === auth.currentUser.uid)) ? `<button class="link-btn remove-member" data-id="${m.id}">Remove</button>` : ''}
       </div>`;
@@ -3630,6 +3727,15 @@
       }
     });
     memberListEl.addEventListener('click', (e) => {
+      const rp = e.target.closest('.remove-photo');
+      if(rp){
+        const m = members.find(mm => mm.id === rp.dataset.id);
+        confirmAction(`Remove ${m ? m.name : 'this member'}'s photo?`, () => {
+          db.collection('members').doc(rp.dataset.id).update({ photo: '' })
+            .then(() => showToast('Photo removed.'))
+            .catch(() => showToast("Couldn't remove — try again."));
+        }, 'Yes, remove it');
+      }
       const rem = e.target.closest('.remove-member');
       if(rem){
         const m = members.find(mm => mm.id === rem.dataset.id);
@@ -3897,6 +4003,7 @@
 
     // If someone else with the same display name joined before you, ask the
     // newer member to pick a more specific name (e.g. add an initial).
+    let lastPhotoSig = null;
     let didDupCheck = false;
     function checkDuplicateOwnName(){
       if(didDupCheck || !auth.currentUser) return;
@@ -3930,6 +4037,13 @@
       members = allMembers.filter(m => m.pending !== true);
       pendingMembers = allMembers.filter(m => m.pending === true);
       renderMembers();
+      updateAccountAvatar();
+      const photoSig = members.map(m => m.id + ':' + (photoOf(m) ? photoOf(m).length : 0)).join('|');
+      if(photoSig !== lastPhotoSig){
+        lastPhotoSig = photoSig;
+        renderSchedule();
+        renderAnnouncements();
+      }
       checkOwnerValidity();
       checkDuplicateOwnName();
 
