@@ -471,6 +471,15 @@
       <input id="pcPhone" type="tel" placeholder="Cell number" autocomplete="tel">
       <p style="color:var(--sand-dim); font-size:0.82rem; margin-top:4px;">Optional, but recommended — admins can text the group about what's coming up, so add yours to make sure you don't miss updates.</p>
     </div>
+    <div class="overlay-field" id="pcPhotoRow">
+      <label>Photo (optional)</label>
+      <div style="display:flex; align-items:center; gap:14px;">
+        <div id="pcPhotoPreview"></div>
+        <button class="comment-btn" id="pcPhotoBtn" type="button">Add a photo</button>
+      </div>
+      <input type="file" id="pcPhotoFile" accept="image/*" style="display:none;">
+      <p style="color:var(--sand-dim); font-size:0.82rem; margin-top:6px;">So the club can see who you are. Only approved members can see it, and you can change it later in Account.</p>
+    </div>
     <div class="overlay-error" id="pcError"></div>
     <div id="pcDupSuggestion" style="display:none; margin-top:16px; padding:16px; background:var(--panel); border-radius:4px; border:1px solid var(--line-strong);">
       <p style="color:var(--sand-dim); font-size:0.88rem;" id="pcDupText"></p>
@@ -1015,7 +1024,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 28, 2026, 8:09 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 28, 2026, 8:29 AM CT</span></footer>
 
 </div>
 </div>
@@ -1494,7 +1503,18 @@
     });
   }
 
+  let pendingProfilePhoto = '';
+  function setPcPhotoPreview(){
+    const box = document.getElementById('pcPhotoPreview');
+    box.innerHTML = pendingProfilePhoto
+      ? `<img class="avatar" style="width:64px;height:64px;margin-right:0;" src="${pendingProfilePhoto}" alt="">`
+      : '<span class="avatar avatar-ph" style="width:64px;height:64px;font-size:26px;margin-right:0;" aria-hidden="true">+</span>';
+    document.getElementById('pcPhotoBtn').textContent = pendingProfilePhoto ? 'Change photo' : 'Add a photo';
+  }
   function renderProfileCompletion(){
+    pendingProfilePhoto = '';
+    setPcPhotoPreview();
+    document.getElementById('pcPhotoRow').style.display = '';
     document.getElementById('pcFirstName').value = '';
     document.getElementById('pcLastName').value = '';
     document.getElementById('pcPhone').value = '';
@@ -1526,6 +1546,7 @@
         name: displayName, firstName, lastName, phone,
         email: auth.currentUser.email || ''
       };
+      if(pendingProfilePhoto) payload.photo = pendingProfilePhoto;
       if(isNew){
         payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
         if(needsApproval) payload.pending = true;
@@ -1843,7 +1864,7 @@
   }
   document.getElementById('accPhotoBtn').addEventListener('click', () => document.getElementById('accPhotoFile').click());
   // ---- Crop editor: drag to center your face, slider to zoom, then save a 240px square ----
-  const crop = { img: null, z: 1, ox: 0, oy: 0, drag: null, srcData: null, storeSource: false };
+  const crop = { img: null, z: 1, ox: 0, oy: 0, drag: null, srcData: null, storeSource: false, mode: 'account' };
   const photoSrcKey = () => 'rr_photo_src_' + (auth.currentUser ? auth.currentUser.uid : '');
   function downscaleToDataUrl(img, max){
     const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
@@ -1886,20 +1907,30 @@
     if(crop.img && crop.img.src.startsWith('blob:')) URL.revokeObjectURL(crop.img.src);
     crop.img = null;
   }
-  document.getElementById('accPhotoFile').addEventListener('change', (e) => {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = '';
-    if(!file || !auth.currentUser) return;
-    const msg = document.getElementById('accPhotoMsg');
+  function startCropFromFile(file, msg, mode){
     msg.textContent = '';
     const img = new Image();
     img.onload = () => {
       try{ crop.srcData = downscaleToDataUrl(img, 800); }catch(_){ crop.srcData = null; }
-      crop.storeSource = true;
+      crop.storeSource = mode === 'account';
+      crop.mode = mode;
       openCrop(img, '');
     };
     img.onerror = () => { msg.textContent = "Couldn't use that photo — try a different one."; };
     img.src = URL.createObjectURL(file);
+  }
+  document.getElementById('accPhotoFile').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(!file || !auth.currentUser) return;
+    startCropFromFile(file, document.getElementById('accPhotoMsg'), 'account');
+  });
+  document.getElementById('pcPhotoBtn').addEventListener('click', () => document.getElementById('pcPhotoFile').click());
+  document.getElementById('pcPhotoFile').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    startCropFromFile(file, document.getElementById('pcError'), 'signup');
   });
   const cropCanvas = document.getElementById('cropCanvas');
   cropCanvas.addEventListener('pointerdown', (e) => {
@@ -1927,6 +1958,15 @@
   document.getElementById('cropCancel').addEventListener('click', closeCrop);
   document.getElementById('cropSave').addEventListener('click', async () => {
     if(!crop.img || !auth.currentUser) return;
+    if(crop.mode === 'signup'){
+      const out = document.createElement('canvas');
+      out.width = 240; out.height = 240;
+      cropDraw(out.getContext('2d'), 240);
+      pendingProfilePhoto = out.toDataURL('image/jpeg', 0.85);
+      setPcPhotoPreview();
+      closeCrop();
+      return;
+    }
     const btn = document.getElementById('cropSave');
     btn.disabled = true;
     try{
@@ -1953,7 +1993,7 @@
     if(!src) return;
     const img = new Image();
     img.onload = () => {
-      crop.srcData = null; crop.storeSource = false;
+      crop.srcData = null; crop.storeSource = false; crop.mode = 'account';
       openCrop(img, fromOriginal ? '' : "The original isn't saved on this device, so you can zoom in and move your saved photo. To start over, tap Change photo.");
     };
     img.onerror = () => { document.getElementById('accPhotoMsg').textContent = "Couldn't open the photo — try Change photo."; };
@@ -4148,6 +4188,7 @@
       document.getElementById('pcDupText').textContent = `There's already a "${own.name}" in the club — add an initial or change it so people can tell you apart:`;
       document.getElementById('pcSuggestedName').value = suggestDisambiguation(first, own.lastName || '');
       document.getElementById('pcDupSuggestion').style.display = 'block';
+      document.getElementById('pcPhotoRow').style.display = 'none';
       document.getElementById('pcSubmit').style.display = 'none';
     }
 
