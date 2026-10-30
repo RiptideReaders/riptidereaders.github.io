@@ -1024,7 +1024,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 30, 2026, 11:53 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 30, 2026, 11:59 AM CT</span></footer>
 
 </div>
 </div>
@@ -2743,10 +2743,10 @@
   function itemLabelHtml(it){
     return escapeHtml(it.label) + (it.qty ? ` <span style="color:var(--sand-dim);">&middot; ${escapeHtml(it.qty)}</span>` : '');
   }
-  function foodListHtml(a, d, past, all, uid){
+  function foodListHtml(a, d, past, all, uid, locked){
     const items = a.foodItems || [];
     if(!items.length) return '';
-    const interactive = !past && d.status && d.status !== 'no';
+    const interactive = !past && d.status && d.status !== 'no' && !locked;
     const rows = items.map(it => {
       const others = all.filter(r => r.uid !== uid && r.status !== 'no' && (r.items || []).includes(it.id));
       const othersText = others.map(r => {
@@ -2762,7 +2762,7 @@
       if(others.length && !mine && (!it.multi || full)){
         return `<div class="food-item taken"><span>${itemLabelHtml(it)}</span><span class="who">${othersText}</span></div>`;
       }
-      const youText = mine ? ('You' + ((!interactive && it.note && myNote) ? ` (${escapeHtml(myNote)})` : '')) : '';
+      const youText = mine ? ('You' + (((!interactive) && it.note && myNote) ? ` (${escapeHtml(myNote)})` : '')) : '';
       let who = [youText, othersText].filter(Boolean).join(', ') || 'Needed';
       if(cap){
         const left = cap - othersUsed - (mine ? ((d.itemCounts || {})[it.id] || 1) : 0);
@@ -2779,26 +2779,12 @@
         }
         return `<label class="food-item"><input type="checkbox" class="rsvp-item" data-id="${a.id}" data-item="${it.id}" ${mine ? 'checked' : ''}><span>${itemLabelHtml(it)}</span><span class="who">${who}</span></label>${countBox}${noteBox}`;
       }
+      if(locked && mine) return `<div class="food-item" style="padding-left:0;"><span style="width:18px;text-align:center;color:var(--accent);font-weight:700;flex:none;">&#10003;</span><span>${itemLabelHtml(it)}</span><span class="who">${who}</span></div>`;
       return `<div class="food-item"><span>${itemLabelHtml(it)}</span><span class="who">${who}</span></div>`;
     }).join('');
-    return `<div class="food-list"><h4>${escapeHtml(a.listLabel || 'What to bring')}${interactive ? '' : (past ? '' : ' &mdash; RSVP Going or Maybe below to pick something')}</h4>${rows}</div>`;
+    return `<div class="food-list"><h4>${escapeHtml(a.listLabel || 'What to bring')}${interactive ? '' : ((past || locked) ? '' : ' &mdash; RSVP Going or Maybe below to pick something')}</h4>${rows}</div>`;
   }
-  // After Save the sign-up collapses to a short "all set" summary with an Edit button.
   const foodEditing = {};
-  function foodSummaryHtml(a, d){
-    const bring = bringingText(a, d);
-    const counts = d.itemCounts || {};
-    const bringTxt = bring ? escapeHtml(bring) : '';
-    const other = (a.foodEnabled && (d.note || '').trim()) ? escapeHtml(d.note.trim()) : '';
-    const line = (label, v) => v ? `<div style="margin:4px 0;"><span style="color:var(--sand-dim);">${label}</span> ${v}</div>` : '';
-    return `<div class="food-section">
-      <div class="food-list">
-        <h4>&#10003; You're signed up</h4>
-        ${line('Bringing:', bringTxt)}${line('Something else:', other)}
-        <div style="margin-top:8px;"><button type="button" class="comment-btn food-edit" data-id="${a.id}">Edit</button></div>
-      </div>
-    </div>`;
-  }
   // The sign-up list sits under Details, outside the RSVP box.
   function foodSectionHtml(a, past){
     if(!a.rsvpEnabled || foodModeOf(a) === 'none') return '';
@@ -2808,17 +2794,23 @@
     const uid = auth.currentUser ? auth.currentUser.uid : null;
     const d = rsvpDraft[a.id] || myRsvpBase(a.id);
     const interactiveNow = !past && d.status && d.status !== 'no';
-    if(interactiveNow && !foodEditing[a.id]){
-      const saved = myRsvpBase(a.id);
-      if((hasFoodList(a) && bringingText(a, saved)) || (a.foodEnabled && (saved.note || '').trim())) return foodSummaryHtml(a, saved);
-    }
-    const listHtml = hasFoodList(a) ? foodListHtml(a, d, past, all, uid) : '';
-    const boxHtml = (a.foodEnabled && !past && d.status && d.status !== 'no') ? `
+    const savedR = myRsvpBase(a.id);
+    const hasSaved = (hasFoodList(a) && bringingText(a, savedR)) || (a.foodEnabled && (savedR.note || '').trim());
+    const locked = !!(interactiveNow && !foodEditing[a.id] && hasSaved);
+    const dd = locked ? savedR : d;
+    const listHtml = hasFoodList(a) ? foodListHtml(a, dd, past, all, uid, locked) : '';
+    const boxLabel = escapeHtml(a.foodLabel || (hasFoodList(a) ? 'Bringing something else? Enter it here (optional)' : 'Bringing food or drinks to share? (optional)'));
+    let boxHtml = '';
+    if(locked){
+      if(a.foodEnabled && (savedR.note || '').trim()) boxHtml = `<div class="food-list"><h4>${boxLabel}</h4><div style="color:var(--sand); white-space:pre-wrap;">${escapeHtml(savedR.note.trim())}</div></div>`;
+    } else if(a.foodEnabled && interactiveNow){
+      boxHtml = `
       <div class="food-list">
-        <h4>${escapeHtml(a.foodLabel || (hasFoodList(a) ? 'Bringing something else? Enter it here (optional)' : 'Bringing food or drinks to share? (optional)'))}</h4>
+        <h4>${boxLabel}</h4>
         <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(d.note)}</textarea>
-      </div>` : '';
-    const saveHtml = (interactiveNow && (listHtml || boxHtml)) ? `<div style="margin:6px 0 10px;"><button type="button" class="submit-btn rsvp-save" data-id="${a.id}" style="padding:6px 16px; font-size:0.85rem;">Save</button></div>` : '';
+      </div>`;
+    }
+    const saveHtml = (interactiveNow && (listHtml || boxHtml)) ? `<div style="margin:6px 0 10px;"><button type="button" class="submit-btn ${locked ? 'food-edit' : 'rsvp-save'}" data-id="${a.id}" style="padding:6px 16px; font-size:0.85rem;">${locked ? 'Edit' : 'Save'}</button></div>` : '';
     return (listHtml || boxHtml) ? `<div class="food-section">${listHtml}${boxHtml}${saveHtml}</div>` : '';
   }
   function rsvpBoxHtml(a, past){
