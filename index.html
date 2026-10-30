@@ -1024,7 +1024,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 30, 2026, 9:21 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 30, 2026, 10:54 AM CT</span></footer>
 
 </div>
 </div>
@@ -2692,7 +2692,7 @@
   function myRsvpBase(id){
     const uid = auth.currentUser ? auth.currentUser.uid : null;
     const mine = (rsvpData[id] || []).find(r => r.uid === uid);
-    return { status: mine ? mine.status : '', guests: mine ? (mine.guests || 0) : 0, note: mine ? (mine.note || '') : '', comment: mine ? (mine.comment || '') : '', items: mine ? [...(mine.items || [])] : [], itemNotes: mine ? { ...(mine.itemNotes || {}) } : {} };
+    return { status: mine ? mine.status : '', guests: mine ? (mine.guests || 0) : 0, note: mine ? (mine.note || '') : '', comment: mine ? (mine.comment || '') : '', items: mine ? [...(mine.items || [])] : [], itemNotes: mine ? { ...(mine.itemNotes || {}) } : {}, itemCounts: mine ? { ...(mine.itemCounts || {}) } : {} };
   }
   function ensureRsvpDraft(id){
     if(!rsvpDraft[id]) rsvpDraft[id] = myRsvpBase(id);
@@ -2738,6 +2738,8 @@
     const q = String(it.qty || '').trim();
     return /^\d+$/.test(q) ? parseInt(q, 10) : 0;
   }
+  function cap0(it){ return itemCap(it); }
+  function usedBy(r, id){ return Math.max(1, (r.itemCounts && r.itemCounts[id]) || 1); }
   function itemLabelHtml(it){
     return escapeHtml(it.label) + (it.qty ? ` <span style="color:var(--sand-dim);">&middot; ${escapeHtml(it.qty)}</span>` : '');
   }
@@ -2749,24 +2751,33 @@
       const others = all.filter(r => r.uid !== uid && r.status !== 'no' && (r.items || []).includes(it.id));
       const othersText = others.map(r => {
         const n = it.note && r.itemNotes && r.itemNotes[it.id];
-        return escapeHtml(r.name || 'Someone') + (n ? ` (${escapeHtml(n)})` : '');
+        const c = cap0(it) && usedBy(r, it.id) > 1 ? ' ×' + usedBy(r, it.id) : '';
+        return escapeHtml(r.name || 'Someone') + c + (n ? ` (${escapeHtml(n)})` : '');
       }).join(', ');
       const mine = (d.items || []).includes(it.id);
       const myNote = (d.itemNotes || {})[it.id] || '';
       const cap = itemCap(it);
-      const full = cap && others.length >= cap;
+      const othersUsed = others.reduce((n, r) => n + usedBy(r, it.id), 0);
+      const full = cap && othersUsed >= cap;
       if(others.length && !mine && (!it.multi || full)){
         return `<div class="food-item taken"><span>${itemLabelHtml(it)}</span><span class="who">${othersText}</span></div>`;
       }
       const youText = mine ? ('You' + ((!interactive && it.note && myNote) ? ` (${escapeHtml(myNote)})` : '')) : '';
       let who = [youText, othersText].filter(Boolean).join(', ') || 'Needed';
       if(cap){
-        const left = cap - others.length - (mine ? 1 : 0);
+        const left = cap - othersUsed - (mine ? ((d.itemCounts || {})[it.id] || 1) : 0);
         if(left > 0 && (mine || others.length)) who += ` &middot; ${left} more needed`;
       }
       if(interactive){
         const noteBox = (mine && it.note) ? `<div class="food-note"><input type="text" class="rsvp-itemnote" data-id="${a.id}" data-item="${it.id}" maxlength="100" placeholder="What kind / how much?" value="${escapeHtml(myNote)}"></div>` : '';
-        return `<label class="food-item"><input type="checkbox" class="rsvp-item" data-id="${a.id}" data-item="${it.id}" ${mine ? 'checked' : ''}><span>${itemLabelHtml(it)}</span><span class="who">${who}</span></label>${noteBox}`;
+        let countBox = '';
+        if(mine && cap && cap - othersUsed > 1){
+          const myCount = Math.min((d.itemCounts || {})[it.id] || 1, cap - othersUsed);
+          let opts = '';
+          for(let k = 1; k <= cap - othersUsed; k++) opts += `<option value="${k}" ${k === myCount ? 'selected' : ''}>${k === 1 ? '1 (just one)' : k + (k === cap - othersUsed ? ' (all that are left)' : '')}</option>`;
+          countBox = `<div class="food-note">I'll bring: <select class="rsvp-itemcount" data-id="${a.id}" data-item="${it.id}">${opts}</select></div>`;
+        }
+        return `<label class="food-item"><input type="checkbox" class="rsvp-item" data-id="${a.id}" data-item="${it.id}" ${mine ? 'checked' : ''}><span>${itemLabelHtml(it)}</span><span class="who">${who}</span></label>${countBox}${noteBox}`;
       }
       return `<div class="food-item"><span>${itemLabelHtml(it)}</span><span class="who">${who}</span></div>`;
     }).join('');
@@ -2835,6 +2846,7 @@
     const ann = announcements.find(x => x.id === id) || {};
     let items = [];
     const itemNotes = {};
+    const itemCounts = {};
     let droppedItems = false;
     if(hasFoodList(ann) && d.status !== 'no'){
       const taken = new Set((rsvpData[id] || []).filter(r => r.uid !== uid && r.status !== 'no').flatMap(r => r.items || []));
@@ -2846,8 +2858,10 @@
         if(!it.multi && taken.has(x)){ droppedItems = true; return; }
         const cap = itemCap(it);
         if(cap){
-          const n = (rsvpData[id] || []).filter(r => r.uid !== uid && r.status !== 'no' && (r.items || []).includes(x)).length;
+          const n = (rsvpData[id] || []).filter(r => r.uid !== uid && r.status !== 'no' && (r.items || []).includes(x)).reduce((t, r) => t + usedBy(r, x), 0);
           if(n >= cap){ droppedItems = true; return; }
+          const want = Math.min(Math.max(1, (d.itemCounts || {})[x] || 1), cap - n);
+          if(want > 1) itemCounts[x] = want;
         }
         items.push(x);
         if(it.note){ const n = ((d.itemNotes || {})[x] || '').trim().slice(0, 100); if(n) itemNotes[x] = n; }
@@ -2859,12 +2873,13 @@
         guests: 0,
         items,
         itemNotes,
+        itemCounts,
         comment: (d.comment || '').trim().slice(0, 300),
         note: (d.status === 'no' || !(announcements.find(x => x.id === id) || {}).foodEnabled) ? '' : (d.note || '').trim().slice(0, 300),
         name,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      rsvpDraft[id] = { status: d.status, guests: 0, note: d.note || '', comment: d.comment || '', items, itemNotes };
+      rsvpDraft[id] = { status: d.status, guests: 0, note: d.note || '', comment: d.comment || '', items, itemNotes, itemCounts };
       if(droppedItems) showToast('RSVP saved — someone else just took one of your items.');
       else if(showPopup) showSavedPopup('Saved — ' + (RSVP_LABELS[d.status] || 'RSVP'));
       else showToast('Saved.');
@@ -4070,11 +4085,20 @@
     document.getElementById('anRsvp').addEventListener('change', syncFoodForm);
     document.getElementById('anFoodMode').addEventListener('change', syncFoodForm);
     document.getElementById('announceList').addEventListener('change', (e) => {
+      const sel = e.target.closest('.rsvp-itemcount');
+      if(!sel) return;
+      const d = ensureRsvpDraft(sel.dataset.id);
+      d.itemCounts = d.itemCounts || {};
+      d.itemCounts[sel.dataset.item] = parseInt(sel.value, 10) || 1;
+      renderAnnouncements();
+      saveRsvp(sel.dataset.id);
+    });
+    document.getElementById('announceList').addEventListener('change', (e) => {
       const box = e.target.closest('.rsvp-item');
       if(!box) return;
       const d = ensureRsvpDraft(box.dataset.id);
       const set = new Set(d.items || []);
-      if(box.checked) set.add(box.dataset.item); else { set.delete(box.dataset.item); if(d.itemNotes) delete d.itemNotes[box.dataset.item]; }
+      if(box.checked) set.add(box.dataset.item); else { set.delete(box.dataset.item); if(d.itemNotes) delete d.itemNotes[box.dataset.item]; if(d.itemCounts) delete d.itemCounts[box.dataset.item]; }
       d.items = [...set];
       renderAnnouncements();
       saveRsvp(box.dataset.id);
