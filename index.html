@@ -1024,7 +1024,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 28, 2026, 8:29 AM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 30, 2026, 9:21 AM CT</span></footer>
 
 </div>
 </div>
@@ -2705,7 +2705,7 @@
     box.innerHTML = anFoodRows.map((r, i) => `
       <div class="food-row" data-i="${i}">
         <input type="text" class="fr-label" maxlength="80" placeholder="Item, like Bagels" value="${escapeHtml(r.label)}">
-        <input type="text" class="fr-qty" maxlength="40" placeholder="Quantity (optional), like 2 dozen" value="${escapeHtml(r.qty || '')}">
+        <input type="text" class="fr-qty" maxlength="40" placeholder="Quantity (optional) — a number limits sign-ups" value="${escapeHtml(r.qty || '')}">
         <label class="opt"><input type="checkbox" class="fr-multi" ${r.multi ? 'checked' : ''}> Several can sign up</label>
         <label class="opt"><input type="checkbox" class="fr-note" ${r.note ? 'checked' : ''}> Ask for a note</label>
         <button type="button" class="link-btn fr-remove" style="margin-left:auto;">Remove</button>
@@ -2732,6 +2732,12 @@
     }).filter(Boolean).join(', ');
   }
   function foodModeOf(a){ return a.foodMode || (a.foodEnabled ? 'box' : 'none'); }
+  // "Several can sign up" + a plain-number quantity (e.g. 2) caps sign-ups at that number.
+  function itemCap(it){
+    if(!it || !it.multi) return 0;
+    const q = String(it.qty || '').trim();
+    return /^\d+$/.test(q) ? parseInt(q, 10) : 0;
+  }
   function itemLabelHtml(it){
     return escapeHtml(it.label) + (it.qty ? ` <span style="color:var(--sand-dim);">&middot; ${escapeHtml(it.qty)}</span>` : '');
   }
@@ -2747,11 +2753,17 @@
       }).join(', ');
       const mine = (d.items || []).includes(it.id);
       const myNote = (d.itemNotes || {})[it.id] || '';
-      if(others.length && !mine && !it.multi){
+      const cap = itemCap(it);
+      const full = cap && others.length >= cap;
+      if(others.length && !mine && (!it.multi || full)){
         return `<div class="food-item taken"><span>${itemLabelHtml(it)}</span><span class="who">${othersText}</span></div>`;
       }
       const youText = mine ? ('You' + ((!interactive && it.note && myNote) ? ` (${escapeHtml(myNote)})` : '')) : '';
-      const who = [youText, othersText].filter(Boolean).join(', ') || 'Needed';
+      let who = [youText, othersText].filter(Boolean).join(', ') || 'Needed';
+      if(cap){
+        const left = cap - others.length - (mine ? 1 : 0);
+        if(left > 0 && (mine || others.length)) who += ` &middot; ${left} more needed`;
+      }
       if(interactive){
         const noteBox = (mine && it.note) ? `<div class="food-note"><input type="text" class="rsvp-itemnote" data-id="${a.id}" data-item="${it.id}" maxlength="100" placeholder="What kind / how much?" value="${escapeHtml(myNote)}"></div>` : '';
         return `<label class="food-item"><input type="checkbox" class="rsvp-item" data-id="${a.id}" data-item="${it.id}" ${mine ? 'checked' : ''}><span>${itemLabelHtml(it)}</span><span class="who">${who}</span></label>${noteBox}`;
@@ -2832,6 +2844,11 @@
         const it = byId.get(x);
         if(!it) return;
         if(!it.multi && taken.has(x)){ droppedItems = true; return; }
+        const cap = itemCap(it);
+        if(cap){
+          const n = (rsvpData[id] || []).filter(r => r.uid !== uid && r.status !== 'no' && (r.items || []).includes(x)).length;
+          if(n >= cap){ droppedItems = true; return; }
+        }
         items.push(x);
         if(it.note){ const n = ((d.itemNotes || {})[x] || '').trim().slice(0, 100); if(n) itemNotes[x] = n; }
       });
