@@ -1024,7 +1024,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 30, 2026, 12:02 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 30, 2026, 12:04 PM CT</span></footer>
 
 </div>
 </div>
@@ -2801,13 +2801,11 @@
     const listHtml = hasFoodList(a) ? foodListHtml(a, dd, past, all, uid, locked) : '';
     const boxLabel = escapeHtml(a.foodLabel || (hasFoodList(a) ? 'Bringing something else? Enter it here (optional)' : 'Bringing food or drinks to share? (optional)'));
     let boxHtml = '';
-    if(locked){
-      if(a.foodEnabled && (savedR.note || '').trim()) boxHtml = `<div class="food-list"><h4>${boxLabel}</h4><div style="color:var(--sand); white-space:pre-wrap;">${escapeHtml(savedR.note.trim())}</div></div>`;
-    } else if(a.foodEnabled && interactiveNow){
+    if(a.foodEnabled && interactiveNow){
       boxHtml = `
       <div class="food-list">
         <h4>${boxLabel}</h4>
-        <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(d.note)}</textarea>
+        <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(locked ? savedR.note : d.note)}</textarea>
       </div>`;
     }
     const hasOpen = hasFoodList(a) && (a.foodItems || []).some(it => {
@@ -2819,7 +2817,7 @@
       return !cap || others.reduce((n, r) => n + usedBy(r, it.id), 0) < cap;
     });
     const btnStyle = 'padding:6px 16px; font-size:0.85rem; margin-right:8px;';
-    const saveHtml = (interactiveNow && (listHtml || boxHtml)) ? `<div style="margin:6px 0 10px;">${locked ? `<button type="button" class="submit-btn food-edit" data-id="${a.id}" style="${btnStyle}">Edit</button>${hasOpen ? `<button type="button" class="submit-btn rsvp-save" data-id="${a.id}" style="${btnStyle}">Save</button>` : ''}` : `<button type="button" class="submit-btn rsvp-save" data-id="${a.id}" style="${btnStyle}">Save</button>`}</div>` : '';
+    const saveHtml = (interactiveNow && (listHtml || boxHtml)) ? `<div style="margin:6px 0 10px;">${locked ? `<button type="button" class="submit-btn food-edit" data-id="${a.id}" style="${btnStyle}">Edit</button>${(hasOpen || a.foodEnabled) ? `<button type="button" class="submit-btn rsvp-save" data-id="${a.id}" style="${btnStyle}">Save</button>` : ''}` : `<button type="button" class="submit-btn rsvp-save" data-id="${a.id}" style="${btnStyle}">Save</button>`}</div>` : '';
     return (listHtml || boxHtml) ? `<div class="food-section">${listHtml}${boxHtml}${saveHtml}</div>` : '';
   }
   function rsvpBoxHtml(a, past){
