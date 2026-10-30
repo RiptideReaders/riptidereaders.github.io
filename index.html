@@ -2785,6 +2785,8 @@
     return `<div class="food-list"><h4>${escapeHtml(a.listLabel || 'What to bring')}${interactive ? '' : ((past || locked) ? '' : ' &mdash; RSVP Going or Maybe below to pick something')}</h4>${rows}</div>`;
   }
   const foodEditing = {};
+  const noteFull = {};  // true while the whole saved note is being edited (Edit button)
+  const noteNew = {};   // text typed for a new "something else" entry
   // The sign-up list sits under Details, outside the RSVP box.
   function foodSectionHtml(a, past){
     if(!a.rsvpEnabled || foodModeOf(a) === 'none') return '';
@@ -2805,7 +2807,7 @@
       boxHtml = `
       <div class="food-list">
         <h4>${boxLabel}</h4>
-        <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(locked ? savedR.note : d.note)}</textarea>
+        <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(noteFull[a.id] ? d.note : (noteNew[a.id] || ''))}</textarea>
       </div>`;
     }
     const extras = a.foodEnabled ? all.filter(r => r.status !== 'no' && (r.note || '').trim()) : [];
@@ -4139,6 +4141,10 @@
         saveRsvp(t.dataset.id);
         return;
       }
+      if(t.classList.contains('rsvp-note') && !noteFull[t.dataset.id]){
+        const add = (noteNew[t.dataset.id] || '').trim();
+        if(add){ const old = (base.note || '').trim(); d.note = (old ? old + ', ' + add : add).slice(0, 300); noteNew[t.dataset.id] = ''; foodEditing[t.dataset.id] = false; }
+      }
       // Only save (and show the popup) when the text actually changed.
       if((d.comment || '').trim() === (base.comment || '').trim() && (d.note || '').trim() === (base.note || '').trim()) return;
       saveRsvp(t.dataset.id);
@@ -4165,7 +4171,7 @@
       const t = e.target;
       if(!t.dataset || !t.dataset.id) return;
       if(t.classList.contains('rsvp-note') || t.classList.contains('rsvp-itemnote')) foodEditing[t.dataset.id] = true;
-      if(t.classList.contains('rsvp-note')) ensureRsvpDraft(t.dataset.id).note = t.value;
+      if(t.classList.contains('rsvp-note')){ if(noteFull[t.dataset.id]) ensureRsvpDraft(t.dataset.id).note = t.value; else noteNew[t.dataset.id] = t.value; }
       if(t.classList.contains('rsvp-comment')) ensureRsvpDraft(t.dataset.id).comment = t.value;
       if(t.classList.contains('rsvp-itemnote')){ const dd = ensureRsvpDraft(t.dataset.id); dd.itemNotes = dd.itemNotes || {}; dd.itemNotes[t.dataset.item] = t.value; }
     });
@@ -4199,11 +4205,17 @@
       if(rsvpSave){
         const sid = rsvpSave.dataset.id;
         foodEditing[sid] = false;
+        if(!noteFull[sid]){
+          // Typing in the box adds a new item; the box then empties, ready for the next one.
+          const add = (noteNew[sid] || '').trim();
+          if(add){ const dr = ensureRsvpDraft(sid); const old = (myRsvpBase(sid).note || '').trim(); dr.note = (old ? old + ', ' + add : add).slice(0, 300); }
+        }
+        noteNew[sid] = ''; noteFull[sid] = false;
         if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
         saveRsvp(sid).then(() => { renderAnnouncements(); showToast('Saved.'); });
       }
       const foodEdit = e.target.closest('.food-edit');
-      if(foodEdit){ foodEditing[foodEdit.dataset.id] = true; renderAnnouncements(); }
+      if(foodEdit){ foodEditing[foodEdit.dataset.id] = true; noteFull[foodEdit.dataset.id] = true; renderAnnouncements(); }
       if(rsvpClr) confirmAction('Remove your RSVP?', () => clearRsvp(rsvpClr.dataset.id), 'Yes, remove it');
       const edit = e.target.closest('.edit-announce');
       const rem = e.target.closest('.remove-announce');
