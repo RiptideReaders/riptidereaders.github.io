@@ -1024,7 +1024,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 30, 2026, 12:04 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 30, 2026, 12:05 PM CT</span></footer>
 
 </div>
 </div>
@@ -2808,6 +2808,8 @@
         <textarea class="rsvp-note" data-id="${a.id}" maxlength="300" placeholder="e.g. Chips and salsa, or a dessert">${escapeHtml(locked ? savedR.note : d.note)}</textarea>
       </div>`;
     }
+    const extras = a.foodEnabled ? all.filter(r => r.status !== 'no' && (r.note || '').trim()) : [];
+    const extrasHtml = extras.length ? `<div class="food-list"><h4>Also bringing</h4>${extras.map(r => `<div class="food-item" style="padding-left:0;"><span>${escapeHtml(r.uid === uid ? 'You' : (r.name || 'Someone'))}</span><span class="who">${escapeHtml(r.note.trim())}</span></div>`).join('')}</div>` : '';
     const hasOpen = hasFoodList(a) && (a.foodItems || []).some(it => {
       if((savedR.items || []).includes(it.id)) return false;
       const others = all.filter(r => r.uid !== uid && r.status !== 'no' && (r.items || []).includes(it.id));
@@ -2818,7 +2820,7 @@
     });
     const btnStyle = 'padding:6px 16px; font-size:0.85rem; margin-right:8px;';
     const saveHtml = (interactiveNow && (listHtml || boxHtml)) ? `<div style="margin:6px 0 10px;">${locked ? `<button type="button" class="submit-btn food-edit" data-id="${a.id}" style="${btnStyle}">Edit</button>${(hasOpen || a.foodEnabled) ? `<button type="button" class="submit-btn rsvp-save" data-id="${a.id}" style="${btnStyle}">Save</button>` : ''}` : `<button type="button" class="submit-btn rsvp-save" data-id="${a.id}" style="${btnStyle}">Save</button>`}</div>` : '';
-    return (listHtml || boxHtml) ? `<div class="food-section">${listHtml}${boxHtml}${saveHtml}</div>` : '';
+    return (listHtml || boxHtml || extrasHtml) ? `<div class="food-section">${listHtml}${extrasHtml}${boxHtml}${saveHtml}</div>` : '';
   }
   function rsvpBoxHtml(a, past){
     const list = rsvpData[a.id];
