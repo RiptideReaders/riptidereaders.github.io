@@ -242,14 +242,14 @@
   .hist-year{ margin-top:6px; }
   .hist-year > summary{ list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:12px; padding:14px 0; border-bottom:2px solid var(--line-strong); -webkit-tap-highlight-color:transparent; }
   .hist-year > summary::-webkit-details-marker{ display:none; }
-  .hist-year > summary::before{ content:'▸'; color:var(--accent); font-size:1.1rem; transition:transform 0.15s; }
+  .hist-year > summary::before{ content:''; display:inline-block; flex:0 0 auto; width:0; height:0; border-left:14px solid var(--accent); border-top:9px solid transparent; border-bottom:9px solid transparent; transition:transform 0.15s; align-self:center; }
   .hist-year[open] > summary::before{ transform:rotate(90deg); }
   .hist-year-label{ font-family:'Bitter',serif; font-size:1.5rem; font-weight:700; color:var(--sand); }
   .hist-year-count{ color:var(--sand-dim); font-size:0.88rem; }
   .hist-group{ border-bottom:1px solid var(--line); }
   .hist-group summary{ list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:16px 0; -webkit-tap-highlight-color:transparent; }
   .hist-group summary::-webkit-details-marker{ display:none; }
-  .hist-group summary::before{ content:'▸'; color:var(--accent); font-size:1rem; flex:0 0 auto; transition:transform 0.15s; }
+  .hist-group summary::before{ content:''; display:inline-block; flex:0 0 auto; width:0; height:0; border-left:14px solid var(--accent); border-top:9px solid transparent; border-bottom:9px solid transparent; transition:transform 0.15s; align-self:center; }
   .hist-group[open] > summary::before{ transform:rotate(90deg); }
   .hist-month{ color:var(--accent); font-weight:600; font-size:0.95rem; }
   .hist-title{ font-family:'Bitter',serif; font-size:1.15rem; color:var(--sand); flex:1 1 auto; min-width:0; }
@@ -320,7 +320,10 @@
   .thought-head{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .thought-head .avatar{ margin-right:0; }
   .early-review{ margin-top:10px; border-top:1px solid var(--line); padding-top:8px; }
-  .early-review summary{ cursor:pointer; color:var(--accent); font-size:0.88rem; }
+  .early-review summary{ cursor:pointer; color:var(--accent); font-size:0.88rem; list-style:none; display:flex; align-items:center; gap:10px; }
+  .early-review summary::-webkit-details-marker{ display:none; }
+  .early-review summary::before{ content:''; display:inline-block; flex:0 0 auto; width:0; height:0; border-left:14px solid var(--accent); border-top:9px solid transparent; border-bottom:9px solid transparent; transition:transform 0.15s; align-self:center; }
+  .early-review[open] > summary::before{ transform:rotate(90deg); }
   .early-note{ font-size:0.8rem; color:var(--sand-dim); margin:6px 0 2px; }
   .edit-review{ background:none; border:0; color:var(--sand-dim); cursor:pointer; padding:4px; line-height:0; border-radius:3px; }
   .edit-review:hover{ color:var(--accent); }
@@ -1024,7 +1027,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Oct 30, 2026, 12:05 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Nov 1, 2026, 12:00 PM CT</span></footer>
 
 </div>
 </div>
