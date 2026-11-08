@@ -1027,7 +1027,7 @@
     </div>
   </section>
 
-  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Nov 6, 2026, 8:33 PM CT</span></footer>
+  <footer>Riptide Readers &middot; keep it, share it, read on.<br><span style="opacity:0.6; font-size:0.78rem;">Version: Nov 8, 2026, 10:32 AM CT</span></footer>
 
 </div>
 </div>
@@ -1109,6 +1109,7 @@
   let removedUids = [];
   let suggestDeadline = null;
   let votingDeadline = null;
+  let deadlinesOff = false;
   let isOwner = false;
   let isAdmin = false;
   let appInited = false;
@@ -1644,7 +1645,7 @@
   }
   // A "YYYY-MM-DD" deadline is inclusive — it's the last day that thing is open.
   function isPastDeadline(dateStr){
-    return !!dateStr && todayStr() > dateStr;
+    return !deadlinesOff && !!dateStr && todayStr() > dateStr;
   }
 
   function updateSuggestFormVisibility(){
@@ -1665,9 +1666,24 @@
   function getDeadlineValue(key){ return key === 'suggestDeadline' ? suggestDeadline : votingDeadline; }
   function setDeadlineValue(key, val){ if(key === 'suggestDeadline') suggestDeadline = val; else votingDeadline = val; }
 
+  async function setDeadlinesOff(off){
+    try{
+      await db.collection('meta').doc('config').set({ deadlinesOff: off }, { merge: true });
+      deadlinesOff = off;
+      renderDeadlines();
+      showToast(off ? 'Deadlines hidden. Suggestions stay open.' : 'Deadlines are on.');
+    }catch(e){ showToast("Couldn't save — try again."); }
+  }
   function renderDeadlines(){
     const el = document.getElementById('deadlinesBanner');
     if(!el) return;
+    updateSuggestFormVisibility();
+    if(deadlinesOff){
+      el.innerHTML = isAdmin ? `<p style="margin:0 0 14px;"><button class="link-btn" id="deadlinesToggle" type="button">Deadlines are hidden — turn them on</button></p>` : '';
+      const t = document.getElementById('deadlinesToggle');
+      if(t) t.addEventListener('click', setDeadlinesOff.bind(null, false));
+      return;
+    }
     el.innerHTML = DEADLINE_KINDS.map(kind => {
       const value = getDeadlineValue(kind.key);
       if(value){
@@ -1686,7 +1702,9 @@
       }else{
         return '';
       }
-    }).join('');
+    }).join('') + (isAdmin ? `<p style="margin:0 0 14px;"><button class="link-btn" id="deadlinesToggle" type="button">Hide deadlines</button></p>` : '');
+    const tg = document.getElementById('deadlinesToggle');
+    if(tg) tg.addEventListener('click', setDeadlinesOff.bind(null, true));
 
     el.querySelectorAll('.edit-deadline-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1736,6 +1754,7 @@
       removedUids = configData.removedUids || [];
       suggestDeadline = configData.suggestDeadline || null;
       votingDeadline = configData.votingDeadline || null;
+      deadlinesOff = !!configData.deadlinesOff;
       isOwner = ownerId === user.uid;
       isAdmin = isOwner || adminIds.includes(user.uid);
       ownerTag.style.display = isAdmin ? 'inline' : 'none';
@@ -4337,6 +4356,7 @@
       removedUids = data.removedUids || [];
       suggestDeadline = data.suggestDeadline || null;
       votingDeadline = data.votingDeadline || null;
+      deadlinesOff = !!data.deadlinesOff;
       isOwner = ownerId === auth.currentUser.uid;
       isAdmin = isOwner || adminIds.includes(auth.currentUser.uid);
       ownerTag.style.display = isAdmin ? 'inline' : 'none';
